@@ -8,5 +8,6 @@ Pod::Spec.new do |s|
   s.source   = { :git => 'https://github.com/TimOliver/PromoKit.git', :tag => s.version }
   s.source_files = 'PromoKit/**/*.{h,m,swift}'
   s.requires_arc = true
+  s.swift_version = '5.9'
   s.ios.deployment_target   = '12.0'
 end
