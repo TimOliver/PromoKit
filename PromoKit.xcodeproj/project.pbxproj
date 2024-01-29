@@ -15,6 +15,7 @@
 		229D21432B67CE2700105C9D /* PromoKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21422B67CE2700105C9D /* PromoKitTests.swift */; };
 		229D214D2B67CE2700105C9D /* PromoKitUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D214C2B67CE2700105C9D /* PromoKitUITests.swift */; };
 		229D214F2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D214E2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift */; };
+		229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D215C2B67D5FA00105C9D /* PromoView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +48,7 @@
 		229D21482B67CE2700105C9D /* PromoKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PromoKitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		229D214C2B67CE2700105C9D /* PromoKitUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitUITests.swift; sourceTree = "<group>"; };
 		229D214E2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		229D215C2B67D5FA00105C9D /* PromoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,6 +130,7 @@
 		229D215B2B67D5AB00105C9D /* PromoKit */ = {
 			isa = PBXGroup;
 			children = (
+				229D215C2B67D5FA00105C9D /* PromoView.swift */,
 			);
 			path = PromoKit;
 			sourceTree = "<group>";
@@ -263,6 +266,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */,
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
 				229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */,
 			);

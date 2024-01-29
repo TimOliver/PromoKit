@@ -9,11 +9,17 @@ import UIKit
 
 class ViewController: UIViewController {
 
+    let promoView = PromoView()
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+
+        promoView.frame.size = CGSize(width: 300, height: 270)
+        view.addSubview(promoView)
     }
 
-
+    override func viewDidLayoutSubviews() {
+        promoView.center = view.center
+    }
 }
 
