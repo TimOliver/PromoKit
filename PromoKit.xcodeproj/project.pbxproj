@@ -16,6 +16,7 @@
 		229D214D2B67CE2700105C9D /* PromoKitUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D214C2B67CE2700105C9D /* PromoKitUITests.swift */; };
 		229D214F2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D214E2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift */; };
 		229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D215C2B67D5FA00105C9D /* PromoView.swift */; };
+		229D215F2B67D6E100105C9D /* PromoKit.podspec in Resources */ = {isa = PBXBuildFile; fileRef = 229D215E2B67D6E100105C9D /* PromoKit.podspec */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +50,7 @@
 		229D214C2B67CE2700105C9D /* PromoKitUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitUITests.swift; sourceTree = "<group>"; };
 		229D214E2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		229D215C2B67D5FA00105C9D /* PromoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoView.swift; sourceTree = "<group>"; };
+		229D215E2B67D6E100105C9D /* PromoKit.podspec */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = PromoKit.podspec; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +81,7 @@
 		229D211F2B67CE2600105C9D = {
 			isa = PBXGroup;
 			children = (
+				229D215E2B67D6E100105C9D /* PromoKit.podspec */,
 				229D215B2B67D5AB00105C9D /* PromoKit */,
 				229D212A2B67CE2600105C9D /* PromoKitExample */,
 				229D21412B67CE2700105C9D /* PromoKitTests */,
@@ -240,6 +243,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				229D21382B67CE2700105C9D /* LaunchScreen.storyboard in Resources */,
+				229D215F2B67D6E100105C9D /* PromoKit.podspec in Resources */,
 				229D21352B67CE2700105C9D /* Assets.xcassets in Resources */,
 				229D21332B67CE2600105C9D /* Main.storyboard in Resources */,
 			);
