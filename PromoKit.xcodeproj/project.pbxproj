@@ -20,6 +20,7 @@
 		229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21A42B79E23500105C9D /* PromoProvider.swift */; };
 		229D21A72B79E24000105C9D /* PromoContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21A62B79E24000105C9D /* PromoContentView.swift */; };
 		229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */; };
+		229D21AE2B7A11DB00105C9D /* PromoListContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21AD2B7A11DB00105C9D /* PromoListContentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 		229D21A42B79E23500105C9D /* PromoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoProvider.swift; sourceTree = "<group>"; };
 		229D21A62B79E24000105C9D /* PromoContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoContentView.swift; sourceTree = "<group>"; };
 		229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoAppRaterProvider.swift; sourceTree = "<group>"; };
+		229D21AD2B7A11DB00105C9D /* PromoListContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoListContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -142,6 +144,7 @@
 				229D215C2B67D5FA00105C9D /* PromoView.swift */,
 				229D21A42B79E23500105C9D /* PromoProvider.swift */,
 				229D21A62B79E24000105C9D /* PromoContentView.swift */,
+				229D21AC2B7A11BF00105C9D /* DefaultContentViews */,
 				229D21A92B7A0DA600105C9D /* DefaultProviders */,
 			);
 			path = PromoKit;
@@ -153,6 +156,14 @@
 				229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */,
 			);
 			path = DefaultProviders;
+			sourceTree = "<group>";
+		};
+		229D21AC2B7A11BF00105C9D /* DefaultContentViews */ = {
+			isa = PBXGroup;
+			children = (
+				229D21AD2B7A11DB00105C9D /* PromoListContentView.swift */,
+			);
+			path = DefaultContentViews;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -288,6 +299,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */,
+				229D21AE2B7A11DB00105C9D /* PromoListContentView.swift in Sources */,
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
 				229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */,
 				229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */,
