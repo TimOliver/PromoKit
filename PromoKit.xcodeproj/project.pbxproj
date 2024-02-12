@@ -17,6 +17,8 @@
 		229D214F2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D214E2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift */; };
 		229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D215C2B67D5FA00105C9D /* PromoView.swift */; };
 		229D215F2B67D6E100105C9D /* PromoKit.podspec in Resources */ = {isa = PBXBuildFile; fileRef = 229D215E2B67D6E100105C9D /* PromoKit.podspec */; };
+		229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21A42B79E23500105C9D /* PromoProvider.swift */; };
+		229D21A72B79E24000105C9D /* PromoContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21A62B79E24000105C9D /* PromoContentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,6 +53,8 @@
 		229D214E2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		229D215C2B67D5FA00105C9D /* PromoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoView.swift; sourceTree = "<group>"; };
 		229D215E2B67D6E100105C9D /* PromoKit.podspec */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = PromoKit.podspec; sourceTree = "<group>"; };
+		229D21A42B79E23500105C9D /* PromoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoProvider.swift; sourceTree = "<group>"; };
+		229D21A62B79E24000105C9D /* PromoContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoContentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +138,8 @@
 			isa = PBXGroup;
 			children = (
 				229D215C2B67D5FA00105C9D /* PromoView.swift */,
+				229D21A42B79E23500105C9D /* PromoProvider.swift */,
+				229D21A62B79E24000105C9D /* PromoContentView.swift */,
 			);
 			path = PromoKit;
 			sourceTree = "<group>";
@@ -272,6 +278,8 @@
 			files = (
 				229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */,
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
+				229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */,
+				229D21A72B79E24000105C9D /* PromoContentView.swift in Sources */,
 				229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

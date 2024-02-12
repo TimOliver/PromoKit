@@ -7,6 +7,8 @@
 
 import UIKit
 
+/// A promo view displays promotional or advertising content from a variety of sources,
+/// determined and updated dynamically at runtime.
 public class PromoView: UIView {
 
     public override init(frame: CGRect) {
