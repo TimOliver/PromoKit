@@ -17,4 +17,9 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
 
     // Return nil for the default background color
     public var backgroundColor: UIColor? { nil }
+
+    // Return the default amount of insetting
+    public func contentInsets(for promoView: UIView) -> UIEdgeInsets {
+        promoView.layoutMargins
+    }
 }

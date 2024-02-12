@@ -18,7 +18,15 @@ public protocol PromoProvider: AnyObject {
     /// The background color that the hosting promo view should be set to when this provider is visible.
     /// Default is `nil`, which defaults back to the background color state of the promo view.
     @objc var backgroundColor: UIColor? { get }
+
+    /// The amount that the content view is inset by, from the boundary of the promo view.
+    /// A different value can be provided depending on the current size class of the promo view.
+    /// - Parameter promoView: The promo view hosting the content managed by this provider
+    /// - Returns: The amount of insetting. Default values is `.zero`
+    @objc func contentInsets(for promoView: UIView) -> UIEdgeInsets
 }
+
+// MARK: - Default Implementations
 
 extension PromoProvider {
 
@@ -29,4 +37,7 @@ extension PromoProvider {
 
     // Return nil for the default background color
     public var backgroundColor: UIColor? { nil }
+
+    // Return nil for the default amount of insetting
+    public func contentInsets(for promoView: UIView) -> UIEdgeInsets { .zero }
 }

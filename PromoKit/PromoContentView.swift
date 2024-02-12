@@ -21,4 +21,10 @@ public protocol PromoContentView: AnyObject {
     /// Creates a new instance of a content view with the provided reuse identifier
     init(reuseIdentifier: String)
 
+    /// Called after a content view instance has been reclaimed in order to get it ready for its next use.
+    func prepareForReuse()
+}
+
+extension PromoContentView {
+    func prepareForReuse() {}
 }
