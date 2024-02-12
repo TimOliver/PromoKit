@@ -11,6 +11,7 @@ import UIKit
 /// from data loaded by a provider object in the hosting promo view.
 /// It uses the same recycling mechanism as UITableView to allow
 /// different providers to use the same content view.
-protocol PromoContentView: UIView {
+@objc(PMKContentView)
+public protocol PromoContentView: AnyObject {
 
 }
