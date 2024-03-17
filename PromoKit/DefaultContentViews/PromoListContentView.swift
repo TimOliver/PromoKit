@@ -24,14 +24,11 @@ public class PromoListContentView: UIView, PromoContentView {
     // An optional image displayed horizontally along the leading edge of the view
     public let imageView = UIImageView()
 
-    /// The reuse identifier associated with this particular instance
-    public private(set) var reuseIdentifier: String
-
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
     public required init(reuseIdentifier: String) {
-        self.reuseIdentifier = reuseIdentifier
         super.init(frame: .zero)
+        
         addSubview(titleLabel)
         addSubview(detailLabel)
         addSubview(imageView)
