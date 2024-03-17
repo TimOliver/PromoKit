@@ -18,6 +18,12 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
     // Return nil for the default background color
     public var backgroundColor: UIColor? { nil }
 
+    // This promo doesn't require internet access to display its content
+    public var isInternetAccessRequired: Bool { false }
+
+    // We'll use the default list view style for this provider
+    public var contentViewClass: AnyClass { PromoListContentView.self }
+
     // Return the default amount of insetting
     public func contentInsets(for promoView: UIView) -> UIEdgeInsets {
         promoView.layoutMargins
