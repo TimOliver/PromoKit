@@ -21,34 +21,22 @@ enum PromoProviderFetchContentResult: Int {
 @objc(PMKPromoProvider)
 public protocol PromoProvider: AnyObject {
 
-    /// A unique string that can be used to identify and fetch this provider amongst others. 
-    @objc var identifier: String { get }
+    /// A unique string that can be used to identify and fetch this provider amongst others.
+    /// This mechanism is entirely optional and may be applied to only certain providers.
+    @objc optional var identifier: String { get }
 
     /// The background color that the hosting promo view should be set to when this provider is visible.
     /// Default is `nil`, which defaults back to the background color state of the promo view.
-    @objc var backgroundColor: UIColor? { get }
+    @objc optional var backgroundColor: UIColor? { get }
 
     /// Indicates that this provider requires an active internet connection (Default is false).
     /// If this is set to true, and the device doesn't have an internet connection, this provider
     /// will be deferred and then tried again once a valid connection is detected.
-    @objc var isInternetAccessRequired: Bool { get }
-
-    /// The type of content view that will be used to present the data managed by this provider.
-    @objc var contentViewClass: AnyClass { get }
+    @objc optional var isInternetAccessRequired: Bool { get }
 
     /// The amount that the content view is inset by, from the boundary of the promo view.
     /// A different value can be provided depending on the current size class of the promo view.
     /// - Parameter promoView: The promo view hosting the content managed by this provider
     /// - Returns: The amount of insetting. Default values is `.zero`
-    @objc func contentInsets(for promoView: UIView) -> UIEdgeInsets
-}
-
-// MARK: - Default Protocol Implementations
-
-extension PromoProvider {
-    public var identifier: String { String(describing: type(of: self)) }
-    public var backgroundColor: UIColor? { nil }
-    public var isInternetAccessRequired: Bool { false }
-    public var contentViewClass: AnyClass { UIView.self }
-    public func contentInsets(for promoView: UIView) -> UIEdgeInsets { .zero }
+    @objc optional func contentInsets(for promoView: UIView) -> UIEdgeInsets
 }
