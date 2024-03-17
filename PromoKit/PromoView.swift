@@ -38,6 +38,11 @@ public class PromoView: UIView {
     /// The currently displayed provider
     private(set) public var currentProvider: PromoProvider?
 
+    // MARK: - Private Properties
+
+    /// The current provider that is being queried
+    private var queryingProvider: PromoProvider?
+
     // MARK: - View Creation
 
     public convenience init(frame: CGRect, providers: [PromoProvider]) {
@@ -59,8 +64,11 @@ public class PromoView: UIView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
-    // MARK: - View Sizing
+}
+
+// MARK: - View Sizing & Layout
+
+extension PromoView {
 
     /// Returns the most appropriate size this view should be when fitting into the provided container size.
     /// This will then be passed to the current provider object that can calculate the size itself, or forward it to a content view.
@@ -77,13 +85,61 @@ public class PromoView: UIView {
     ///   - size: The size of the outer container in which this view needs to fit.
     ///   - providerIdentifier: The identifier of the provider that should be used for this sizing calculation
     public func sizeThatFits(_ size: CGSize, providerIdentifier: String?) -> CGSize {
-        .zero
+        .init(width: 300, height: 65)
     }
 
-    // MARK: - View Layout
+    public override func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        // If this is the first time it's been moved to a superview,
+        // perform the first initial load at this point
+        if currentProvider == nil, superview != nil {
+            reload()
+        }
+    }
 
     public override func layoutSubviews() {
         super.layoutSubviews()
         backgroundView.frame = bounds
+    }
+}
+
+// MARK: Provider Handling
+
+extension PromoView {
+
+    /// Performs a full reload, looping through all available providers,
+    /// determining the most appropriate one, and rendering it.
+    public func reload() {
+        guard let provider = providers?.first else { return }
+
+        // Cancel any in-progress loads
+        queryingProvider = nil
+
+        // Start searching for the first valid provider
+        startContentFetch(for: provider)
+    }
+
+    private func startContentFetch(for provider: PromoProvider) {
+        // Capture an unwrapped reference to this provider that will accompany the closure
+        let queryingProvider: PromoProvider = provider
+
+        // Define the closure, and use address-comparison to ensure it's still valid at completion
+        let handler: ((PromoProviderFetchContentResult) -> Void) = { [weak self] result in
+            // Check the current querying provider against the one we captured when we started
+            // the closure and make sure they match.
+            guard let currentQueryingProvider = self?.queryingProvider,
+                  currentQueryingProvider === queryingProvider else { return }
+            self?.didReceiveResult(result, from: queryingProvider)
+        }
+
+        // Save the current provider so we can compare later
+        self.queryingProvider = provider
+
+        // Forward the handler to the provider
+        provider.fetchNewContent(with: handler)
+    }
+
+    private func didReceiveResult(_ result: PromoProviderFetchContentResult, from provider: PromoProvider) {
+        
     }
 }

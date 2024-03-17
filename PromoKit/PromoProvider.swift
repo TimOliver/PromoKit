@@ -9,11 +9,10 @@ import UIKit
 
 /// When querying for new content, these are the types of results that may be returned
 @objc(PMKPromoProviderFetchContentResult)
-enum PromoProviderFetchContentResult: Int {
-    case offlineAvailable    = 0 /// An offline version is available, whether default content, or valid cache from a previous request.
-    case noNewContent        = 1 /// The query succeeded, but there was no new content to show.
-    case newContentAvailable = 2 /// The query succeeded, and there is new content to show.
-    case fetchRequestFailed  = 3 /// An error occurred (eg, no internet) and another attempt should be made.
+public enum PromoProviderFetchContentResult: Int {
+    case noContentAvailable = 0 /// There is nothing for this provider to display, and should be skipped.
+    case fetchRequestFailed = 1 /// An error occurred (eg, no internet) and another attempt should be made.
+    case contentAvailable   = 2 /// The fetch succeeded and this provider has valid content it can show.
 };
 
 /// A promo provider is a model object that manages fetching data for a promo item
@@ -22,8 +21,7 @@ enum PromoProviderFetchContentResult: Int {
 public protocol PromoProvider: AnyObject {
 
     /// A unique string that can be used to identify and fetch this provider amongst others.
-    /// This mechanism is entirely optional and may be applied to only certain providers.
-    @objc optional var identifier: String { get }
+    @objc var identifier: String { get }
 
     /// The background color that the hosting promo view should be set to when this provider is visible.
     /// Default is `nil`, which defaults back to the background color state of the promo view.
@@ -34,9 +32,8 @@ public protocol PromoProvider: AnyObject {
     /// will be deferred and then tried again once a valid connection is detected.
     @objc optional var isInternetAccessRequired: Bool { get }
 
-    /// The amount that the content view is inset by, from the boundary of the promo view.
-    /// A different value can be provided depending on the current size class of the promo view.
-    /// - Parameter promoView: The promo view hosting the content managed by this provider
-    /// - Returns: The amount of insetting. Default values is `.zero`
-    @objc optional func contentInsets(for promoView: UIView) -> UIEdgeInsets
+    /// Perform an asynchronous fetch (ie make a web request) to see if this provider has any valid content to display
+    /// When the fetch is complete, the result handler closure must be called.
+    /// - Parameter resultHandler: The result handler that must be called once the fetch is complete.
+    @objc func fetchNewContent(with resultHandler:((PromoProviderFetchContentResult) -> Void))
 }

@@ -12,17 +12,9 @@ import UIKit
 @objc(PMKPromoAppRaterProvider)
 public class PromoAppRaterProvider: NSObject, PromoProvider {
 
-    // Return the name of the provider object as a default
     public var identifier: String { "PromoAppRaterProvider" }
 
-    // Return nil for the default background color
-    public var backgroundColor: UIColor? { nil }
-
-    // We'll use the default list view style for this provider
-    public var contentViewClass: AnyClass { PromoListContentView.self }
-
-    // Return the default amount of insetting
-    public func contentInsets(for promoView: UIView) -> UIEdgeInsets {
-        promoView.layoutMargins
+    public func fetchNewContent(with resultHandler: ((PromoProviderFetchContentResult) -> Void)) {
+        resultHandler(.contentAvailable)
     }
 }
