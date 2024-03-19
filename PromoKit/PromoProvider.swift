@@ -33,7 +33,7 @@ public protocol PromoProvider: AnyObject {
     @objc optional var isInternetAccessRequired: Bool { get }
 
     /// Clears all of the local state and resets this provider back to where it was when it was first created.
-    @objc func reset()
+    @objc optional func reset()
 
     /// Perform an asynchronous fetch (ie make a web request) to see if this provider has any valid content to display
     /// When the fetch is complete, the result handler closure must be called.

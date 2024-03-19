@@ -34,7 +34,7 @@ public class PromoView: UIView {
 
     /// The promo providers currently assigned to this promo view, sorted in order of priority.
     public var providers: [PromoProvider]? {
-        set { providerCoordinator.providers = newValue }
+        set { providerCoordinator.providers = newValue; reload() }
         get { providerCoordinator.providers }
     }
 
@@ -57,6 +57,7 @@ public class PromoView: UIView {
     }
 
     public override init(frame: CGRect) {
+        // Background view
         backgroundView = UIView()
         if #available(iOS 13.0, *) {
             backgroundView.backgroundColor = .secondarySystemBackground
@@ -65,6 +66,11 @@ public class PromoView: UIView {
         }
         super.init(frame: frame)
         addSubview(backgroundView)
+
+        // Coordinator changes
+        providerCoordinator.providerUpdatedHandler = { [weak self] provider in
+            self?.providerDidChange(provider)
+        }
     }
     
     required init?(coder: NSCoder) {
@@ -98,7 +104,7 @@ extension PromoView {
         super.didMoveToSuperview()
         // If this is the first time it's been moved to a superview,
         // perform the first initial load at this point
-        if currentProvider == nil, superview != nil {
+        if currentProvider == nil {
             reload()
         }
     }
@@ -107,8 +113,14 @@ extension PromoView {
         super.layoutSubviews()
         backgroundView.frame = bounds
     }
+}
 
-    /// If desired, clears out all view content and resets all providers
+// MARK: - Loading Content
+
+extension PromoView {
+
+    /// Clears out all of the view content, resets all of the providers,
+    /// and then begins a new reload pass.
     public func reset() {
         
     }
@@ -116,7 +128,13 @@ extension PromoView {
     /// Performs a full reload, tearing down all view content,
     /// and performing a fresh query for the best provider
     public func reload() {
+        guard superview != nil else { return }
+
         // Start fetching the best provider
         providerCoordinator.fetchBestProvider()
+    }
+
+    private func providerDidChange(_ provider: PromoProvider?) {
+        print(provider)
     }
 }
