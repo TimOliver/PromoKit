@@ -33,15 +33,21 @@ public class PromoView: UIView {
     private(set) public var backgroundView: UIView
 
     /// The promo providers currently assigned to this promo view, sorted in order of priority.
-    public var providers: [PromoProvider]?
+    public var providers: [PromoProvider]? {
+        set { providerCoordinator.providers = newValue }
+        get { providerCoordinator.providers }
+    }
 
-    /// The currently displayed provider
-    private(set) public var currentProvider: PromoProvider?
+    /// The current provider being displayed by this view
+    public var currentProvider: PromoProvider? {
+        set { providerCoordinator.currentProvider = newValue }
+        get { providerCoordinator.currentProvider }
+    }
 
     // MARK: - Private Properties
 
-    /// The current provider that is being queried
-    private var queryingProvider: PromoProvider?
+    /// A coordinator for determining the current provider
+    private let providerCoordinator = PromoProviderCoordinator()
 
     // MARK: - View Creation
 
@@ -101,45 +107,16 @@ extension PromoView {
         super.layoutSubviews()
         backgroundView.frame = bounds
     }
-}
 
-// MARK: Provider Handling
-
-extension PromoView {
-
-    /// Performs a full reload, looping through all available providers,
-    /// determining the most appropriate one, and rendering it.
-    public func reload() {
-        guard let provider = providers?.first else { return }
-
-        // Cancel any in-progress loads
-        queryingProvider = nil
-
-        // Start searching for the first valid provider
-        startContentFetch(for: provider)
-    }
-
-    private func startContentFetch(for provider: PromoProvider) {
-        // Capture an unwrapped reference to this provider that will accompany the closure
-        let queryingProvider: PromoProvider = provider
-
-        // Define the closure, and use address-comparison to ensure it's still valid at completion
-        let handler: ((PromoProviderFetchContentResult) -> Void) = { [weak self] result in
-            // Check the current querying provider against the one we captured when we started
-            // the closure and make sure they match.
-            guard let currentQueryingProvider = self?.queryingProvider,
-                  currentQueryingProvider === queryingProvider else { return }
-            self?.didReceiveResult(result, from: queryingProvider)
-        }
-
-        // Save the current provider so we can compare later
-        self.queryingProvider = provider
-
-        // Forward the handler to the provider
-        provider.fetchNewContent(with: handler)
-    }
-
-    private func didReceiveResult(_ result: PromoProviderFetchContentResult, from provider: PromoProvider) {
+    /// If desired, clears out all view content and resets all providers
+    public func reset() {
         
+    }
+
+    /// Performs a full reload, tearing down all view content,
+    /// and performing a fresh query for the best provider
+    public func reload() {
+        // Start fetching the best provider
+        providerCoordinator.fetchBestProvider()
     }
 }

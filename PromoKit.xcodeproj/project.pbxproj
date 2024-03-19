@@ -21,6 +21,7 @@
 		229D21A72B79E24000105C9D /* PromoContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21A62B79E24000105C9D /* PromoContentView.swift */; };
 		229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */; };
 		229D21AE2B7A11DB00105C9D /* PromoListContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21AD2B7A11DB00105C9D /* PromoListContentView.swift */; };
+		22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +60,7 @@
 		229D21A62B79E24000105C9D /* PromoContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoContentView.swift; sourceTree = "<group>"; };
 		229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoAppRaterProvider.swift; sourceTree = "<group>"; };
 		229D21AD2B7A11DB00105C9D /* PromoListContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoListContentView.swift; sourceTree = "<group>"; };
+		22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoProviderCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,26 +146,35 @@
 				229D215C2B67D5FA00105C9D /* PromoView.swift */,
 				229D21A42B79E23500105C9D /* PromoProvider.swift */,
 				229D21A62B79E24000105C9D /* PromoContentView.swift */,
-				229D21AC2B7A11BF00105C9D /* DefaultContentViews */,
-				229D21A92B7A0DA600105C9D /* DefaultProviders */,
+				229D21AC2B7A11BF00105C9D /* ContentViews */,
+				229D21A92B7A0DA600105C9D /* Providers */,
+				22FD36152BA9DA4D0058B32A /* Internal */,
 			);
 			path = PromoKit;
 			sourceTree = "<group>";
 		};
-		229D21A92B7A0DA600105C9D /* DefaultProviders */ = {
+		229D21A92B7A0DA600105C9D /* Providers */ = {
 			isa = PBXGroup;
 			children = (
 				229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */,
 			);
-			path = DefaultProviders;
+			path = Providers;
 			sourceTree = "<group>";
 		};
-		229D21AC2B7A11BF00105C9D /* DefaultContentViews */ = {
+		229D21AC2B7A11BF00105C9D /* ContentViews */ = {
 			isa = PBXGroup;
 			children = (
 				229D21AD2B7A11DB00105C9D /* PromoListContentView.swift */,
 			);
-			path = DefaultContentViews;
+			path = ContentViews;
+			sourceTree = "<group>";
+		};
+		22FD36152BA9DA4D0058B32A /* Internal */ = {
+			isa = PBXGroup;
+			children = (
+				22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */,
+			);
+			path = Internal;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -303,6 +314,7 @@
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
 				229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */,
 				229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */,
+				22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */,
 				229D21A72B79E24000105C9D /* PromoContentView.swift in Sources */,
 				229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */,
 			);

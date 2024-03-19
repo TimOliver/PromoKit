@@ -32,6 +32,9 @@ public protocol PromoProvider: AnyObject {
     /// will be deferred and then tried again once a valid connection is detected.
     @objc optional var isInternetAccessRequired: Bool { get }
 
+    /// Clears all of the local state and resets this provider back to where it was when it was first created.
+    @objc func reset()
+
     /// Perform an asynchronous fetch (ie make a web request) to see if this provider has any valid content to display
     /// When the fetch is complete, the result handler closure must be called.
     /// - Parameter resultHandler: The result handler that must be called once the fetch is complete.
