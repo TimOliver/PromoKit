@@ -44,6 +44,12 @@ public class PromoView: UIView {
         get { providerCoordinator.currentProvider }
     }
 
+    /// The retry interval to wait between failed online provider fetches (Default is 30 seconds)
+    public var providerRetryInterval: TimeInterval {
+        set { providerCoordinator.retryInterval = newValue }
+        get { providerCoordinator.retryInterval }
+    }
+
     // MARK: - Private Properties
 
     /// A coordinator for determining the current provider
@@ -120,13 +126,13 @@ extension PromoView {
 extension PromoView {
 
     /// Clears out all of the view content, resets all of the providers,
-    /// and then begins a new reload pass.
+    /// and then begins a new reload.
     public func reset() {
         
     }
 
-    /// Performs a full reload, tearing down all view content,
-    /// and performing a fresh query for the best provider
+    /// Performs a new fetch to see if the best provider to show has changed,
+    /// and if so, will display it.
     public func reload() {
         guard superview != nil else { return }
 

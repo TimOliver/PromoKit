@@ -10,8 +10,8 @@ import UIKit
 /// When querying for new content, these are the types of results that may be returned
 @objc(PMKPromoProviderFetchContentResult)
 public enum PromoProviderFetchContentResult: Int {
-    case noContentAvailable = 0 /// There is nothing for this provider to display, and should be skipped.
-    case fetchRequestFailed = 1 /// An error occurred (eg, no internet) and another attempt should be made.
+    case fetchRequestFailed = 0 /// An error occurred (eg, no internet) and another attempt should be made.
+    case noContentAvailable = 1 /// The fetch succeeded, but no valid content was found, so this provider should be skipped.
     case contentAvailable   = 2 /// The fetch succeeded and this provider has valid content it can show.
 };
 
@@ -31,6 +31,10 @@ public protocol PromoProvider: AnyObject {
     /// If this is set to true, and the device doesn't have an internet connection, this provider
     /// will be deferred and then tried again once a valid connection is detected.
     @objc optional var isInternetAccessRequired: Bool { get }
+
+    /// For successful fetches, the amount of time that must pass before another fetch will be made.
+    /// This is for providers who aren't real-time, so it is necessary to check them very often.
+    @objc optional var fetchRefreshInterval: TimeInterval { get }
 
     /// Clears all of the local state and resets this provider back to where it was when it was first created.
     @objc optional func reset()
