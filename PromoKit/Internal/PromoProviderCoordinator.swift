@@ -117,7 +117,10 @@ extension PromoProviderCoordinator {
             // the closure and make sure they match.
             guard let currentQueryingProvider = self?.queryingProvider,
                   currentQueryingProvider === queryingProvider else { return }
-            self?.didReceiveResult(result, from: queryingProvider)
+            DispatchQueue.main.async { [weak self] in
+                guard (self?.isFetching ?? false) else { return }
+                self?.didReceiveResult(result, from: queryingProvider)
+            }
         }
 
         // Start the fetch request on the new provider.
@@ -131,7 +134,7 @@ extension PromoProviderCoordinator {
 
     private func didReceiveResult(_ result: PromoProviderFetchContentResult, from provider: PromoProvider) {
         // Save the result to our map table so we can consider it for future fetches
-        providerFetchResults .setObject(NSNumber(integerLiteral: result.rawValue), forKey: provider)
+        providerFetchResults.setObject(NSNumber(integerLiteral: result.rawValue), forKey: provider)
 
         // If this provider returned it has valid content, lets make it the current provider and stop here
         if result == .contentAvailable {

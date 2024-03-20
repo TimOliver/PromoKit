@@ -14,7 +14,7 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        promoView.providers = [PromoAppRaterProvider()]
+        promoView.providers = [PromoNetworkTestProvider(), PromoAppRaterProvider()]
         view.addSubview(promoView)
     }
 
