@@ -73,6 +73,13 @@ internal class PromoProviderCoordinator {
         unfairLock.deinitialize(count: 1)
         unfairLock.deallocate()
     }
+
+    // Reset all of the state, including all timers
+    public func reset() {
+        cancelFetch()
+        providerFetchResults.removeAllObjects()
+        previousFetchTime = nil
+    }
 }
 
 // MARK: - Provider Fetching

@@ -124,20 +124,21 @@ extension PromoView {
 // MARK: - Loading Content
 
 extension PromoView {
-
-    /// Clears out all of the view content, resets all of the providers,
-    /// and then begins a new reload.
-    public func reset() {
-        
-    }
-
-    /// Performs a new fetch to see if the best provider to show has changed,
-    /// and if so, will display it.
+    /// Clears all state and starts a new fetch of all providers from scratch.
     public func reload() {
         guard superview != nil else { return }
 
+        // Clear the coordinator's previous state
+        providerCoordinator.reset()
+
         // Start fetching the best provider
         providerCoordinator.fetchBestProvider()
+    }
+
+    /// Performs a fresh check of the providers to check if the best
+    /// provider has changed since the last check.
+    public func refresh() {
+
     }
 
     private func providerDidChange(_ provider: PromoProvider?) {
