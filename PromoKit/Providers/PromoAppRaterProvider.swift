@@ -14,7 +14,7 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
 
     public var identifier: String { "PromoAppRaterProvider" }
 
-    public func fetchNewContent(with resultHandler: ((PromoProviderFetchContentResult) -> Void)) {
+    public func fetchNewContent(with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
         resultHandler(.contentAvailable)
     }
 }

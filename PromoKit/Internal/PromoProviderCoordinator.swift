@@ -67,6 +67,7 @@ internal class PromoProviderCoordinator {
     }
 
     deinit {
+        queryingProvider = nil
         cancelFetch()
         pathMonitor.cancel()
 
@@ -85,7 +86,7 @@ internal class PromoProviderCoordinator {
 // MARK: - Provider Fetching
 
 extension PromoProviderCoordinator {
-    // Start the process of looping through each provider, and see which one is most appropriate right now
+    /// Start the process of looping through each provider, and see which one is most appropriate right now
     internal func fetchBestProvider() {
         guard let provider = nextValidProvider() else {
             providerUpdatedHandler?(nil)
@@ -99,9 +100,11 @@ extension PromoProviderCoordinator {
         startContentFetch(for: provider)
     }
 
-    // Cancel an in-progress fetch
+    /// Cancels an in-progress fetch.
+    /// It's possible the cancel request can happen right after a web request has been made.
+    /// In this case, that fetch is allowed to continue, and that provider may become the current one, but
+    /// subsequent fetches are then canceled. This is to ensure we don't cancel partial requests without confirming the next time interval.
     internal func cancelFetch() {
-        queryingProvider = nil
         previousFetchTime = Date()
         isFetching = false
     }
@@ -109,7 +112,7 @@ extension PromoProviderCoordinator {
     private func startContentFetch(for provider: PromoProvider) {
         guard isFetching else { return }
 
-        // Check if we need to skip this one as it's time interval isn't elapsed yet
+        // Check if we need to skip this one as its time interval hasn't elapsed yet
         if skipToNextProvider(provider) { return }
 
         // Store a class reference to this provider
@@ -125,7 +128,6 @@ extension PromoProviderCoordinator {
             guard let currentQueryingProvider = self?.queryingProvider,
                   currentQueryingProvider === queryingProvider else { return }
             DispatchQueue.main.async { [weak self] in
-                guard (self?.isFetching ?? false) else { return }
                 self?.didReceiveResult(result, from: queryingProvider)
             }
         }
@@ -143,7 +145,7 @@ extension PromoProviderCoordinator {
         // Save the result to our map table so we can consider it for future fetches
         providerFetchResults.setObject(NSNumber(integerLiteral: result.rawValue), forKey: provider)
 
-        // If this provider returned it has valid content, lets make it the current provider and stop here
+        // If this provider reported it has valid content, lets make it the current provider and stop here
         if result == .contentAvailable {
             currentProvider = provider
             providerUpdatedHandler?(provider)
@@ -152,7 +154,7 @@ extension PromoProviderCoordinator {
         }
 
         // Otherwise, move to the next provider and keep looking
-        guard let nextProvider = nextValidProvider(after: provider) else {
+        guard isFetching, let nextProvider = nextValidProvider(after: provider) else {
             cancelFetch()
             return
         }
@@ -177,7 +179,7 @@ extension PromoProviderCoordinator {
         return nil
     }
 
-    /// Checks if the provider should be skipped because it isn't eligible to be tested again yet
+    /// Checks if the provider should be skipped because it isn't eligible to be fetched again yet
     private func skipToNextProvider(_ provider: PromoProvider) -> Bool {
         guard (provider.isInternetAccessRequired ?? false),
               let previousFetchTime,
