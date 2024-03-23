@@ -10,8 +10,8 @@ import UIKit
 /// A default content view that can present promo content in a similar display style to UITableView cells.
 /// It consists of a title label, a detail label positioned below it, and an optional image positioned
 /// against the leading edge.
-@objc(PMKPromoListContentView)
-public class PromoListContentView: UIView, PromoContentView {
+@objc(PMKPromoTableListContentView)
+public class PromoTableListContentView: UIView, PromoContentView {
 
     // MARK: - Public Properties
 
@@ -60,4 +60,8 @@ public class PromoListContentView: UIView, PromoContentView {
         detailLabel.isHidden = (detailText == nil)
         imageView.isHidden = (image == nil)
     }
+}
+
+extension PromoContentViewReuseIdentifier {
+    static public let tableList = "PMKPromoTableListContentView";
 }

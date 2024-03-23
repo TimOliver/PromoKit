@@ -12,9 +12,13 @@ import UIKit
 @objc(PMKPromoAppRaterProvider)
 public class PromoAppRaterProvider: NSObject, PromoProvider {
 
-    public var identifier: String { "PromoAppRaterProvider" }
+    public var identifier: String { PromoProviderIdentifier.appRater }
 
     public func fetchNewContent(with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
         resultHandler(.contentAvailable)
     }
+}
+
+extension PromoProviderIdentifier {
+    static public let appRater = "PMKPromoAppRaterProvider"
 }

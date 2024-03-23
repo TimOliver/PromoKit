@@ -10,7 +10,7 @@ import Foundation
 @objc(PMKPromoNetworkTestProvider)
 public class PromoNetworkTestProvider: NSObject, PromoProvider {
 
-    public var identifier: String { "PromoNetworkTestProvider" }
+    public var identifier: String { "NetworkTest" }
 
     public var isInternetAccessRequired: Bool { true }
 

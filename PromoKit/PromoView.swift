@@ -93,7 +93,7 @@ extension PromoView {
     /// - Parameter size: The size of the outer container that this promo view should size itself to fit (Including inset padding).
     /// - Returns: The most appropriate size this view should be to fit the container view
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
-        return sizeThatFits(size, providerIdentifier: currentProvider?.identifier ?? nil)
+        return sizeThatFits(size, providerIdentifier: nil)
     }
 
     /// For cases where a single provider is representing a statically sized UI element (ie a fixed ad banner),
@@ -108,11 +108,8 @@ extension PromoView {
 
     public override func didMoveToSuperview() {
         super.didMoveToSuperview()
-        // If this is the first time it's been moved to a superview,
-        // perform the first initial load at this point
-        if currentProvider == nil {
-            reload()
-        }
+        guard superview != nil else { return }
+        reload()
     }
 
     public override func layoutSubviews() {
@@ -126,7 +123,8 @@ extension PromoView {
 extension PromoView {
     /// Clears all state and starts a new fetch of all providers from scratch.
     public func reload() {
-        guard superview != nil else { return }
+        guard !(providers?.isEmpty ?? true),
+              !providerCoordinator.isFetching else { return }
 
         // Clear the coordinator's previous state
         providerCoordinator.reset()
@@ -144,4 +142,12 @@ extension PromoView {
     private func providerDidChange(_ provider: PromoProvider?) {
         print(provider)
     }
+}
+
+// MARK: - Displaying Content
+
+extension PromoView {
+
+    
+
 }

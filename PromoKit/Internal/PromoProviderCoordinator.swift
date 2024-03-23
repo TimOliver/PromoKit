@@ -29,10 +29,10 @@ internal class PromoProviderCoordinator {
     /// A handler that is triggered whenever a new provider is chosen
     public var providerUpdatedHandler: ((PromoProvider?) -> Void)?
 
+    /// Track fetching state
+    private(set) public var isFetching = false
+    
     // MARK: Private
-
-    // Track fetching state
-    var isFetching = false
 
     // Tracking when we come online and offline
     let pathMonitor = NWPathMonitor()
@@ -93,7 +93,7 @@ extension PromoProviderCoordinator {
             return
         }
 
-        // Set the flag that we're fetching
+        // Set flag that we're fetching, so we can cancel out of pending blocks
         isFetching = true
 
         // Start fetch request on this provider
