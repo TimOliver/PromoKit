@@ -42,11 +42,18 @@ public protocol PromoProvider: AnyObject {
     /// This is for providers who aren't real-time, so it is necessary to check them very often.
     @objc optional var fetchRefreshInterval: TimeInterval { get }
 
-    /// Clears all of the local state and resets this provider back to where it was when it was first created.
+    /// Clears all of the local state and resets this provider back to where it was when 
+    /// it was first created.
     @objc optional func reset()
 
     /// Perform an asynchronous fetch (ie make a web request) to see if this provider has any valid content to display
     /// When the fetch is complete, the result handler closure must be called.
     /// - Parameter resultHandler: The result handler that must be called once the fetch is complete.
     @objc func fetchNewContent(with resultHandler:@escaping ((PromoProviderFetchContentResult) -> Void))
+
+    /// Requests the provider to fetch, and configure a content view with its current state.
+    /// The promo view maye be used to dequeue and recycle previously used content views.
+    /// - Parameter promoView: The hosting promo view requesting the content view
+    /// - Returns: A fully configured content view
+    @objc func contentView(for promoView: PromoView) -> PromoContentView
 }

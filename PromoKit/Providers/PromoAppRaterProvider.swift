@@ -17,6 +17,10 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
     public func fetchNewContent(with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
         resultHandler(.contentAvailable)
     }
+
+    public func contentView(for promoView: PromoView) -> PromoContentView {
+        PromoBlankContentView()
+    }
 }
 
 extension PromoProviderIdentifier {

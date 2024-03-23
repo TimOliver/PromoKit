@@ -15,6 +15,9 @@ public class PromoTableListContentView: UIView, PromoContentView {
 
     // MARK: - Public Properties
 
+    /// The reuse identifier associated with this particular instance
+    private(set) public var reuseIdentifier: String
+
     /// A large title label displayed along the top of the view
     public let titleLabel = UILabel()
 
@@ -24,9 +27,15 @@ public class PromoTableListContentView: UIView, PromoContentView {
     // An optional image displayed horizontally along the leading edge of the view
     public let imageView = UIImageView()
 
+    /// Creates a new instance of a list content view with the default reuse identifier
+    convenience public init() {
+        self.init(reuseIdentifier: PromoContentViewReuseIdentifier.tableList)
+    }
+
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
     public required init(reuseIdentifier: String) {
+        self.reuseIdentifier = reuseIdentifier
         super.init(frame: .zero)
         
         addSubview(titleLabel)

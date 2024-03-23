@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 @objc(PMKPromoNetworkTestProvider)
 public class PromoNetworkTestProvider: NSObject, PromoProvider {
@@ -18,5 +19,11 @@ public class PromoNetworkTestProvider: NSObject, PromoProvider {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             resultHandler(.contentAvailable)
         }
+    }
+
+    public func registerContentViewClasses(for promoView: PromoView) { }
+
+    public func contentView(for promoView: PromoView) -> PromoContentView {
+        PromoTableListContentView()
     }
 }

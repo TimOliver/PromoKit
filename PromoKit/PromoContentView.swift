@@ -18,6 +18,15 @@ public class PromoContentViewReuseIdentifier: NSObject { }
 /// different providers to use the same content view.
 @objc(PMKContentView)
 public protocol PromoContentView: AnyObject {
+
+    /// The reuse identifier associated with this content view.
+    /// This lets multiple providers share the same content views.
+    @objc var reuseIdentifier: String { get }
+
+    /// Create a new instance of this content view with an identifier that can be used to track it
+    /// - Parameter reuseIdentifier: The reuse identifier for the content view
+    @objc init(reuseIdentifier: String)
+
     /// Called after a content view instance has been reclaimed in order to get it ready for its next use.
     @objc optional func prepareForReuse()
 }
