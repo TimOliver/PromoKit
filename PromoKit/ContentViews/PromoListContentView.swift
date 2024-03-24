@@ -11,12 +11,9 @@ import UIKit
 /// It consists of a title label, a detail label positioned below it, and an optional image positioned
 /// against the leading edge.
 @objc(PMKPromoTableListContentView)
-public class PromoTableListContentView: UIView, PromoContentView {
+public class PromoTableListContentView: PromoContentView {
 
     // MARK: - Public Properties
-
-    /// The reuse identifier associated with this particular instance
-    private(set) public var reuseIdentifier: String
 
     /// A large title label displayed along the top of the view
     public let titleLabel = UILabel()
@@ -27,17 +24,11 @@ public class PromoTableListContentView: UIView, PromoContentView {
     // An optional image displayed horizontally along the leading edge of the view
     public let imageView = UIImageView()
 
-    /// Creates a new instance of a list content view with the default reuse identifier
-    convenience public init() {
-        self.init(reuseIdentifier: PromoContentViewReuseIdentifier.tableList)
-    }
-
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
-    public required init(reuseIdentifier: String) {
-        self.reuseIdentifier = reuseIdentifier
-        super.init(frame: .zero)
-        
+    required init(reuseIdentifier: String) {
+        super.init(reuseIdentifier: reuseIdentifier)
+
         addSubview(titleLabel)
         addSubview(detailLabel)
         addSubview(imageView)
@@ -48,7 +39,7 @@ public class PromoTableListContentView: UIView, PromoContentView {
     }
     
     /// Reset all of the view state when the content view is being recycled
-    public func prepareForReuse() {
+    public override func prepareForReuse() {
         // It is best practice to nil out all view content since these can contribute to
         // the overall memory footprint
         titleLabel.text = nil

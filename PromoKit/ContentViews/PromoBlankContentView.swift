@@ -10,16 +10,11 @@ import UIKit
 /// A default, blank content view that can be used for displaying empty content,
 /// or simply for testing.
 @objc(PMKPromoBlankContentView)
-public class PromoBlankContentView: UIView, PromoContentView {
-    private(set) public var reuseIdentifier: String
-
-    convenience init() {
-        self.init(reuseIdentifier: PromoContentViewReuseIdentifier.blank)
-    }
-
-    public required init(reuseIdentifier: String) {
-        self.reuseIdentifier = reuseIdentifier
-        super.init(frame: CGRectZero)
+public class PromoBlankContentView: PromoContentView {
+    
+    required init(reuseIdentifier: String) {
+        super.init(reuseIdentifier: reuseIdentifier)
+        backgroundColor = .red
     }
     
     required init?(coder: NSCoder) {

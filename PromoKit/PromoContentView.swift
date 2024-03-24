@@ -9,7 +9,7 @@ import UIKit
 
 /// A class that content view can extend in order to globally expose their default reuse identifiers
 /// that can be used by multiple providers to share the same content view.
-@objc(PMKPromoContentViewReuseIdentifier)
+@objc(PMKContentViewReuseIdentifier)
 public class PromoContentViewReuseIdentifier: NSObject { }
 
 /// A content view is a reusable view that can be used to display a promotion
@@ -17,17 +17,23 @@ public class PromoContentViewReuseIdentifier: NSObject { }
 /// It uses the same recycling mechanism as UITableView to allow
 /// different providers to use the same content view.
 @objc(PMKContentView)
-public protocol PromoContentView: AnyObject {
+public class PromoContentView: UIView {
 
-    /// The reuse identifier associated with this content view.
-    /// This lets multiple providers share the same content views.
-    @objc var reuseIdentifier: String { get }
+    /// The re-use identifier used to keep track of this object as it's getting recycled
+    private(set) public var reuseIdentifier: String
 
-    /// Create a new instance of this content view with an identifier that can be used to track it
-    /// - Parameter reuseIdentifier: The reuse identifier for the content view
-    @objc init(reuseIdentifier: String)
+    /// Creates a new instance of this view with the provided re-use identifier
+    required init(reuseIdentifier: String) {
+        self.reuseIdentifier = reuseIdentifier
+        super.init(frame: .zero)
+    }
+    
+    /// Called after a content view instance has been reclaimed in 
+    /// order to get it ready for its next use.
+    @objc func prepareForReuse() {}
 
-    /// Called after a content view instance has been reclaimed in order to get it ready for its next use.
-    @objc optional func prepareForReuse()
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 }
 

@@ -21,9 +21,12 @@ public class PromoNetworkTestProvider: NSObject, PromoProvider {
         }
     }
 
-    public func registerContentViewClasses(for promoView: PromoView) { }
+    public func registerContentViewClasses(for promoView: PromoView) { 
+        promoView.registerContentViewClass(PromoBlankContentView.self,
+                                           for: PromoContentViewReuseIdentifier.blank)
+    }
 
     public func contentView(for promoView: PromoView) -> PromoContentView {
-        PromoTableListContentView()
+        return promoView.dequeueContentView(with: PromoContentViewReuseIdentifier.blank)
     }
 }

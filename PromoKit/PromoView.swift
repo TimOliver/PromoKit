@@ -18,7 +18,7 @@ public class PromoView: UIView {
     // MARK: - Public Properties -
 
     /// The content view from the currently active promo provider
-    public var contentView: UIView?
+    public var contentView: PromoContentView?
 
     /// The corner radius of the promo view
     public var cornerRadius: CGFloat {
@@ -55,6 +55,12 @@ public class PromoView: UIView {
     /// A coordinator for determining the current provider
     private let providerCoordinator = PromoProviderCoordinator()
 
+    /// The dictionary tracking which identifiers map to which classes
+    private var registedContentViewClasses = [String : PromoContentView.Type]()
+
+    /// The store for recycled content view objects
+    private var queuedContentViews = [String : Array<PromoContentView>]()
+
     // MARK: - View Creation
 
     public convenience init(frame: CGRect, providers: [PromoProvider]) {
@@ -67,9 +73,11 @@ public class PromoView: UIView {
         backgroundView = UIView()
         if #available(iOS 13.0, *) {
             backgroundView.backgroundColor = .secondarySystemBackground
+            backgroundView.layer.cornerCurve = .continuous
         } else {
             backgroundView.backgroundColor = .init(white: 0.2, alpha: 1.0)
         }
+        backgroundView.layer.cornerRadius = 15
         super.init(frame: frame)
         addSubview(backgroundView)
 
@@ -114,7 +122,13 @@ extension PromoView {
 
     public override func layoutSubviews() {
         super.layoutSubviews()
+        
+        // Set the background to match the
         backgroundView.frame = bounds
+
+        // Set the content view to be inset over the background view
+        // TODO: Work out how we should allow customization of insets
+        contentView?.frame = bounds.inset(by: layoutMargins)
     }
 }
 
@@ -140,14 +154,76 @@ extension PromoView {
     }
 
     private func providerDidChange(_ provider: PromoProvider?) {
-        print(provider)
+        
+        // Display the new content
+        if let provider {
+            prepareToDisplayProvider(provider)
+            displayNewProvider(provider)
+        } else { // Remove anything
+
+        }
     }
 }
 
 // MARK: - Displaying Content
 
 extension PromoView {
+    /// Registers a content view against an associated reuse identifier.
+    /// Subsequent calls to the dequeue method will use this information to recycle or generate
+    /// a new content view for it.
+    public func registerContentViewClass(_ contentViewClass: PromoContentView.Type, for reuseIdentifier: String) {
+        registedContentViewClasses[reuseIdentifier] = contentViewClass
+    }
 
-    
+    /// Dequeues and returns a previously created content view with the same identifier,
+    /// if available.
+    public func dequeueContentView(with reuseIdentifier: String) -> PromoContentView {
+        // Fetch the first available content view from the store
+        if var views = queuedContentViews[reuseIdentifier],
+           let contentView = views.first {
+            views.removeFirst()
+            return contentView
+        }
 
+        // Create a new content view from scratch
+        // Fetch the class from the registered list
+        guard let viewClass = registedContentViewClasses[reuseIdentifier] else {
+            fatalError("PromoView: \(reuseIdentifier) wasn't registered.")
+        }
+        
+        // Instantiate the view and return it.
+        return viewClass.init(reuseIdentifier: reuseIdentifier)
+    }
+
+    // Clean up the current content view if there is one
+    private func reclaimCurrentContentView() {
+        guard let contentView else { return }
+
+        // Remove from view, and clean it up
+        contentView.removeFromSuperview()
+        contentView.prepareForReuse()
+
+        // Add it back to the pool
+        if var views = self.queuedContentViews[contentView.reuseIdentifier] {
+            views.append(contentView)
+        } else {
+            self.queuedContentViews[contentView.reuseIdentifier] = [contentView]
+        }
+
+        self.contentView = nil
+    }
+
+    // Set everything up to display the new provider
+    private func prepareToDisplayProvider(_ provider: PromoProvider) {
+        provider.registerContentViewClasses(for: self)
+        reclaimCurrentContentView()
+    }
+
+    // Get the provider to generate and configure its view content, and then display it
+    private func displayNewProvider(_ provider: PromoProvider) {
+        // Fetch a new view from the provider
+        self.contentView = provider.contentView(for: self)
+        self.addSubview(contentView!)
+        setNeedsLayout()
+    }
 }

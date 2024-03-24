@@ -39,7 +39,7 @@ public protocol PromoProvider: AnyObject {
     @objc optional var isInternetAccessRequired: Bool { get }
 
     /// For successful fetches, the amount of time that must pass before another fetch will be made.
-    /// This is for providers who aren't real-time, so it is necessary to check them very often.
+    /// This is for providers who aren't real-time, so it isn't necessary to check them very often.
     @objc optional var fetchRefreshInterval: TimeInterval { get }
 
     /// Clears all of the local state and resets this provider back to where it was when 
@@ -50,6 +50,11 @@ public protocol PromoProvider: AnyObject {
     /// When the fetch is complete, the result handler closure must be called.
     /// - Parameter resultHandler: The result handler that must be called once the fetch is complete.
     @objc func fetchNewContent(with resultHandler:@escaping ((PromoProviderFetchContentResult) -> Void))
+
+    /// Register any content view classes that the provider wishes to display with the hosting promo view.
+    /// These views will be generated or recycled on the fly by the promo view
+    /// - Parameter promoView: The hosting promo view
+    @objc func registerContentViewClasses(for promoView: PromoView)
 
     /// Requests the provider to fetch, and configure a content view with its current state.
     /// The promo view maye be used to dequeue and recycle previously used content views.
