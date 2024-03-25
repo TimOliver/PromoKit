@@ -56,7 +56,7 @@ public class PromoView: UIView {
     private let providerCoordinator = PromoProviderCoordinator()
 
     /// The dictionary tracking which identifiers map to which classes
-    private var registedContentViewClasses = [String : PromoContentView.Type]()
+    private var registeredContentViewClasses = [String : PromoContentView.Type]()
 
     /// The store for recycled content view objects
     private var queuedContentViews = [String : Array<PromoContentView>]()
@@ -101,7 +101,7 @@ extension PromoView {
     /// - Parameter size: The size of the outer container that this promo view should size itself to fit (Including inset padding).
     /// - Returns: The most appropriate size this view should be to fit the container view
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
-        return sizeThatFits(size, providerIdentifier: nil)
+        return sizeThatFits(size, providerIdentifier: providers?.first?.identifier)
     }
 
     /// For cases where a single provider is representing a statically sized UI element (ie a fixed ad banner),
@@ -111,12 +111,24 @@ extension PromoView {
     ///   - size: The size of the outer container in which this view needs to fit.
     ///   - providerIdentifier: The identifier of the provider that should be used for this sizing calculation
     public func sizeThatFits(_ size: CGSize, providerIdentifier: String?) -> CGSize {
-        .init(width: 300, height: 65)
+        // Check we have a valid provider that implements the sizing protocol method, or skip otherwise
+        guard let providerIdentifier,
+              let provider = providerCoordinator.providerForIdentifier(providerIdentifier),
+              var size = provider.preferredContentSize?(for: self) else {
+            return frame.size
+        }
+
+        // Add the padding from the provider
+        if let padding = provider.contentPadding?(for: self) {
+            size.width += padding.left + padding.right
+            size.height += padding.top + padding.bottom
+        }
+        return size
     }
 
     public override func didMoveToSuperview() {
         super.didMoveToSuperview()
-        guard superview != nil else { return }
+        guard superview != nil, !(providers?.isEmpty ?? true) else { return }
         reload()
     }
 
@@ -127,8 +139,11 @@ extension PromoView {
         backgroundView.frame = bounds
 
         // Set the content view to be inset over the background view
-        // TODO: Work out how we should allow customization of insets
-        contentView?.frame = bounds.inset(by: layoutMargins)
+        var contentFrame = bounds
+        if let padding = currentProvider?.contentPadding?(for: self) {
+            contentFrame = contentFrame.inset(by: padding)
+        }
+        contentView?.frame = CGRectIntegral(contentFrame)
     }
 }
 
@@ -137,8 +152,7 @@ extension PromoView {
 extension PromoView {
     /// Clears all state and starts a new fetch of all providers from scratch.
     public func reload() {
-        guard !(providers?.isEmpty ?? true),
-              !providerCoordinator.isFetching else { return }
+        guard !providerCoordinator.isFetching else { return }
 
         // Clear the coordinator's previous state
         providerCoordinator.reset()
@@ -147,20 +161,14 @@ extension PromoView {
         providerCoordinator.fetchBestProvider()
     }
 
-    /// Performs a fresh check of the providers to check if the best
-    /// provider has changed since the last check.
-    public func refresh() {
-
-    }
-
+    // Callback used to update the promo view when the coordinator detects anew provider
     private func providerDidChange(_ provider: PromoProvider?) {
-        
         // Display the new content
         if let provider {
             prepareToDisplayProvider(provider)
             displayNewProvider(provider)
         } else { // Remove anything
-
+            reclaimCurrentContentView()
         }
     }
 }
@@ -172,7 +180,7 @@ extension PromoView {
     /// Subsequent calls to the dequeue method will use this information to recycle or generate
     /// a new content view for it.
     public func registerContentViewClass(_ contentViewClass: PromoContentView.Type, for reuseIdentifier: String) {
-        registedContentViewClasses[reuseIdentifier] = contentViewClass
+        registeredContentViewClasses[reuseIdentifier] = contentViewClass
     }
 
     /// Dequeues and returns a previously created content view with the same identifier,
@@ -187,7 +195,7 @@ extension PromoView {
 
         // Create a new content view from scratch
         // Fetch the class from the registered list
-        guard let viewClass = registedContentViewClasses[reuseIdentifier] else {
+        guard let viewClass = registeredContentViewClasses[reuseIdentifier] else {
             fatalError("PromoView: \(reuseIdentifier) wasn't registered.")
         }
         
@@ -198,6 +206,17 @@ extension PromoView {
     // Clean up the current content view if there is one
     private func reclaimCurrentContentView() {
         guard let contentView else { return }
+
+        // Fade the current content view out
+        if let snapshot = contentView.snapshotView(afterScreenUpdates: true) {
+            snapshot.frame = contentView.frame
+            addSubview(snapshot)
+            UIView.animate(withDuration: 0.25) {
+                snapshot.alpha = 0.0
+            } completion: { _ in
+                snapshot.removeFromSuperview()
+            }
+        }
 
         // Remove from view, and clean it up
         contentView.removeFromSuperview()
@@ -225,5 +244,11 @@ extension PromoView {
         self.contentView = provider.contentView(for: self)
         self.addSubview(contentView!)
         setNeedsLayout()
+
+        // Animate it fading in
+        contentView?.alpha = 0.0
+        UIView.animate(withDuration: 0.25) {
+            self.contentView?.alpha = 1.0
+        }
     }
 }

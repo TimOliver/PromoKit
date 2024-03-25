@@ -12,9 +12,8 @@ import UIKit
 @objc(PMKPromoAppRaterProvider)
 public class PromoAppRaterProvider: NSObject, PromoProvider {
     public func registerContentViewClasses(for promoView: PromoView) {
-        
+
     }
-    
 
     public var identifier: String { PromoProviderIdentifier.appRater }
 

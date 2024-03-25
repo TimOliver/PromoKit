@@ -46,6 +46,16 @@ public protocol PromoProvider: AnyObject {
     /// it was first created.
     @objc optional func reset()
 
+    /// The amount of padding between the content view and the edge of the promo view.
+    /// If null, the view's default `layoutMargins` values will be used.
+    @objc optional func contentPadding(for promoView: PromoView) -> UIEdgeInsets
+
+    /// The preferred dimensions of the content view managed by this provider.
+    /// If no content for the provider has been loaded yet, a 'best guess' should be provided.
+    /// Once content has loaded, it's possible to access the provider's content view, which can be used to properly
+    /// calculate the size.
+    @objc optional func preferredContentSize(for promoView: PromoView) -> CGSize
+
     /// Perform an asynchronous fetch (ie make a web request) to see if this provider has any valid content to display
     /// When the fetch is complete, the result handler closure must be called.
     /// - Parameter resultHandler: The result handler that must be called once the fetch is complete.

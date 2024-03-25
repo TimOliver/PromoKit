@@ -83,6 +83,16 @@ internal class PromoProviderCoordinator {
     }
 }
 
+// MARK: - Provider Access
+
+extension PromoProviderCoordinator {
+    internal func providerForIdentifier(_ identifier: String) -> PromoProvider? {
+        return providers?.first(where: { provider in
+            identifier == provider.identifier
+        })
+    }
+}
+
 // MARK: - Provider Fetching
 
 extension PromoProviderCoordinator {
