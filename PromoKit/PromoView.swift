@@ -113,17 +113,22 @@ extension PromoView {
     public func sizeThatFits(_ size: CGSize, providerIdentifier: String?) -> CGSize {
         // Check we have a valid provider that implements the sizing protocol method, or skip otherwise
         guard let providerIdentifier,
-              let provider = providerCoordinator.providerForIdentifier(providerIdentifier),
-              var size = provider.preferredContentSize?(for: self) else {
+              let provider = providerCoordinator.providerForIdentifier(providerIdentifier) else {
             return frame.size
         }
 
-        // Add the padding from the provider
-        if let padding = provider.contentPadding?(for: self) {
-            size.width += padding.left + padding.right
-            size.height += padding.top + padding.bottom
-        }
-        return size
+        // Remove the padding from fitting size to calculate the frame size
+        var contentSize = size
+        let padding = provider.contentPadding?(for: self) ?? .zero
+        contentSize.width -= padding.left + padding.right
+        contentSize.height -= padding.top + padding.bottom
+
+        // Add the padding back in
+        var preferredsize = provider.preferredContentSize?(fittingSize: contentSize, for: self) ?? contentSize
+        preferredsize.width += padding.left + padding.right
+        preferredsize.height += padding.top + padding.bottom
+
+        return preferredsize
     }
 
     public override func didMoveToSuperview() {
@@ -200,7 +205,7 @@ extension PromoView {
         }
         
         // Instantiate the view and return it.
-        return viewClass.init(reuseIdentifier: reuseIdentifier)
+        return viewClass.init(reuseIdentifier: reuseIdentifier, promoView: self)
     }
 
     // Clean up the current content view if there is one

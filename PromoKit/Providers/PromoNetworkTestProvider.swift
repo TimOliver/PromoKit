@@ -29,8 +29,8 @@ public class PromoNetworkTestProvider: NSObject, PromoProvider {
         return promoView.dequeueContentView(with: PromoContentViewReuseIdentifier.blank)
     }
 
-    public func preferredContentSize(for promoView: PromoView) -> CGSize {
-        return CGSize(width: 300, height: 40)
+    public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
+        return CGSize(width: fittingSize.width, height: fittingSize.width * 0.1)
     }
 
     public func contentPadding(for promoView: PromoView) -> UIEdgeInsets {

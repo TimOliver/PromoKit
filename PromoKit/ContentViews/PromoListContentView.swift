@@ -26,8 +26,8 @@ public class PromoTableListContentView: PromoContentView {
 
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
-    required init(reuseIdentifier: String) {
-        super.init(reuseIdentifier: reuseIdentifier)
+    required init(reuseIdentifier: String, promoView: PromoView) {
+        super.init(reuseIdentifier: reuseIdentifier, promoView: promoView)
 
         addSubview(titleLabel)
         addSubview(detailLabel)

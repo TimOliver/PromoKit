@@ -181,7 +181,12 @@ extension PromoProviderCoordinator {
 
         // If the network is up, start with whatever first provider we have. If not, find the first not needing internet
         for nextProvider in providers.dropFirst(startIndex) {
-            if hasInternetAccess || (!hasInternetAccess && !(nextProvider.isInternetAccessRequired ?? false)) {
+            // Providers that don't need internet are always valid
+            if !(nextProvider.isInternetAccessRequired ?? false) { return nextProvider }
+
+            // If the provider requires internet, we'll use it if the internet is available,
+            // or if the provider declares it can save its content offline.
+            if hasInternetAccess || (nextProvider.isOfflineCacheAvailable ?? false) {
                 return nextProvider
             }
         }

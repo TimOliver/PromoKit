@@ -12,8 +12,8 @@ import UIKit
 @objc(PMKPromoBlankContentView)
 public class PromoBlankContentView: PromoContentView {
     
-    required init(reuseIdentifier: String) {
-        super.init(reuseIdentifier: reuseIdentifier)
+    required init(reuseIdentifier: String, promoView: PromoView) {
+        super.init(reuseIdentifier: reuseIdentifier, promoView: promoView)
         backgroundColor = .red
     }
     
