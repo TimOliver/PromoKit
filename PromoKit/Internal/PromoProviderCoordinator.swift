@@ -7,14 +7,10 @@
 
 import Foundation
 import Network
-import os.lock
-
-// A shared dispatch queue for receiving network update events
-let networkPathQueue = DispatchQueue(label: "dev.tim.promokit.network", qos: .utility)
 
 /// A class that handles querying for, and choosing
 /// the provider that should be currently displayed.
-internal class PromoProviderCoordinator {
+internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
     /// The array of providers managed by this coordinator,
     /// in order of priority
@@ -34,11 +30,8 @@ internal class PromoProviderCoordinator {
     
     // MARK: Private
 
-    // Tracking when we come online and offline
-    let pathMonitor = NWPathMonitor()
-
-    // The last captured path value from the path monitor
-    var lastPath: NWPath?
+    // The network connection observer
+    let networkMonitor = PromoPathMonitor()
 
     // The provider currently being fetched
     var queryingProvider: PromoProvider?
@@ -49,30 +42,16 @@ internal class PromoProviderCoordinator {
     // Track the last time a fetch attempt was made so we can defer any new fetches until the retry intervals have passed.
     var previousFetchTime: Date? = nil
 
-    // Thread-safe lock for mutating the internet access flag
-    let unfairLock: UnsafeMutablePointer<os_unfair_lock> = {
-        let pointer = UnsafeMutablePointer<os_unfair_lock>.allocate(capacity: 1)
-        pointer.initialize(to: os_unfair_lock())
-        return pointer
-    }()
-
     // MARK: - Class Creation
-
     init() {
-        // Start listening for network updates
-        pathMonitor.start(queue: networkPathQueue)
-        pathMonitor.pathUpdateHandler = { [weak self] newPath in
-            self?.pathDidUpdate(to: newPath)
-        }
+        networkMonitor.delegate = self
+        networkMonitor.start()
     }
 
     deinit {
+        networkMonitor.cancel()
         queryingProvider = nil
         cancelFetch()
-        pathMonitor.cancel()
-
-        unfairLock.deinitialize(count: 1)
-        unfairLock.deallocate()
     }
 
     // Reset all of the state, including all timers
@@ -186,7 +165,7 @@ extension PromoProviderCoordinator {
 
             // If the provider requires internet, we'll use it if the internet is available,
             // or if the provider declares it can save its content offline.
-            if hasInternetAccess || (nextProvider.isOfflineCacheAvailable ?? false) {
+            if networkMonitor.hasInternetAccess || (nextProvider.isOfflineCacheAvailable ?? false) {
                 return nextProvider
             }
         }
@@ -227,41 +206,8 @@ extension PromoProviderCoordinator {
 
 extension PromoProviderCoordinator {
 
-    private var hasInternetAccess: Bool {
-        // In case it's being mutated on another thread,
-        // use a lock to fetch the current path status
-        // and check if we're online.
-        var value = false
-        os_unfair_lock_lock(unfairLock)
-        if let lastPath {
-            value = lastPath.status == .satisfied
-        }
-        os_unfair_lock_unlock(unfairLock)
-        return value
-    }
-
-    private func pathDidUpdate(to path: NWPath) {
-        // Since NWPathMonitor constantly sends updates,
-        // we'll use our background thread to detect and discard
-        // events that don't actually change the status.
-        var statusDidChange = false
-        os_unfair_lock_lock(unfairLock)
-        if let lastPath {
-            statusDidChange = lastPath.status != path.status
-        }
-        lastPath = path
-        os_unfair_lock_unlock(unfairLock)
-        if !statusDidChange { return }
-
-        // If we were showing offline content, and the internet came back up,
-        // perform a new fetch to see if there's an online provider we should show
-        DispatchQueue.main.async { [weak self] in
-            self?.performNewFetchIfNeeded(with: path)
-        }
-    }
-
-    private func performNewFetchIfNeeded(with path: NWPath) {
-        guard let provider = currentProvider else { return }
+    func pathMonitor(_ pathMonitor: PromoPathMonitor, didUpdateToPath path: NWPath?) {
+        guard let path, let provider = currentProvider else { return }
 
         // If we're already showing an internet enabled provider, we can skip, assuming it may still render offline.
         let internetConnected = path.status == .satisfied
