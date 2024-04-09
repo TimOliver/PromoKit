@@ -66,11 +66,6 @@ public protocol PromoProvider: AnyObject {
     /// - Parameter resultHandler: The result handler that must be called once the fetch is complete.
     @objc func fetchNewContent(with resultHandler:@escaping ((PromoProviderFetchContentResult) -> Void))
 
-    /// Register any content view classes that the provider wishes to display with the hosting promo view.
-    /// These views will be generated or recycled on the fly by the promo view
-    /// - Parameter promoView: The hosting promo view
-    @objc func registerContentViewClasses(for promoView: PromoView)
-
     /// Requests the provider to fetch, and configure a content view with its current state.
     /// The promo view may be used to dequeue and recycle previously used content views.
     /// - Parameter promoView: The hosting promo view requesting the content view

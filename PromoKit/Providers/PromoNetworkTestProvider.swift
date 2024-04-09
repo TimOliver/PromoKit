@@ -20,13 +20,8 @@ public class PromoNetworkTestProvider: NSObject, PromoProvider {
         }
     }
 
-    public func registerContentViewClasses(for promoView: PromoView) { 
-        promoView.registerContentViewClass(PromoBlankContentView.self,
-                                           for: PromoContentViewReuseIdentifier.blank)
-    }
-
     public func contentView(for promoView: PromoView) -> PromoContentView {
-        return promoView.dequeueContentView(with: PromoContentViewReuseIdentifier.blank)
+        return promoView.dequeueContentView(for: PromoBlankContentView.self)
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {

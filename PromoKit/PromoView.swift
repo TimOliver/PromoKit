@@ -59,22 +59,25 @@ public class PromoView: UIView {
     /// A coordinator for determining the current provider
     private let providerCoordinator = PromoProviderCoordinator()
 
-    /// The dictionary tracking which identifiers map to which classes
-    private var registeredContentViewClasses = [String : PromoContentView.Type]()
-
     /// The store for recycled content view objects
-    private var queuedContentViews = [String : Array<PromoContentView>]()
+    private var queuedContentViews = [ObjectIdentifier : Array<PromoContentView>]()
 
     /// If set, this can be used to know in advance the maximum size of the promo view, which can be used for image loading
     private var maximumContentSizes = [UIUserInterfaceSizeClass : CGSize]()
 
     // MARK: - View Creation
 
+    /// Create a new promo view instance with a list of preconfigured providers.
+    /// - Parameters:
+    ///   - frame: The frame of the promo view
+    ///   - providers: An array of providers, in order of priority to display.
     public convenience init(frame: CGRect, providers: [PromoProvider]) {
         self.init(frame: frame)
         self.providers = providers
     }
 
+    /// Create a new promo view instance with the provided frame
+    /// - Parameter frame: The frame of the promo view
     public override init(frame: CGRect) {
         // Background view
         backgroundView = UIView()
@@ -84,7 +87,6 @@ public class PromoView: UIView {
         } else {
             backgroundView.backgroundColor = .init(white: 0.2, alpha: 1.0)
         }
-        backgroundView.layer.cornerRadius = 15
 
         // Class initialization
         super.init(frame: frame)
@@ -94,6 +96,7 @@ public class PromoView: UIView {
 
         // Configure default values
         self.contentPadding = self.layoutMargins
+        backgroundView.layer.cornerRadius = 15
 
         // Coordinator changes
         providerCoordinator.providerUpdatedHandler = { [weak self] provider in
@@ -174,9 +177,9 @@ extension PromoView {
         backgroundView.frame = bounds
 
         // Set the content view to be inset over the background view
-        var contentFrame = bounds
+        var contentFrame = bounds.inset(by: contentPadding)
         if let padding = currentProvider?.contentPadding?(for: self) {
-            contentFrame = contentFrame.inset(by: padding)
+            contentFrame = bounds.inset(by: padding)
         }
         contentView?.frame = CGRectIntegral(contentFrame)
     }
@@ -211,31 +214,19 @@ extension PromoView {
 // MARK: - Displaying Content
 
 extension PromoView {
-    /// Registers a content view against an associated reuse identifier.
-    /// Subsequent calls to the dequeue method will use this information to recycle or generate
-    /// a new content view for it.
-    public func registerContentViewClass(_ contentViewClass: PromoContentView.Type, for reuseIdentifier: String) {
-        registeredContentViewClasses[reuseIdentifier] = contentViewClass
-    }
 
     /// Dequeues and returns a previously created content view with the same identifier,
     /// if available.
-    public func dequeueContentView(with reuseIdentifier: String) -> PromoContentView {
+    public func dequeueContentView<T: PromoContentView>(for contentViewClass: T.Type) -> T {
         // Fetch the first available content view from the store
-        if var views = queuedContentViews[reuseIdentifier],
-           let contentView = views.first {
+        if var views = queuedContentViews[ObjectIdentifier(contentViewClass.self)],
+           let contentView = views.first as? T {
             views.removeFirst()
             return contentView
         }
 
-        // Create a new content view from scratch
-        // Fetch the class from the registered list
-        guard let viewClass = registeredContentViewClasses[reuseIdentifier] else {
-            fatalError("PromoView: \(reuseIdentifier) wasn't registered.")
-        }
-        
         // Instantiate the view and return it.
-        return viewClass.init(reuseIdentifier: reuseIdentifier, promoView: self)
+        return contentViewClass.init(promoView: self)
     }
 
     // Clean up the current content view if there is one
@@ -258,10 +249,10 @@ extension PromoView {
         contentView.prepareForReuse()
 
         // Add it back to the pool
-        if var views = self.queuedContentViews[contentView.reuseIdentifier] {
+        if var views = self.queuedContentViews[ObjectIdentifier(contentView.self)] {
             views.append(contentView)
         } else {
-            self.queuedContentViews[contentView.reuseIdentifier] = [contentView]
+            self.queuedContentViews[ObjectIdentifier(contentView.self)] = [contentView]
         }
 
         self.contentView = nil
@@ -269,7 +260,6 @@ extension PromoView {
 
     // Set everything up to display the new provider
     private func prepareToDisplayProvider(_ provider: PromoProvider) {
-        provider.registerContentViewClasses(for: self)
         reclaimCurrentContentView()
     }
 

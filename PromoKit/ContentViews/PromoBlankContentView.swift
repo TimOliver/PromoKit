@@ -12,16 +12,12 @@ import UIKit
 @objc(PMKPromoBlankContentView)
 public class PromoBlankContentView: PromoContentView {
     
-    required init(reuseIdentifier: String, promoView: PromoView) {
-        super.init(reuseIdentifier: reuseIdentifier, promoView: promoView)
+    required init(promoView: PromoView) {
+        super.init(promoView: promoView)
         backgroundColor = .red
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-}
-
-extension PromoContentViewReuseIdentifier {
-    static public let blank = "PMKPromoBlankContentView";
 }

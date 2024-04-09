@@ -14,12 +14,13 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        promoView.providers = [PromoNetworkTestProvider(), PromoAppRaterProvider()]
+        promoView.providers = [PromoAppRaterProvider()]
         view.addSubview(promoView)
     }
 
     override func viewDidLayoutSubviews() {
-        promoView.frame.size = promoView.sizeThatFits(view.bounds.size)
+        promoView.contentPadding = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        promoView.frame.size = CGSize(width: 728, height: 90) //CGSize(width: 336, height: 66)
         promoView.center = view.center
     }
 }

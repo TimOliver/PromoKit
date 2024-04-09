@@ -20,7 +20,7 @@
 		229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21A42B79E23500105C9D /* PromoProvider.swift */; };
 		229D21A72B79E24000105C9D /* PromoContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21A62B79E24000105C9D /* PromoContentView.swift */; };
 		229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */; };
-		229D21AE2B7A11DB00105C9D /* PromoListContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21AD2B7A11DB00105C9D /* PromoListContentView.swift */; };
+		229D21AE2B7A11DB00105C9D /* PromoTableListContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21AD2B7A11DB00105C9D /* PromoTableListContentView.swift */; };
 		22A105AE2BBAC77900DB3A80 /* PromoPathMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22A105AD2BBAC77900DB3A80 /* PromoPathMonitor.swift */; };
 		22A105B12BBAE54C00DB3A80 /* PromoImageProcessing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22A105B02BBAE54C00DB3A80 /* PromoImageProcessing.swift */; };
 		22B8DD332BAAAA3700C1F754 /* PromoNetworkTestProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */; };
@@ -63,7 +63,7 @@
 		229D21A42B79E23500105C9D /* PromoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoProvider.swift; sourceTree = "<group>"; };
 		229D21A62B79E24000105C9D /* PromoContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoContentView.swift; sourceTree = "<group>"; };
 		229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoAppRaterProvider.swift; sourceTree = "<group>"; };
-		229D21AD2B7A11DB00105C9D /* PromoListContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoListContentView.swift; sourceTree = "<group>"; };
+		229D21AD2B7A11DB00105C9D /* PromoTableListContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoTableListContentView.swift; sourceTree = "<group>"; };
 		22A105AD2BBAC77900DB3A80 /* PromoPathMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoPathMonitor.swift; sourceTree = "<group>"; };
 		22A105B02BBAE54C00DB3A80 /* PromoImageProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoImageProcessing.swift; sourceTree = "<group>"; };
 		22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNetworkTestProvider.swift; sourceTree = "<group>"; };
@@ -174,7 +174,7 @@
 		229D21AC2B7A11BF00105C9D /* ContentViews */ = {
 			isa = PBXGroup;
 			children = (
-				229D21AD2B7A11DB00105C9D /* PromoListContentView.swift */,
+				229D21AD2B7A11DB00105C9D /* PromoTableListContentView.swift */,
 				22B8DD342BAE818B00C1F754 /* PromoBlankContentView.swift */,
 			);
 			path = ContentViews;
@@ -331,7 +331,7 @@
 			files = (
 				22B8DD332BAAAA3700C1F754 /* PromoNetworkTestProvider.swift in Sources */,
 				229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */,
-				229D21AE2B7A11DB00105C9D /* PromoListContentView.swift in Sources */,
+				229D21AE2B7A11DB00105C9D /* PromoTableListContentView.swift in Sources */,
 				22B8DD352BAE818B00C1F754 /* PromoBlankContentView.swift in Sources */,
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
 				22A105B12BBAE54C00DB3A80 /* PromoImageProcessing.swift in Sources */,
