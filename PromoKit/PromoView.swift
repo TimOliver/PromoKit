@@ -32,6 +32,10 @@ public class PromoView: UIView {
     /// The background view displayed behind the content view
     private(set) public var backgroundView: UIView
 
+    /// When providers don't specify their own insetting, the content insetting of the promo view is used instead
+    /// The default value is the view's `layoutMargins`
+    public var contentPadding: UIEdgeInsets = .zero
+
     /// The promo providers currently assigned to this promo view, sorted in order of priority.
     public var providers: [PromoProvider]? {
         set { providerCoordinator.providers = newValue; reload() }
@@ -61,6 +65,9 @@ public class PromoView: UIView {
     /// The store for recycled content view objects
     private var queuedContentViews = [String : Array<PromoContentView>]()
 
+    /// If set, this can be used to know in advance the maximum size of the promo view, which can be used for image loading
+    private var maximumContentSizes = [UIUserInterfaceSizeClass : CGSize]()
+
     // MARK: - View Creation
 
     public convenience init(frame: CGRect, providers: [PromoProvider]) {
@@ -78,8 +85,15 @@ public class PromoView: UIView {
             backgroundView.backgroundColor = .init(white: 0.2, alpha: 1.0)
         }
         backgroundView.layer.cornerRadius = 15
+
+        // Class initialization
         super.init(frame: frame)
+
+        // Configure views post creation
         addSubview(backgroundView)
+
+        // Configure default values
+        self.contentPadding = self.layoutMargins
 
         // Coordinator changes
         providerCoordinator.providerUpdatedHandler = { [weak self] provider in
@@ -95,6 +109,22 @@ public class PromoView: UIView {
 // MARK: - View Sizing & Layout
 
 extension PromoView {
+
+    /// Optionally, promo views can be configured with maximum sizes that `sizeToFit` will stick to.
+    /// This can be used to give certain providers that load image data a hint on what size images it should request.
+    /// - Parameters:
+    ///   - size: The maximum size in points (without insetting) that the content view may be.
+    ///   - sizeClass: The size class (whether compact or regular) that this size is applied to.
+    public func setMaximumContentSize(_ size: CGSize, for sizeClass: UIUserInterfaceSizeClass) {
+        maximumContentSizes[sizeClass] = size
+    }
+
+    /// Returns the maximum size for the promo view's content for the requested size class.
+    /// - Parameter sizeClass: The size class (compact or regular) for the requested size.
+    /// - Returns: The requested size, or `.zero` if not set.
+    public func maximumContentSize(for sizeClass: UIUserInterfaceSizeClass) -> CGSize {
+        return maximumContentSizes[sizeClass] ?? .zero
+    }
 
     /// Returns the most appropriate size this view should be when fitting into the provided container size.
     /// This will then be passed to the current provider object that can calculate the size itself, or forward it to a content view.

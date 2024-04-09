@@ -52,7 +52,7 @@ public protocol PromoProvider: AnyObject {
     @objc optional func reset()
 
     /// The amount of padding between the content view and the edge of the promo view.
-    /// If null, the view's default `layoutMargins` values will be used.
+    /// If null, the promo view's `contentPadding` value will be used instead.
     @objc optional func contentPadding(for promoView: PromoView) -> UIEdgeInsets
 
     /// The preferred dimensions of the content view managed by this provider.
