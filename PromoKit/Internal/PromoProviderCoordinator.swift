@@ -12,6 +12,9 @@ import Network
 /// the provider that should be currently displayed.
 internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
+    /// The promo view managing this provider coordinator
+    private(set) var promoView: PromoView?
+
     /// The array of providers managed by this coordinator,
     /// in order of priority
     public var providers: [PromoProvider]?
@@ -43,7 +46,8 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     var previousFetchTime: Date? = nil
 
     // MARK: - Class Creation
-    init() {
+    init(promoView: PromoView) {
+        self.promoView = promoView
         networkMonitor.delegate = self
         networkMonitor.start()
     }
@@ -125,8 +129,8 @@ extension PromoProviderCoordinator {
         // Defer to the next run loop, so we don't end up overloading the call stack if all of these providers
         // execute on the main run loop.
         DispatchQueue.main.async { [weak self] in
-            guard (self?.isFetching ?? false) else { return }
-            queryingProvider.fetchNewContent(with: handler)
+            guard (self?.isFetching ?? false), let promoView = self?.promoView else { return }
+            queryingProvider.fetchNewContent(for: promoView, with: handler)
         }
     }
 

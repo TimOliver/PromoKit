@@ -21,7 +21,12 @@ public class PromoImageProcessing {
     ///   - scale: The screen scale that the image will be scaled to.
     /// - Returns: The decoded image
     static func decodedImage(_ image: UIImage?, fittingSize: CGSize? = nil, scale: CGFloat = 1.0) -> UIImage? {
-        guard let newImage = image?.cgImage else { return nil }
+        guard let image, let newImage = image.cgImage else { return nil }
+
+        if #available(iOS 15.0, *) {
+            let size = fittingSize ?? image.size
+            return image.preparingThumbnail(of: CGSize(width: size.width * scale, height: size.height * scale))
+        }
 
         var newSize = CGSize(width: newImage.width, height: newImage.height)
         if let fittingSize {

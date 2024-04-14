@@ -19,8 +19,9 @@ class ViewController: UIViewController {
     }
 
     override func viewDidLayoutSubviews() {
-        promoView.contentPadding = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
-        promoView.frame.size = CGSize(width: 728, height: 90) //CGSize(width: 336, height: 66)
+        //promoView.cornerRadius = 27.0
+        //promoView.defaultContentPadding = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        promoView.frame.size = CGSize(width: 336, height: 66) //CGSize(width: 728, height: 90)
         promoView.center = view.center
     }
 }

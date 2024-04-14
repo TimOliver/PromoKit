@@ -64,7 +64,7 @@ public protocol PromoProvider: AnyObject {
     /// Perform an asynchronous fetch (ie make a web request) to see if this provider has any valid content to display
     /// When the fetch is complete, the result handler closure must be called.
     /// - Parameter resultHandler: The result handler that must be called once the fetch is complete.
-    @objc func fetchNewContent(with resultHandler:@escaping ((PromoProviderFetchContentResult) -> Void))
+    @objc func fetchNewContent(for promoView: PromoView, with resultHandler:@escaping ((PromoProviderFetchContentResult) -> Void))
 
     /// Requests the provider to fetch, and configure a content view with its current state.
     /// The promo view may be used to dequeue and recycle previously used content views.

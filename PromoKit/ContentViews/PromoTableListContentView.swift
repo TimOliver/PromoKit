@@ -31,6 +31,10 @@ public class PromoTableListContentView: PromoContentView {
         label.numberOfLines = 0
         addSubview(label)
 
+        imageView.clipsToBounds = true
+        if #available(iOS 13.0, *) {
+            imageView.layer.cornerCurve = .continuous
+        }
         addSubview(imageView)
     }
     
@@ -52,21 +56,17 @@ public class PromoTableListContentView: PromoContentView {
     ///   - detailText: The text optionally shown below the main title.
     ///   - image: The image optionally shown leading into the title.
     public func configure(title: String, detailText: String? = nil, image: UIImage? = nil) {
-        var titleFont = UIFont.preferredFont(forTextStyle: .largeTitle)
-        if let newDescriptor = titleFont.fontDescriptor.withSymbolicTraits(.traitBold) {
-            titleFont = UIFont(descriptor: newDescriptor, size: titleFont.pointSize)
-        }
-
+        let titleFont = UIFont.systemFont(ofSize: 28, weight: .bold)
         let string = NSMutableAttributedString(string: title, attributes: [.font : titleFont]);
         if let detailText {
+            let detailFont = UIFont.systemFont(ofSize: 23.0, weight: .semibold)
             string.append(NSAttributedString(string: "\n"))
-            string.append(NSAttributedString(string: detailText, attributes: [.font : UIFont.preferredFont(forTextStyle: .title1)]))
+            string.append(NSAttributedString(string: detailText, attributes: [.font : detailFont]))
         }
-
         label.attributedText = string
+
         imageView.image = image
 
-        imageView.isHidden = (image == nil)
         setNeedsLayout()
     }
 }
@@ -77,12 +77,24 @@ extension PromoTableListContentView {
     public override func layoutSubviews() {
         super.layoutSubviews()
 
+        var xOffset = 0.0
+        if !imageView.isHidden {
+            let imageSize = imageView.image?.size ?? .zero
+            let scale = imageSize.height / imageSize.width
+            imageView.frame.size = CGSize(width: bounds.height * scale, height: bounds.height)
+            if let promoView = self.promoView {
+                let radius = promoView.cornerRadius - promoView.contentPadding.top
+                imageView.layer.cornerRadius = max(0, radius)
+            }
+            xOffset = imageView.frame.maxX + (promoView?.contentPadding.left ?? 0.0)
+        }
+
         let size = bounds.size
         var labelSize = label.sizeThatFits(size)
-        labelSize.width = min(size.width, labelSize.width)
+        labelSize.width = min(size.width, labelSize.width) - xOffset
         labelSize.height = min(size.height, labelSize.height)
         label.frame.size = labelSize
-
+        label.frame.origin.x = xOffset
+        label.frame.origin.y = (frame.height - label.frame.height) * 0.5
     }
-
 }

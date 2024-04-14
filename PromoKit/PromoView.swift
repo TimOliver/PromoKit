@@ -34,7 +34,14 @@ public class PromoView: UIView {
 
     /// When providers don't specify their own insetting, the content insetting of the promo view is used instead
     /// The default value is the view's `layoutMargins`
-    public var contentPadding: UIEdgeInsets = .zero
+    public var defaultContentPadding: UIEdgeInsets = .zero
+
+    /// The current content padding, whether it's the default value, or the current one specified by the content view
+    public var contentPadding: UIEdgeInsets {
+        guard let contentFrame = contentView?.frame else { return .zero }
+        return UIEdgeInsets(top: contentFrame.minY, left: contentFrame.minX,
+                            bottom: frame.height - contentFrame.maxY, right: frame.width - contentFrame.maxX)
+    }
 
     /// The promo providers currently assigned to this promo view, sorted in order of priority.
     public var providers: [PromoProvider]? {
@@ -54,16 +61,31 @@ public class PromoView: UIView {
         get { providerCoordinator.retryInterval }
     }
 
+    /// For providers that need an operation queue for local processing during fetches, for example
+    /// decoding images, or additional processing of fetched data, this shared queue may be used to
+    /// move that work to the background.
+    public var backgroundQueue: OperationQueue {
+        PromoView.sharedBackgroundQueue
+    }
+
     // MARK: - Private Properties
 
     /// A coordinator for determining the current provider
-    private let providerCoordinator = PromoProviderCoordinator()
+    private lazy var providerCoordinator: PromoProviderCoordinator = {
+        PromoProviderCoordinator(promoView: self)
+    }()
 
     /// The store for recycled content view objects
     private var queuedContentViews = [ObjectIdentifier : Array<PromoContentView>]()
 
-    /// If set, this can be used to know in advance the maximum size of the promo view, which can be used for image loading
-    private var maximumContentSizes = [UIUserInterfaceSizeClass : CGSize]()
+    /// An operation queue shared between all promo views that allow background processing of its fetched results
+    private static var sharedBackgroundQueue: OperationQueue = {
+        let operationQueue = OperationQueue()
+        operationQueue.name = "dev.tim.PromoKit.MediaQueue"
+        operationQueue.maxConcurrentOperationCount = 1
+        operationQueue.qualityOfService = .userInitiated
+        return operationQueue
+    }()
 
     // MARK: - View Creation
 
@@ -95,8 +117,8 @@ public class PromoView: UIView {
         addSubview(backgroundView)
 
         // Configure default values
-        self.contentPadding = self.layoutMargins
-        backgroundView.layer.cornerRadius = 15
+        self.defaultContentPadding = self.layoutMargins
+        backgroundView.layer.cornerRadius = 20
 
         // Coordinator changes
         providerCoordinator.providerUpdatedHandler = { [weak self] provider in
@@ -112,22 +134,6 @@ public class PromoView: UIView {
 // MARK: - View Sizing & Layout
 
 extension PromoView {
-
-    /// Optionally, promo views can be configured with maximum sizes that `sizeToFit` will stick to.
-    /// This can be used to give certain providers that load image data a hint on what size images it should request.
-    /// - Parameters:
-    ///   - size: The maximum size in points (without insetting) that the content view may be.
-    ///   - sizeClass: The size class (whether compact or regular) that this size is applied to.
-    public func setMaximumContentSize(_ size: CGSize, for sizeClass: UIUserInterfaceSizeClass) {
-        maximumContentSizes[sizeClass] = size
-    }
-
-    /// Returns the maximum size for the promo view's content for the requested size class.
-    /// - Parameter sizeClass: The size class (compact or regular) for the requested size.
-    /// - Returns: The requested size, or `.zero` if not set.
-    public func maximumContentSize(for sizeClass: UIUserInterfaceSizeClass) -> CGSize {
-        return maximumContentSizes[sizeClass] ?? .zero
-    }
 
     /// Returns the most appropriate size this view should be when fitting into the provided container size.
     /// This will then be passed to the current provider object that can calculate the size itself, or forward it to a content view.
@@ -177,7 +183,7 @@ extension PromoView {
         backgroundView.frame = bounds
 
         // Set the content view to be inset over the background view
-        var contentFrame = bounds.inset(by: contentPadding)
+        var contentFrame = bounds.inset(by: defaultContentPadding)
         if let padding = currentProvider?.contentPadding?(for: self) {
             contentFrame = bounds.inset(by: padding)
         }
