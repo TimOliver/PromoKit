@@ -61,9 +61,7 @@ public class PromoView: UIView {
         get { providerCoordinator.retryInterval }
     }
 
-    /// For providers that need an operation queue for local processing during fetches, for example
-    /// decoding images, or additional processing of fetched data, this shared queue may be used to
-    /// move that work to the background.
+    /// A shared operation queue that providers may use to perform background processing (ie, data parsing or image decoding)
     public var backgroundQueue: OperationQueue {
         PromoView.sharedBackgroundQueue
     }

@@ -59,9 +59,18 @@ public class PromoTableListContentView: PromoContentView {
         let titleFont = UIFont.systemFont(ofSize: 28, weight: .bold)
         let string = NSMutableAttributedString(string: title, attributes: [.font : titleFont]);
         if let detailText {
+            var detailColor = UIColor(white: 0.27, alpha: 1.0)
+            if #available(iOS 13.0, *) {
+                // Use a manual color here to make it darker on the background
+                detailColor = UIColor(dynamicProvider: { traits in
+                    traits.userInterfaceStyle == .dark ? .systemGray : .init(white: 0.35, alpha: 1.0)
+                })
+            }
+
             let detailFont = UIFont.systemFont(ofSize: 23.0, weight: .semibold)
             string.append(NSAttributedString(string: "\n"))
-            string.append(NSAttributedString(string: detailText, attributes: [.font : detailFont]))
+            string.append(NSAttributedString(string: detailText,
+                                             attributes: [.font : detailFont, .foregroundColor: detailColor]))
         }
         label.attributedText = string
 
