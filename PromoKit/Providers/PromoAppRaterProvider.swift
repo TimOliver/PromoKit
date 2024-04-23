@@ -33,7 +33,8 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
         self.iconDimension = maxIconDimension
     }
 
-    public func fetchNewContent(for promoView: PromoView, with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
+    public func fetchNewContent(for promoView: PromoView, 
+                                with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
         guard let appIconName, let appIcon = UIImage(named: appIconName) else {
             resultHandler(.contentAvailable)
             return

@@ -7,14 +7,12 @@
 
 import UIKit
 
-/// A default, blank content view that can be used for displaying empty content,
-/// or simply for testing.
+/// A default, blank content view that can be used for displaying empty content or simply for testing.
 @objc(PMKPromoBlankContentView)
 public class PromoBlankContentView: PromoContentView {
     
     required init(promoView: PromoView) {
         super.init(promoView: promoView)
-        backgroundColor = .red
     }
     
     required init?(coder: NSCoder) {
