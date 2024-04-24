@@ -11,7 +11,6 @@ import UIKit
 @objc(PMKPromoNetworkTestProvider)
 public class PromoNetworkTestProvider: NSObject, PromoProvider {
 
-    public var identifier: String { "NetworkTest" }
     public var isInternetAccessRequired: Bool { true }
 
     public func fetchNewContent(for promoView: PromoView, 
@@ -22,7 +21,7 @@ public class PromoNetworkTestProvider: NSObject, PromoProvider {
     }
 
     public func contentView(for promoView: PromoView) -> PromoContentView {
-        return promoView.dequeueContentView(for: PromoBlankContentView.self)
+        return promoView.dequeueContentView(for: PromoContainerContentView.self)
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {

@@ -138,7 +138,11 @@ extension PromoView {
     /// - Parameter size: The size of the outer container that this promo view should size itself to fit (Including inset padding).
     /// - Returns: The most appropriate size this view should be to fit the container view
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
-        return sizeThatFits(size, providerIdentifier: providers?.first?.identifier)
+        var providerClass: AnyClass? = nil
+        if let provider = providers?.first {
+            providerClass = type(of: provider)
+        }
+        return sizeThatFits(size, providerClass: providerClass)
     }
 
     /// For cases where a single provider is representing a statically sized UI element (ie a fixed ad banner),
@@ -146,11 +150,11 @@ extension PromoView {
     /// providers will be able to dynamically size themselves to fit.
     /// - Parameters:
     ///   - size: The size of the outer container in which this view needs to fit.
-    ///   - providerIdentifier: The identifier of the provider that should be used for this sizing calculation
-    public func sizeThatFits(_ size: CGSize, providerIdentifier: String?) -> CGSize {
+    ///   - providerClass: The class type of the provider in the list of active providers to use.
+    public func sizeThatFits(_ size: CGSize, providerClass: AnyClass?) -> CGSize {
         // Check we have a valid provider that implements the sizing protocol method, or skip otherwise
-        guard let providerIdentifier,
-              let provider = providerCoordinator.providerForIdentifier(providerIdentifier) else {
+        guard let providerClass,
+              let provider = providerCoordinator.providerForClass(providerClass) else {
             return frame.size
         }
 

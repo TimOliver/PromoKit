@@ -12,9 +12,6 @@ import UIKit
 @objc(PMKPromoAppRaterProvider)
 public class PromoAppRaterProvider: NSObject, PromoProvider {
 
-    // A static identifier that can be used to fetch this provider
-    public var identifier: String { PromoProviderIdentifier.appRater }
-
     // The name of the app icon in the app bundle
     private var appIconName: String?
 
@@ -63,8 +60,4 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
                        image: appIcon)
         return view
     }
-}
-
-extension PromoProviderIdentifier {
-    static public let appRater = "PMKPromoAppRaterProvider"
 }

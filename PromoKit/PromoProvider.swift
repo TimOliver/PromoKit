@@ -7,10 +7,6 @@
 
 import UIKit
 
-/// A class that providers can extend in order to globally expose their default identifier strings.
-@objc(PMKPromoProviderIdentifier)
-public class PromoProviderIdentifier: NSObject { }
-
 /// When querying for new content, these are the types of results that may be returned
 @objc(PMKPromoProviderFetchContentResult)
 public enum PromoProviderFetchContentResult: Int {
@@ -23,11 +19,6 @@ public enum PromoProviderFetchContentResult: Int {
 /// and configuring a promo content view with that data.
 @objc(PMKPromoProvider)
 public protocol PromoProvider: AnyObject {
-
-    /// An identifier that can be used to uniquely find this provider in a list of providers.
-    /// This can be a default value statically supplied by the provider, or specific providers
-    /// can choose to override this if it is expected a list of providers might have multiple copies.
-    @objc var identifier: String { get }
 
     /// The background color that the hosting promo view should be set to when this provider is visible.
     /// Default is `nil`, which defaults back to the background color state of the promo view.

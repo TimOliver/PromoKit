@@ -7,9 +7,9 @@
 
 import UIKit
 
-/// A default, blank content view that can be used for displaying empty content or simply for testing.
-@objc(PMKPromoBlankContentView)
-public class PromoBlankContentView: PromoContentView {
+/// An empty container view that can be used to host specific view content owned by a provider.
+@objc(PMKPromoContainerContentView)
+public class PromoContainerContentView: PromoContentView {
     
     required init(promoView: PromoView) {
         super.init(promoView: promoView)

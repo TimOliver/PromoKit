@@ -69,9 +69,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 // MARK: - Provider Access
 
 extension PromoProviderCoordinator {
-    internal func providerForIdentifier(_ identifier: String) -> PromoProvider? {
+    internal func providerForClass(_ providerClass: AnyClass) -> PromoProvider? {
         return providers?.first(where: { provider in
-            identifier == provider.identifier
+            type(of: provider) == providerClass
         })
     }
 }
