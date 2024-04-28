@@ -24,9 +24,8 @@ public class PromoView: UIView {
     public var contentView: PromoContentView?
 
     /// The corner radius of the promo view
-    public var cornerRadius: CGFloat {
-        set { backgroundView.layer.cornerRadius = newValue }
-        get { backgroundView.layer.cornerRadius }
+    public var cornerRadius: CGFloat = 20.0 {
+        didSet { backgroundView.layer.cornerRadius = cornerRadius }
     }
 
     /// Whether a close button is shown on the trailing side of the ad view (Default is false)
@@ -202,14 +201,33 @@ extension PromoView {
         backgroundView.frame = bounds
 
         // Set the content view to be inset over the background view
-        var contentFrame = bounds.inset(by: defaultContentPadding)
-        if let padding = currentProvider?.contentPadding?(for: self) {
-            contentFrame = bounds.inset(by: padding)
-        }
-        contentView?.frame = CGRectIntegral(contentFrame)
+        let contentPadding = contentPadding(for: currentProvider)
+        contentView?.frame = CGRectIntegral(bounds.inset(by: contentPadding))
+
+        // Update the corner radius
+        updateCornerRadius()
 
         // Layout the spinner view if the promo view is currently loading
         refreshSpinnerView()
+    }
+
+    private func contentPadding(for provider: PromoProvider? = nil) -> UIEdgeInsets {
+        let provider = provider ?? currentProvider ?? nil
+        var contentPadding = self.defaultContentPadding
+        if let providerPadding = provider?.contentPadding?(for: self) {
+            contentPadding = providerPadding
+        }
+        return contentPadding
+    }
+
+    private func updateCornerRadius(for provider: PromoProvider? = nil) {
+        let provider = provider ?? currentProvider ?? nil
+        let contentPadding = contentPadding(for: provider)
+        var cornerRadius = self.cornerRadius
+        if let providerCornerRadius = provider?.cornerRadius?(for: self, with: contentPadding) {
+            cornerRadius = providerCornerRadius
+        }
+        backgroundView.layer.cornerRadius = cornerRadius
     }
 }
 
@@ -316,6 +334,7 @@ extension PromoView {
         contentView?.alpha = 0.0
         UIView.animate(withDuration: 0.25) {
             self.contentView?.alpha = 1.0
+            self.updateCornerRadius(for: provider)
         }
     }
 }

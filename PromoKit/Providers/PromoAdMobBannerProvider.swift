@@ -65,6 +65,10 @@ public class PromoAdMobBannerProvider: NSObject, PromoProvider {
         return defaultSize
     }
 
+    public func cornerRadius(for promoView: PromoView, with contentPadding: UIEdgeInsets) -> CGFloat {
+        return contentPadding.left
+    }
+
     public func contentView(for promoView: PromoView) -> PromoContentView {
         let containerView = promoView.dequeueContentView(for: PromoContainerContentView.self)
         containerView.addSubview(adView)
