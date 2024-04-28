@@ -77,7 +77,10 @@ public class PromoView: UIView {
 
     /// Changing the frame of this promo view
     public override var frame: CGRect {
-        didSet { refreshCurrentProviderIfNeeded() }
+        didSet {
+            refreshCurrentProviderIfNeeded()
+            previousFrameSize = frame.size
+        }
     }
 
     // MARK: - Private Properties
@@ -247,7 +250,6 @@ extension PromoView {
         guard frame.size != previousFrameSize,
                 currentProvider?.needsReloadOnSizeChange ?? false else { return }
         providerCoordinator.fetchBestProvider(from: currentProvider)
-        previousFrameSize = frame.size
     }
 }
 

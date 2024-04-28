@@ -50,6 +50,11 @@ public protocol PromoProvider: AnyObject {
     /// If null, the promo view's `contentPadding` value will be used instead.
     @objc optional func contentPadding(for promoView: PromoView) -> UIEdgeInsets
 
+    /// The provider's preferred corner radius given the promo view's current content padding.
+    /// This can be used for providers whose view content require their edge content to be a specific value.
+    /// Default value is the promo view's own corner radius
+    @objc optional func cornerRadius(for promoView: PromoView, with contentPadding: UIEdgeInsets) -> CGFloat
+
     /// The preferred dimensions of the content view managed by this provider.
     /// If no content for the provider has been loaded yet, a 'best guess' should be provided.
     /// Once content has loaded, it's possible to access the provider's content view, which can be used to properly

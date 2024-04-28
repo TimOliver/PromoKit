@@ -76,6 +76,7 @@ public class PromoAdMobBannerProvider: NSObject, PromoProvider {
         promoView?.setIsLoading(false, animated: true)
         promoView = nil
 
+        // Inform the promo view of the results
         switch result {
         case .success(_):
             self.resultHandler?(.contentAvailable)
