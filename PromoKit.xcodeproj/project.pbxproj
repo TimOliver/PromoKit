@@ -26,6 +26,7 @@
 		22B8DD332BAAAA3700C1F754 /* PromoNetworkTestProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */; };
 		22B8DD352BAE818B00C1F754 /* PromoContainerContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B8DD342BAE818B00C1F754 /* PromoContainerContentView.swift */; };
 		22BF57E92BD80C340001A444 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 22BF57E82BD80C340001A444 /* GoogleMobileAds */; };
+		22BF57EB2BD9368D0001A444 /* PromoAdMobBannerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BF57EA2BD9368D0001A444 /* PromoAdMobBannerProvider.swift */; };
 		22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */; };
 /* End PBXBuildFile section */
 
@@ -69,6 +70,7 @@
 		22A105B02BBAE54C00DB3A80 /* PromoImageProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoImageProcessing.swift; sourceTree = "<group>"; };
 		22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNetworkTestProvider.swift; sourceTree = "<group>"; };
 		22B8DD342BAE818B00C1F754 /* PromoContainerContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoContainerContentView.swift; sourceTree = "<group>"; };
+		22BF57EA2BD9368D0001A444 /* PromoAdMobBannerProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoAdMobBannerProvider.swift; sourceTree = "<group>"; };
 		22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoProviderCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -167,6 +169,7 @@
 		229D21A92B7A0DA600105C9D /* Providers */ = {
 			isa = PBXGroup;
 			children = (
+				22BF57EA2BD9368D0001A444 /* PromoAdMobBannerProvider.swift */,
 				229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */,
 				22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */,
 			);
@@ -344,6 +347,7 @@
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
 				22A105B12BBAE54C00DB3A80 /* PromoImageProcessing.swift in Sources */,
 				22A105AE2BBAC77900DB3A80 /* PromoPathMonitor.swift in Sources */,
+				22BF57EB2BD9368D0001A444 /* PromoAdMobBannerProvider.swift in Sources */,
 				229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */,
 				229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */,
 				22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */,

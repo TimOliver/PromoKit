@@ -14,15 +14,22 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        promoView.providers = [PromoAppRaterProvider()]
+        promoView.rootViewController = self
+        promoView.providers = [PromoAdMobBannerProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
+                               PromoAppRaterProvider()]
         view.addSubview(promoView)
     }
 
     override func viewDidLayoutSubviews() {
-        //promoView.cornerRadius = 27.0
-        //promoView.defaultContentPadding = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
-        promoView.frame.size = CGSize(width: 336, height: 66) //CGSize(width: 728, height: 90)
+
+        promoView.frame.size = promoView.sizeThatFits(view.bounds.size,
+                                                      providerClass: PromoAdMobBannerProvider.self)
         promoView.center = view.center
+        promoView.reloadIfNeeded()
+
+//        //promoView.defaultContentPadding = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+//        promoView.frame.size = CGSize(width: 336, height: 66) //CGSize(width: 728, height: 90)
+
     }
 }
 

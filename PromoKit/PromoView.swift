@@ -17,6 +17,9 @@ public class PromoView: UIView {
 
     // MARK: - Public Properties -
 
+    /// The view controller hosting this promo view
+    public weak var rootViewController: UIViewController?
+
     /// The content view from the currently active promo provider
     public var contentView: PromoContentView?
 
@@ -66,7 +69,21 @@ public class PromoView: UIView {
         PromoView.sharedBackgroundQueue
     }
 
+    /// Shows a loading spinner view. Promo views can directly control this if they are blank while loading content
+    public var isLoading: Bool {
+        set { setIsLoading(newValue, animated: false) }
+        get { spinnerView != nil }
+    }
+
+    /// Changing the frame of this promo view
+    public override var frame: CGRect {
+        didSet { refreshCurrentProviderIfNeeded() }
+    }
+
     // MARK: - Private Properties
+
+    /// Keep a reference to the old frame size so we can compare
+    private var previousFrameSize = CGSize.zero
 
     /// A coordinator for determining the current provider
     private lazy var providerCoordinator: PromoProviderCoordinator = {
@@ -84,6 +101,9 @@ public class PromoView: UIView {
         operationQueue.qualityOfService = .userInitiated
         return operationQueue
     }()
+
+    /// An optional loading spinner view that can be shown by the providers while they load their content
+    private var spinnerView: UIActivityIndicatorView?
 
     // MARK: - View Creation
 
@@ -160,7 +180,7 @@ extension PromoView {
 
         // Remove the padding from fitting size to calculate the frame size
         var contentSize = size
-        let padding = provider.contentPadding?(for: self) ?? .zero
+        let padding = provider.contentPadding?(for: self) ?? defaultContentPadding
         contentSize.width -= padding.left + padding.right
         contentSize.height -= padding.top + padding.bottom
 
@@ -170,12 +190,6 @@ extension PromoView {
         preferredsize.height += padding.top + padding.bottom
 
         return preferredsize
-    }
-
-    public override func didMoveToSuperview() {
-        super.didMoveToSuperview()
-        guard superview != nil, !(providers?.isEmpty ?? true) else { return }
-        reload()
     }
 
     public override func layoutSubviews() {
@@ -190,21 +204,31 @@ extension PromoView {
             contentFrame = bounds.inset(by: padding)
         }
         contentView?.frame = CGRectIntegral(contentFrame)
+
+        // Layout the spinner view if the promo view is currently loading
+        refreshSpinnerView()
     }
 }
 
-// MARK: - Loading Content
+// MARK: - Fetching Providers
 
 extension PromoView {
+
     /// Clears all state and starts a new fetch of all providers from scratch.
     public func reload() {
-        guard !providerCoordinator.isFetching else { return }
+        guard superview != nil, !providerCoordinator.isFetching else { return }
 
         // Clear the coordinator's previous state
         providerCoordinator.reset()
 
         // Start fetching the best provider
         providerCoordinator.fetchBestProvider()
+    }
+
+    /// Calls `reload()` but only if no provider has been selected yet.
+    public func reloadIfNeeded() {
+        guard currentProvider == nil else { return }
+        reload()
     }
 
     // Callback used to update the promo view when the coordinator detects anew provider
@@ -216,6 +240,14 @@ extension PromoView {
         } else { // Remove anything
             reclaimCurrentContentView()
         }
+    }
+
+    /// Refresh the current provider if needed
+    private func refreshCurrentProviderIfNeeded() {
+        guard frame.size != previousFrameSize,
+                currentProvider?.needsReloadOnSizeChange ?? false else { return }
+        providerCoordinator.fetchBestProvider(from: currentProvider)
+        previousFrameSize = frame.size
     }
 }
 
@@ -283,5 +315,104 @@ extension PromoView {
         UIView.animate(withDuration: 0.25) {
             self.contentView?.alpha = 1.0
         }
+    }
+}
+
+// MARK: - Loading Spinner
+
+extension PromoView {
+
+    /// The height the promo view needs to exceed before it'll swap to the large spinner
+    static private let largeSpinnerRequiredHeight = 150.0
+
+    /// Hides the content view and shows a loading spinner.
+    /// The spinner can optionally transition in and out with an animation
+    /// - Parameters:
+    ///   - isLoading: Whether the spinner should be visible or not.
+    ///   - animated: Whether the loading animation is animated or not.
+    public func setIsLoading(_ isLoading: Bool, animated: Bool = false) {
+        guard isLoading != self.isLoading else { return }
+
+        // Create the spinner view and configure it to our current environment.
+        if isLoading {
+            spinnerView = UIActivityIndicatorView(style: .gray)
+            insertSubview(spinnerView!, aboveSubview: backgroundView)
+            refreshSpinnerView()
+            spinnerView?.center = CGPointMake(bounds.midX, bounds.midY)
+            spinnerView?.startAnimating()
+        }
+
+        // Capture a local instance of the spinner we can use for the blocks to retain
+        guard let spinnerView = self.spinnerView else { return }
+
+        // Define closures that will either animate or occur instantly
+        let scalingAnimationBlock: (() -> Void) = {
+            spinnerView.transform = isLoading ?
+                .identity :
+                .init(rotationAngle: .pi).scaledBy(x: 0.01, y: 0.01)
+        }
+
+        let crossFadeAnimationBlock: (() -> Void) = {
+            spinnerView.alpha = isLoading ? 1.0 : 0.0
+        }
+
+        let completionBlock: ((Bool) -> Void) = { _ in
+            if !isLoading { spinnerView.removeFromSuperview() }
+        }
+
+        // In either case, if we're stopping loading, set the spinner view
+        // to nil now. That way, subsequent calls to `setIsLoading` even if the animation
+        // hasn't completed yet will start a brand new pass with a new view
+        if !isLoading { self.spinnerView = nil }
+
+        // If not animated, call these blocks right away
+        if !animated {
+            scalingAnimationBlock()
+            crossFadeAnimationBlock()
+            completionBlock(true)
+            return
+        }
+
+        // Call the animation blocks
+        spinnerView.transform = isLoading ? .init(rotationAngle: .pi).scaledBy(x: 0.01, y: 0.01) : .identity
+        spinnerView.alpha = isLoading ? 0.0 : 1.0
+        UIView.animate(withDuration: 0.35, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0.0,
+                       animations: scalingAnimationBlock, completion: completionBlock)
+        UIView.animate(withDuration: 0.2, animations: crossFadeAnimationBlock)
+    }
+
+    /// Create a new spinner view instance based on the promo view's current state.
+    ///
+    private func refreshSpinnerView() {
+        guard let spinnerView else { return }
+
+        // Update the spinner view's tint color depending on the brightness of the background view
+        var isDarkMode = false
+        var backgroundViewColor: UIColor? = backgroundView.backgroundColor
+        if #available(iOS 13.0, *) {
+            backgroundViewColor = backgroundView.backgroundColor?.resolvedColor(with: traitCollection)
+        }
+
+        // If the background color isn't nil or clear, calculate its greyscale brightness
+        // https://gist.github.com/delputnam/2d80e7b4bd9363fd221d131e4cfdbd8f
+        if let backgroundViewColor, backgroundViewColor != UIColor.clear {
+            var red: CGFloat = 0.0, green: CGFloat = 0.0, blue: CGFloat = 0.0
+            backgroundViewColor.getRed(&red, green: &green, blue: &blue, alpha: nil)
+            let brightness =  ((red * 299) + (green * 587) + (blue * 114)) / 1000;
+            isDarkMode = brightness < 0.5
+        } else {
+            if #available(iOS 13.0, *) {
+                isDarkMode = traitCollection.userInterfaceStyle == .dark
+            }
+        }
+        spinnerView.tintColor = isDarkMode ? .white : .gray
+
+        // Update the style based on how large the promo view is
+        let useLargeSize = frame.height > PromoView.largeSpinnerRequiredHeight
+        spinnerView.style = useLargeSize ? .whiteLarge : .gray
+        spinnerView.sizeToFit()
+
+        // Position the spinner in the middle of the view
+        spinnerView.center = CGPointMake(bounds.midX, bounds.midY)
     }
 }

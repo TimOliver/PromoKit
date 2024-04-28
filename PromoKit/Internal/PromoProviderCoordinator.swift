@@ -80,8 +80,8 @@ extension PromoProviderCoordinator {
 
 extension PromoProviderCoordinator {
     /// Start the process of looping through each provider, and see which one is most appropriate right now
-    internal func fetchBestProvider() {
-        guard let provider = nextValidProvider() else {
+    internal func fetchBestProvider(from provider: PromoProvider? = nil) {
+        guard let provider = nextValidProvider(from: provider) else {
             providerUpdatedHandler?(nil)
             return
         }
@@ -156,11 +156,14 @@ extension PromoProviderCoordinator {
         startContentFetch(for: nextProvider)
     }
 
-    /// Find the next valid provider in the list, following on after the provided one
-    private func nextValidProvider(after provider: PromoProvider? = nil) -> PromoProvider? {
+    /// Find the next valid provider, either from the start, from a provided provider, or from the next one in line
+    private func nextValidProvider(from fromProvider: PromoProvider? = nil,
+                                   after afterProvider: PromoProvider? = nil) -> PromoProvider? {
         guard let providers = self.providers, !providers.isEmpty else { return nil }
         // Fetch the index after the given provider, or start at the beginning otherwise
-        let startIndex = (provider != nil) ? (providers.firstIndex{ $0 === provider } ?? 0) + 1 : 0
+        let provider = afterProvider ?? fromProvider ?? nil
+        var startIndex = (provider != nil) ? (providers.firstIndex{ $0 === provider } ?? 0) : 0
+        if afterProvider != nil { startIndex += 1 }
 
         // If the network is up, start with whatever first provider we have. If not, find the first not needing internet
         for nextProvider in providers.dropFirst(startIndex) {
