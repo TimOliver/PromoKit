@@ -28,6 +28,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     /// A handler that is triggered whenever a new provider is chosen
     public var providerUpdatedHandler: ((PromoProvider?) -> Void)?
 
+    /// A handler called if the fetch fails, and no valid provider is found
+    public var providerFetchFailedHandler: (() -> Void)?
+
     /// Track fetching state
     private(set) public var isFetching = false
     
@@ -108,6 +111,9 @@ extension PromoProviderCoordinator {
         // Check if we need to skip this one as its time interval hasn't elapsed yet
         if skipToNextProvider(provider) { return }
 
+        // Assign the promo view to this provider if it requires it
+        if let promoView { provider.didMoveToPromoView?(promoView) }
+
         // Store a class reference to this provider
         self.queryingProvider = provider
 
@@ -149,6 +155,7 @@ extension PromoProviderCoordinator {
         // Otherwise, move to the next provider and keep looking
         guard isFetching, let nextProvider = nextValidProvider(after: provider) else {
             cancelFetch()
+            providerFetchFailedHandler?()
             return
         }
 

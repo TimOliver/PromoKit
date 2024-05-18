@@ -9,7 +9,7 @@ import UIKit
 
 /// An empty container view that can be used to host specific view content owned by a provider.
 @objc(PMKPromoContainerContentView)
-public class PromoContainerContentView: PromoContentView {
+final public class PromoContainerContentView: PromoContentView {
     
     required init(promoView: PromoView) {
         super.init(promoView: promoView)

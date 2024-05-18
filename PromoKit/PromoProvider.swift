@@ -46,6 +46,10 @@ public protocol PromoProvider: AnyObject {
     /// it was first created.
     @objc optional func reset()
 
+    /// Called when a provider has started being hosted by a promo view.
+    /// This can be used by providers who need to retain reference to the promo view for future updates.
+    @objc optional func didMoveToPromoView(_ promoView: PromoView)
+
     /// The amount of padding between the content view and the edge of the promo view.
     /// If null, the promo view's `contentPadding` value will be used instead.
     @objc optional func contentPadding(for promoView: PromoView) -> UIEdgeInsets

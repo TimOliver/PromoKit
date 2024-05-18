@@ -7,6 +7,24 @@
 
 import UIKit
 
+@objc(PMKPromoViewDelegate)
+public protocol PromoViewDelegate: NSObjectProtocol {
+
+    /// Called when a new provider has successfully been fetched and is now displaying
+    /// its content. This can be used to trigger new layout passes if needed.
+    /// - Parameters:
+    ///   - promoView: The promo view hosting the provider
+    ///   - provider: The provider that was successfully loaded
+    @objc optional func promoView(_ promoView: PromoView, didUpdateProvider provider: PromoProvider)
+
+    /// A fetch completely failed and there is no content to display.
+    /// Use this method to hide the promo view if needed.
+    /// - Parameters:
+    ///   - promoView: The promo view in which the error occurred
+    ///   - error: The error that occurred
+    @objc optional func promoViewProviderFetchFailed(_ promoView: PromoView)
+}
+
 /// A UI component for displaying promotional or advertising content from a variety of sources,
 /// determined and updated dynamically at runtime.
 /// It can be used to show a regular set of content, such as ads, but allow for higher priority
@@ -16,6 +34,9 @@ import UIKit
 public class PromoView: UIView {
 
     // MARK: - Public Properties -
+
+    /// The delegate for this promo view
+    public weak var delegate: PromoViewDelegate?
 
     /// The view controller hosting this promo view
     public weak var rootViewController: UIViewController?
@@ -144,6 +165,10 @@ public class PromoView: UIView {
         providerCoordinator.providerUpdatedHandler = { [weak self] provider in
             self?.providerDidChange(provider)
         }
+        providerCoordinator.providerFetchFailedHandler = { [weak self] in
+            guard let self else { return }
+            self.delegate?.promoViewProviderFetchFailed?(self)
+        }
     }
     
     required init?(coder: NSCoder) {
@@ -186,8 +211,18 @@ extension PromoView {
         contentSize.width -= padding.left + padding.right
         contentSize.height -= padding.top + padding.bottom
 
+        // If the provider is visible on screen, use the content view to calculate accurate sizing
+        var preferredsize = CGSize.zero
+        if provider === currentProvider, let contentView {
+            preferredsize = contentView.sizeThatFits(contentSize)
+        }
+
+        // If we weren't able to fetch a size from the content view, defer back to the provider
+        if preferredsize == .zero {
+            preferredsize = provider.preferredContentSize?(fittingSize: contentSize, for: self) ?? contentSize
+        }
+        
         // Add the padding back in
-        var preferredsize = provider.preferredContentSize?(fittingSize: contentSize, for: self) ?? contentSize
         preferredsize.width += padding.left + padding.right
         preferredsize.height += padding.top + padding.bottom
 
@@ -252,11 +287,17 @@ extension PromoView {
         reload()
     }
 
+    /// Reloads the content view for the current provider. Providers may explicitly
+    /// call this themselves if they detect their state changed, and the view needs to be reloaded.
+    public func reloadContentView() {
+        providerDidChange(currentProvider)
+    }
+
     // Callback used to update the promo view when the coordinator detects anew provider
     private func providerDidChange(_ provider: PromoProvider?) {
         // Display the new content
         if let provider {
-            prepareToDisplayProvider(provider)
+            reclaimCurrentContentView()
             displayNewProvider(provider)
         } else { // Remove anything
             reclaimCurrentContentView()
@@ -294,7 +335,7 @@ extension PromoView {
         guard let contentView else { return }
 
         // Fade the current content view out
-        if let snapshot = contentView.snapshotView(afterScreenUpdates: true) {
+        if let snapshot = contentView.snapshotView(afterScreenUpdates: false) {
             snapshot.frame = contentView.frame
             addSubview(snapshot)
             UIView.animate(withDuration: 0.25) {
@@ -318,17 +359,18 @@ extension PromoView {
         self.contentView = nil
     }
 
-    // Set everything up to display the new provider
-    private func prepareToDisplayProvider(_ provider: PromoProvider) {
-        reclaimCurrentContentView()
-    }
-
     // Get the provider to generate and configure its view content, and then display it
     private func displayNewProvider(_ provider: PromoProvider) {
         // Fetch a new view from the provider
         self.contentView = provider.contentView(for: self)
         self.addSubview(contentView!)
+        
+        // Layout the content view
         setNeedsLayout()
+        layoutIfNeeded()
+
+        // Inform the delegate a new provider was fetched
+        delegate?.promoView?(self, didUpdateProvider: provider)
 
         // Animate it fading in
         contentView?.alpha = 0.0
@@ -344,7 +386,7 @@ extension PromoView {
 extension PromoView {
 
     /// The height the promo view needs to exceed before it'll swap to the large spinner
-    static private let largeSpinnerRequiredHeight = 150.0
+    static private let largeSpinnerRequiredHeight = 100.0
 
     /// Hides the content view and shows a loading spinner.
     /// The spinner can optionally transition in and out with an animation
@@ -397,7 +439,7 @@ extension PromoView {
         // Call the animation blocks
         spinnerView.transform = isLoading ? .init(rotationAngle: .pi).scaledBy(x: 0.01, y: 0.01) : .identity
         spinnerView.alpha = isLoading ? 0.0 : 1.0
-        UIView.animate(withDuration: 0.35, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0.0,
+        UIView.animate(withDuration: 0.45, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0.0,
                        animations: scalingAnimationBlock, completion: completionBlock)
         UIView.animate(withDuration: 0.2, animations: crossFadeAnimationBlock)
     }
@@ -426,7 +468,7 @@ extension PromoView {
                 isDarkMode = traitCollection.userInterfaceStyle == .dark
             }
         }
-        spinnerView.tintColor = isDarkMode ? .white : .gray
+        spinnerView.color = isDarkMode ? .white : .gray
 
         // Update the style based on how large the promo view is
         let useLargeSize = frame.height > PromoView.largeSpinnerRequiredHeight

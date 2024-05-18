@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2257F6622BEB060D0058A2AE /* PromoNativeAdProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */; };
+		2257F6642BEB0C790058A2AE /* PromoNativeAdContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */; };
 		229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D212B2B67CE2600105C9D /* AppDelegate.swift */; };
 		229D21302B67CE2600105C9D /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D212F2B67CE2600105C9D /* ViewController.swift */; };
 		229D21332B67CE2600105C9D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 229D21312B67CE2600105C9D /* Main.storyboard */; };
@@ -26,7 +28,7 @@
 		22B8DD332BAAAA3700C1F754 /* PromoNetworkTestProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */; };
 		22B8DD352BAE818B00C1F754 /* PromoContainerContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B8DD342BAE818B00C1F754 /* PromoContainerContentView.swift */; };
 		22BF57E92BD80C340001A444 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 22BF57E82BD80C340001A444 /* GoogleMobileAds */; };
-		22BF57EB2BD9368D0001A444 /* PromoAdMobBannerProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BF57EA2BD9368D0001A444 /* PromoAdMobBannerProvider.swift */; };
+		22BF57EB2BD9368D0001A444 /* PromoBannerAdProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BF57EA2BD9368D0001A444 /* PromoBannerAdProvider.swift */; };
 		22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */; };
 /* End PBXBuildFile section */
 
@@ -48,6 +50,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PromoNativeAdProvider.swift; sourceTree = "<group>"; };
+		2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNativeAdContentView.swift; sourceTree = "<group>"; };
 		229D21282B67CE2600105C9D /* PromoKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PromoKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		229D212B2B67CE2600105C9D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		229D212F2B67CE2600105C9D /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -70,7 +74,7 @@
 		22A105B02BBAE54C00DB3A80 /* PromoImageProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoImageProcessing.swift; sourceTree = "<group>"; };
 		22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNetworkTestProvider.swift; sourceTree = "<group>"; };
 		22B8DD342BAE818B00C1F754 /* PromoContainerContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoContainerContentView.swift; sourceTree = "<group>"; };
-		22BF57EA2BD9368D0001A444 /* PromoAdMobBannerProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoAdMobBannerProvider.swift; sourceTree = "<group>"; };
+		22BF57EA2BD9368D0001A444 /* PromoBannerAdProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoBannerAdProvider.swift; sourceTree = "<group>"; };
 		22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoProviderCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -169,8 +173,9 @@
 		229D21A92B7A0DA600105C9D /* Providers */ = {
 			isa = PBXGroup;
 			children = (
-				22BF57EA2BD9368D0001A444 /* PromoAdMobBannerProvider.swift */,
 				229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */,
+				22BF57EA2BD9368D0001A444 /* PromoBannerAdProvider.swift */,
+				2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */,
 				22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */,
 			);
 			path = Providers;
@@ -179,8 +184,9 @@
 		229D21AC2B7A11BF00105C9D /* ContentViews */ = {
 			isa = PBXGroup;
 			children = (
-				229D21AD2B7A11DB00105C9D /* PromoTableListContentView.swift */,
 				22B8DD342BAE818B00C1F754 /* PromoContainerContentView.swift */,
+				2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */,
+				229D21AD2B7A11DB00105C9D /* PromoTableListContentView.swift */,
 			);
 			path = ContentViews;
 			sourceTree = "<group>";
@@ -344,12 +350,14 @@
 				229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */,
 				229D21AE2B7A11DB00105C9D /* PromoTableListContentView.swift in Sources */,
 				22B8DD352BAE818B00C1F754 /* PromoContainerContentView.swift in Sources */,
+				2257F6642BEB0C790058A2AE /* PromoNativeAdContentView.swift in Sources */,
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
 				22A105B12BBAE54C00DB3A80 /* PromoImageProcessing.swift in Sources */,
 				22A105AE2BBAC77900DB3A80 /* PromoPathMonitor.swift in Sources */,
-				22BF57EB2BD9368D0001A444 /* PromoAdMobBannerProvider.swift in Sources */,
+				22BF57EB2BD9368D0001A444 /* PromoBannerAdProvider.swift in Sources */,
 				229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */,
 				229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */,
+				2257F6622BEB060D0058A2AE /* PromoNativeAdProvider.swift in Sources */,
 				22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */,
 				229D21A72B79E24000105C9D /* PromoContentView.swift in Sources */,
 				229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */,
@@ -550,9 +558,12 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.PromoKit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 			};
 			name = Debug;
 		};
@@ -579,9 +590,12 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.PromoKit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 			};
 			name = Release;
 		};

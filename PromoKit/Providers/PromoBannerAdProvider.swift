@@ -8,17 +8,17 @@
 import Foundation
 import GoogleMobileAds
 
-@objc(PMKPromoAdMobBannerSize)
-public enum PromoAdMobBannerSize: Int {
+@objc(PMKPromoBannerAdSize)
+public enum PromoBannerAdSize: Int {
     case standard // Standard iPhone size: 320x50
     case full     // Full iPad size: 468x60
 }
 
-@objc(PMKPromoAdMobBannerProvider)
-public class PromoAdMobBannerProvider: NSObject, PromoProvider {
+@objc(PMKPromoBannerAdProvider)
+public class PromoBannerAdProvider: NSObject, PromoProvider {
 
     /// The supported banner sizes that this promo can fit to
-    public var supportedBannerSizes: [PromoAdMobBannerSize] = [.standard, .full]
+    public var supportedBannerSizes: [PromoBannerAdSize] = [.standard, .full]
 
     /// The Google ad identifier for this banner
     private let adUnitID: String
@@ -100,7 +100,7 @@ public class PromoAdMobBannerProvider: NSObject, PromoProvider {
 
 // MARK: - GADBannerViewDelegate
 
-extension PromoAdMobBannerProvider: GADBannerViewDelegate {
+extension PromoBannerAdProvider: GADBannerViewDelegate {
 
     public func bannerViewDidReceiveAd(_ bannerView: GADBannerView) {
         didReceiveResult(.success(()))

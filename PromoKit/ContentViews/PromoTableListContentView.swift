@@ -11,7 +11,7 @@ import UIKit
 /// It consists of a title label, a detail label positioned below it, and an optional image positioned
 /// against the leading edge.
 @objc(PMKPromoTableListContentView)
-public class PromoTableListContentView: PromoContentView {
+final public class PromoTableListContentView: PromoContentView {
 
     // MARK: - Public Properties
 
