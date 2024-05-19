@@ -57,7 +57,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     }
 
     public func contentPadding(for promoView: PromoView) -> UIEdgeInsets {
-        UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        UIEdgeInsets(top: 15, left: 15, bottom: 15, right: 15)
     }
 
     public func contentView(for promoView: PromoView) -> PromoContentView {
@@ -93,7 +93,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         videoOptions.clickToExpandRequested = true
 
         let mediaLoaderOptions = GADNativeAdMediaAdLoaderOptions()
-        mediaLoaderOptions.mediaAspectRatio = .any
+        mediaLoaderOptions.mediaAspectRatio = .landscape
 
         self.adLoader = GADAdLoader(adUnitID: adUnitID,
                                     rootViewController: promoView.rootViewController,
