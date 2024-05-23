@@ -27,18 +27,15 @@ final public class PromoNativeAdView: GADNativeAdView {
     // An icon image view optionally shown next to the headline
     private let iconImageView = UIImageView()
 
-    // If no media, the image view shown in place
-    private let contentImageView = UIImageView()
-
     // If media, the content view used to show the media
     private let contentMediaView = GADMediaView()
 
     // For easier testing, remove the 'Test mode' string from the title
-    private var headlineText: String? {
+    private var headlineText: String {
 #if DEBUG
-        nativeAd?.headline?.replacingOccurrences(of: "Test mode: ", with: "")
+        nativeAd?.headline?.replacingOccurrences(of: "Test mode: ", with: "") ?? ""
 #else
-        nativeAd?.headline
+        nativeAd?.headline ?? ""
 #endif
     }
 
@@ -70,19 +67,26 @@ final public class PromoNativeAdView: GADNativeAdView {
         self.iconView = nil
         self.mediaView = nil
         self.callToActionView = nil
+
+        headlineLabel.attributedText = nil
+        bodyLabel.attributedText = nil
+        actionButton.setTitle(nil, for: .normal)
+        contentMediaView.mediaContent = nil
     }
 
     private func configureContentViews() {
-        let headlineFont = UIFont.systemFont(ofSize: 22, weight: .bold)
+        let headlineFont = UIFont.systemFont(ofSize: 21, weight: .bold)
         headlineLabel.font = UIFontMetrics.default.scaledFont(for: headlineFont)
         headlineLabel.adjustsFontSizeToFitWidth = true
-        headlineLabel.minimumScaleFactor = 0.5
+        headlineLabel.minimumScaleFactor = 0.45
         headlineLabel.numberOfLines = 2
         addSubview(headlineLabel)
 
-        let bodyFont = UIFont.systemFont(ofSize: 18.0)
+        let bodyFont = UIFont.systemFont(ofSize: 16.0)
         bodyLabel.font = UIFontMetrics.default.scaledFont(for: bodyFont)
-        bodyLabel.numberOfLines = 3
+        bodyLabel.numberOfLines = 0
+        bodyLabel.adjustsFontSizeToFitWidth = true
+        bodyLabel.minimumScaleFactor = 0.85
         if #available(iOS 13.0, *) {
             bodyLabel.textColor = .secondaryLabel
         }
@@ -115,15 +119,12 @@ final public class PromoNativeAdView: GADNativeAdView {
 
     private func updateAdContent() {
         iconImageView.image = nativeAd?.icon?.image
-        headlineLabel.text = headlineText
-        bodyLabel.text = bodyText
+        headlineLabel.attributedText = NSAttributedString(string: headlineText)
+        if let body = bodyText {
+            bodyLabel.attributedText = NSAttributedString(string: body)
+        }
 
         contentMediaView.mediaContent = nativeAd?.mediaContent
-
-        contentImageView.image = nil
-        if let nativeImage = nativeAd?.images?.first, nativeImage.image != nil {
-            contentImageView.image = nativeImage.image
-        }
 
         actionButton.setTitle(nil, for: .normal)
         if let cta = nativeAd?.callToAction {
@@ -147,7 +148,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         if !iconImageView.isHidden {
             iconSize = self.iconSize
             iconImageView.frame = CGRect(origin: origin, size: iconSize)
-            iconImageView.layer.cornerRadius = 15
+            iconImageView.layer.cornerRadius = iconSize.width * 0.23
         }
 
         // Hide the body if we don't have any text
@@ -155,21 +156,22 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         // Position the title text
         let textX = iconImageView.isHidden ? padding : iconSize.width + innerMargin
-        let textWidth = size.width - (textX + googleButtonWidth + (padding * 2.0))
+        let textWidth = size.width - (textX + googleButtonWidth + (padding * 2.0) + (needsCompactLayout ? compactActionSize.width : 0.0))
         let textFittingSize = CGSize(width: textWidth, height: .greatestFiniteMagnitude)
 
         headlineLabel.frame.size = headlineLabel.sizeThatFits(textFittingSize)
-        let textY = bodyLabel.isHidden && headlineLabel.frame.height < iconSize.height ? (iconSize.height / 2.0) - (headlineLabel.bounds.midY) : 0.0
+        bodyLabel.frame.size = bodyLabel.isHidden ? .zero : bodyLabel.sizeThatFits(textFittingSize)
+        let totalTextHeight = headlineLabel.frame.height + titleVerticalSpacing + bodyLabel.frame.height
+
+        let textY = totalTextHeight < iconSize.height ? (iconSize.height - totalTextHeight) / 2.0 : padding
         headlineLabel.frame.origin = CGPoint(x: textX, y: textY)
 
         // Position the body text
         if !bodyLabel.isHidden {
             addSubview(bodyLabel)
             let textY = headlineLabel.frame.maxY + titleVerticalSpacing
-            bodyLabel.frame.size = bodyLabel.sizeThatFits(textFittingSize)
             bodyLabel.frame.origin = CGPoint(x: textX, y: textY)
         } else {
-            bodyLabel.frame = .zero
             bodyLabel.removeFromSuperview()
         }
 
@@ -177,18 +179,27 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         // Position the media
         let mediaContent = nativeAd.mediaContent
-        let mediaSize = CGSize(width: size.width, height: floor(size.width / mediaContent.aspectRatio))
+        let aspectRatio = mediaContent.aspectRatio > 0.0 ? mediaContent.aspectRatio : 1.0
+        let mediaSize = CGSize(width: size.width, height: min(floor(size.width / aspectRatio), size.height - origin.y))
         contentMediaView.frame.size = mediaSize
         contentMediaView.frame.origin = CGPoint(x: padding, y: origin.y)
-        contentMediaView.layer.cornerRadius = 10.0
+        contentMediaView.layer.cornerRadius = 15.0
         updateMediaViewBackgroundColor()
 
         if !(actionButton.title(for: .normal)?.isEmpty ?? true) {
-            let buttonSize = CGSize(width: size.width, height: ctaButtonHeight)
-            let buttonOrigin = CGPoint(x: padding, y: size.height - ctaButtonHeight)
-            actionButton.frame = CGRect(origin: buttonOrigin, size: buttonSize)
-            actionButton.layer.cornerRadius = 15
             actionButton.backgroundColor = self.tintColor
+            if !needsCompactLayout {
+                let buttonSize = CGSize(width: size.width, height: ctaButtonHeight)
+                let buttonOrigin = CGPoint(x: padding, y: size.height - ctaButtonHeight)
+                actionButton.frame = CGRect(origin: buttonOrigin, size: buttonSize)
+                actionButton.layer.cornerRadius = 15
+            } else {
+                actionButton.frame.size = compactActionSize
+                actionButton.frame.origin = CGPoint(x: size.width - actionButton.frame.width, y: headlineLabel.frame.minY + ((totalTextHeight - compactActionSize.height) / 2.0))
+                actionButton.layer.cornerRadius = compactActionSize.height / 2.0
+            }
+        } else {
+            actionButton.removeFromSuperview()
         }
 
         // Once all the views are configured, connect them to Google's references.
@@ -221,16 +232,18 @@ final public class PromoNativeAdView: GADNativeAdView {
     // MARK: - Sizing
 
     // Static sizing values
+    private var needsCompactLayout: Bool { traitCollection.verticalSizeClass == .compact }
     private var maximumWidth: CGFloat { 620 }
     private var minimumWidth: CGFloat { 300 }
     private var padding: CGFloat { 1.0 }
-    private var iconSize: CGSize { CGSize(width: 64, height: 64) }
     private var outerMargin: CGFloat { frame.width < 375 ? 8.0 : 16.0 }
-    private var innerMargin: CGFloat { 16.0 }
-    private var titleVerticalSpacing: CGFloat { 3.0 }
+    private var innerMargin: CGFloat { needsCompactLayout ? 8.0 : 12.0 }
+    private var titleVerticalSpacing: CGFloat { 1.0 }
     private var ctaButtonHeight: CGFloat { 54 }
     private var googleButtonWidth: CGFloat { 20.0 }
     private var displayScale: CGFloat { max(2.0, traitCollection.displayScale) }
+    private var iconSize: CGSize { CGSize(width: 64, height: 64) }
+    private var compactActionSize: CGSize { CGSize(width: 120, height: 36) }
 
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
         guard let nativeAd else { return .zero }
@@ -242,7 +255,8 @@ final public class PromoNativeAdView: GADNativeAdView {
         if nativeAd.icon?.image != nil {
             iconSize = self.iconSize
         }
-        let textWidth = width - ((iconSize.width > 0.0 ? innerMargin + iconSize.width : 0.0) + googleButtonWidth)
+        var textWidth = width - ((iconSize.width > 0.0 ? innerMargin + iconSize.width : 0.0) + googleButtonWidth)
+        if needsCompactLayout { textWidth -= (innerMargin + compactActionSize.width) }
 
         // Start assembling the height off the size of the views
         var height: CGFloat = padding * 2.0
@@ -254,25 +268,25 @@ final public class PromoNativeAdView: GADNativeAdView {
         var textHeight = 0.0
 
         // Add the size of the title text
-        if let headline = headlineText {
-            textHeight += heightOfString(headline, width: textWidth, font: headlineLabel.font)
-        }
+        textHeight += heightOfString(headlineText, width: textWidth, font: headlineLabel.font, multiline: false)
 
         // Add the subtitle text
         if let body = bodyText {
             textHeight += titleVerticalSpacing
-            textHeight += heightOfString(body, width: textWidth, font: bodyLabel.font)
+            textHeight += heightOfString(body, width: textWidth, font: bodyLabel.font, multiline: true)
         }
         height += max(textHeight, iconSize.height) + innerMargin
 
         // Add the CTA button height
-        height += innerMargin + ctaButtonHeight
+        if !needsCompactLayout {
+            height += innerMargin + ctaButtonHeight
+        }
 
-        return CGSize(width: width, height: height)
+        return CGSize(width: width, height: min(height, size.height))
     }
 
-    private func heightOfString(_ string: String, width: CGFloat, font: UIFont) -> CGFloat {
-        let constraintRect = CGSize(width: width, height: iconSize.height)
+    private func heightOfString(_ string: String, width: CGFloat, font: UIFont, multiline: Bool) -> CGFloat {
+        let constraintRect = CGSize(width: width, height: multiline ? .greatestFiniteMagnitude : iconSize.height)
         let boundingBox = string.boundingRect(with: constraintRect, options: .usesLineFragmentOrigin, attributes: [.font: font], context: nil)
         return floor(boundingBox.height)
     }
