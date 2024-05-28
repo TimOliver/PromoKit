@@ -78,7 +78,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         let headlineFont = UIFont.systemFont(ofSize: 21, weight: .bold)
         headlineLabel.font = UIFontMetrics.default.scaledFont(for: headlineFont)
         headlineLabel.adjustsFontSizeToFitWidth = true
-        headlineLabel.minimumScaleFactor = 0.45
+        headlineLabel.minimumScaleFactor = 0.75
         headlineLabel.numberOfLines = 2
         addSubview(headlineLabel)
 
@@ -86,7 +86,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         bodyLabel.font = UIFontMetrics.default.scaledFont(for: bodyFont)
         bodyLabel.numberOfLines = 3
         bodyLabel.adjustsFontSizeToFitWidth = true
-        bodyLabel.minimumScaleFactor = 0.85
+        bodyLabel.minimumScaleFactor = 0.35
         if #available(iOS 13.0, *) {
             bodyLabel.textColor = .secondaryLabel
         }
@@ -244,7 +244,7 @@ final public class PromoNativeAdView: GADNativeAdView {
     private var googleButtonWidth: CGFloat { 20.0 }
     private var displayScale: CGFloat { max(2.0, traitCollection.displayScale) }
     private var iconSize: CGSize { CGSize(width: 64, height: 64) }
-    private var compactActionSize: CGSize { CGSize(width: 120, height: 36) }
+    private var compactActionSize: CGSize { CGSize(width: 90, height: 36) }
 
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
         guard let nativeAd else { return .zero }
@@ -259,6 +259,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         }
         var textWidth = width - ((iconSize.width > 0.0 ? innerMargin + iconSize.width : 0.0) + googleButtonWidth)
         if needsCompactLayout { textWidth -= (innerMargin + compactActionSize.width) }
+        let textSize = CGSize(width: textWidth, height: .greatestFiniteMagnitude)
 
         // Start assembling the height off the size of the views
         var height: CGFloat = padding * 2.0
@@ -270,12 +271,14 @@ final public class PromoNativeAdView: GADNativeAdView {
         var textHeight = 0.0
 
         // Add the size of the title text
-        textHeight += heightOfString(headlineText, width: textWidth, font: headlineLabel.font, multiline: false)
+        headlineLabel.text = headlineText
+        textHeight += headlineLabel.sizeThatFits(textSize).height
 
         // Add the subtitle text
         if let body = bodyText {
             textHeight += titleVerticalSpacing
-            textHeight += heightOfString(body, width: textWidth, font: bodyLabel.font, multiline: true)
+            bodyLabel.text = body
+            textHeight += bodyLabel.sizeThatFits(textSize).height
         }
         height += max(textHeight, iconSize.height) + innerMargin
 
@@ -285,12 +288,6 @@ final public class PromoNativeAdView: GADNativeAdView {
         }
 
         return CGSize(width: width, height: height)
-    }
-
-    private func heightOfString(_ string: String, width: CGFloat, font: UIFont, multiline: Bool) -> CGFloat {
-        let constraintRect = CGSize(width: width, height: multiline ? .greatestFiniteMagnitude : font.lineHeight * 2.0)
-        let boundingBox = string.boundingRect(with: constraintRect, options: .usesLineFragmentOrigin, attributes: [.font: font], context: nil)
-        return floor(boundingBox.height)
     }
 
     private func minimumHeight() -> CGFloat {
@@ -311,6 +308,7 @@ final public class PromoNativeAdView: GADNativeAdView {
     private func preferredWidth(in size: CGSize, aspectRatio: CGFloat) -> CGFloat {
         // Total width available to us
         let width = min(size.width - (padding * 2.0), maximumWidth)
+        let height = min(size.height, maximumHeight)
 
         // Sans the media, how much height we're guaranteed to take up
         let minimumHeight = minimumHeight()
@@ -320,11 +318,11 @@ final public class PromoNativeAdView: GADNativeAdView {
         let mediaHeight = width / aspectRatio
 
         // If it's not too tall to fit into our bounds
-        if minimumHeight + mediaHeight < maximumHeight {
+        if minimumHeight + mediaHeight < height {
             return width
         }
 
-        let availableHeight = maximumHeight - minimumHeight
+        let availableHeight = height - minimumHeight
         return availableHeight * aspectRatio
     }
 }
