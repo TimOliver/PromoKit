@@ -84,7 +84,7 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         let bodyFont = UIFont.systemFont(ofSize: 16.0)
         bodyLabel.font = UIFontMetrics.default.scaledFont(for: bodyFont)
-        bodyLabel.numberOfLines = 0
+        bodyLabel.numberOfLines = 3
         bodyLabel.adjustsFontSizeToFitWidth = true
         bodyLabel.minimumScaleFactor = 0.85
         if #available(iOS 13.0, *) {
@@ -114,7 +114,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         if #available(iOS 13.0, *) {
             actionButton.layer.cornerCurve = .continuous
         }
-        addSubview(actionButton)
+        insertSubview(actionButton, at: 0)
     }
 
     private func updateAdContent() {
@@ -233,8 +233,9 @@ final public class PromoNativeAdView: GADNativeAdView {
 
     // Static sizing values
     private var needsCompactLayout: Bool { traitCollection.verticalSizeClass == .compact }
-    private var maximumWidth: CGFloat { 620 }
+    private var maximumWidth: CGFloat { 550 }
     private var minimumWidth: CGFloat { 300 }
+    private var maximumHeight: CGFloat { 700 }
     private var padding: CGFloat { 1.0 }
     private var outerMargin: CGFloat { frame.width < 375 ? 8.0 : 16.0 }
     private var innerMargin: CGFloat { needsCompactLayout ? 8.0 : 12.0 }
@@ -250,7 +251,8 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         // Work out the horizontal width we can support
         // Cap it to the readable content width if applicable
-        let width = min(size.width - (padding * 2.0), maximumWidth)
+        let aspectRatio = nativeAd.mediaContent.aspectRatio
+        let width = preferredWidth(in: size, aspectRatio: aspectRatio)
         var iconSize = CGSize.zero
         if nativeAd.icon?.image != nil {
             iconSize = self.iconSize
@@ -262,7 +264,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         var height: CGFloat = padding * 2.0
 
         // Add the size of the media content
-        height += floor(width / nativeAd.mediaContent.aspectRatio)
+        height += floor(width / aspectRatio)
 
         // Work out if the text or the icon is taller
         var textHeight = 0.0
@@ -282,13 +284,48 @@ final public class PromoNativeAdView: GADNativeAdView {
             height += innerMargin + ctaButtonHeight
         }
 
-        return CGSize(width: width, height: min(height, size.height))
+        return CGSize(width: width, height: height)
     }
 
     private func heightOfString(_ string: String, width: CGFloat, font: UIFont, multiline: Bool) -> CGFloat {
-        let constraintRect = CGSize(width: width, height: multiline ? .greatestFiniteMagnitude : iconSize.height)
+        let constraintRect = CGSize(width: width, height: multiline ? .greatestFiniteMagnitude : font.lineHeight * 2.0)
         let boundingBox = string.boundingRect(with: constraintRect, options: .usesLineFragmentOrigin, attributes: [.font: font], context: nil)
         return floor(boundingBox.height)
+    }
+
+    private func minimumHeight() -> CGFloat {
+        // Work out the minimum height we can possibly fit without the media
+        var height = 0.0
+        height += headlineLabel.font.lineHeight * 2.0
+        height += titleVerticalSpacing
+        height += bodyLabel.font.lineHeight * 3.0
+        height += innerMargin
+        if !needsCompactLayout {
+            height += ctaButtonHeight
+        }
+        return height
+    }
+
+    // Given the aspect ratio of the media, and the hypothetical overall height of the other elements,
+    // work out what the proper width should be to fit everything on screen
+    private func preferredWidth(in size: CGSize, aspectRatio: CGFloat) -> CGFloat {
+        // Total width available to us
+        let width = min(size.width - (padding * 2.0), maximumWidth)
+
+        // Sans the media, how much height we're guaranteed to take up
+        let minimumHeight = minimumHeight()
+
+        // Work out how big the view would be with the media aligned to the width
+
+        let mediaHeight = width / aspectRatio
+
+        // If it's not too tall to fit into our bounds
+        if minimumHeight + mediaHeight < maximumHeight {
+            return width
+        }
+
+        let availableHeight = maximumHeight - minimumHeight
+        return availableHeight * aspectRatio
     }
 }
 
