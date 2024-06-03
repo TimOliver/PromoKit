@@ -234,7 +234,7 @@ final public class PromoNativeAdView: GADNativeAdView {
     // Static sizing values
     private var needsCompactLayout: Bool { traitCollection.verticalSizeClass == .compact }
     private var maximumWidth: CGFloat { 550 }
-    private var minimumWidth: CGFloat { 300 }
+    private var minimumWidth: CGFloat { 340 }
     private var maximumHeight: CGFloat { 700 }
     private var padding: CGFloat { 1.0 }
     private var outerMargin: CGFloat { frame.width < 375 ? 8.0 : 16.0 }
@@ -323,7 +323,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         }
 
         let availableHeight = height - minimumHeight
-        return availableHeight * aspectRatio
+        return max(availableHeight * aspectRatio, minimumWidth)
     }
 }
 
