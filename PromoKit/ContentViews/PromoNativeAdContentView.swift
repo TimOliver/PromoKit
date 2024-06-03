@@ -142,6 +142,8 @@ final public class PromoNativeAdView: GADNativeAdView {
         let size = frame.insetBy(dx: padding, dy: padding).size
         var origin = CGPoint(x: padding, y: padding)
 
+        let image = nativeAd.images?.first?.image
+
         // Lay out the icon view
         var iconSize = CGSize.zero
         iconImageView.isHidden = iconImageView.image == nil
@@ -177,15 +179,6 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         origin.y = max(iconImageView.frame.maxY, max(headlineLabel.frame.maxY, bodyLabel.frame.maxY)) + innerMargin
 
-        // Position the media
-        let mediaContent = nativeAd.mediaContent
-        let aspectRatio = mediaContent.aspectRatio > 0.0 ? mediaContent.aspectRatio : 1.0
-        let mediaSize = CGSize(width: size.width, height: min(floor(size.width / aspectRatio), size.height - origin.y))
-        contentMediaView.frame.size = mediaSize
-        contentMediaView.frame.origin = CGPoint(x: padding, y: origin.y)
-        contentMediaView.layer.cornerRadius = 15.0
-        updateMediaViewBackgroundColor()
-
         if !(actionButton.title(for: .normal)?.isEmpty ?? true) {
             actionButton.backgroundColor = self.tintColor
             if !needsCompactLayout {
@@ -201,6 +194,21 @@ final public class PromoNativeAdView: GADNativeAdView {
         } else {
             actionButton.removeFromSuperview()
         }
+
+        // Position the media
+        let mediaContent = nativeAd.mediaContent
+        let aspectRatio = mediaContent.aspectRatio > 0.0 ? mediaContent.aspectRatio : 1.0
+        if needsCompactLayout {
+            let mediaSize = CGSize(width: size.width, height: min(floor(size.width / aspectRatio), size.height - origin.y))
+            contentMediaView.frame.size = mediaSize
+        } else {
+            let actionButtonY = actionButton.superview != nil ? (actionButton.frame.minY - innerMargin) : size.height
+            let mediaSize = CGSize(width: size.width, height: actionButtonY - origin.y)
+            contentMediaView.frame.size = mediaSize
+        }
+        contentMediaView.frame.origin = CGPoint(x: padding, y: origin.y)
+        contentMediaView.layer.cornerRadius = 15.0
+        updateMediaViewBackgroundColor()
 
         // Once all the views are configured, connect them to Google's references.
         // We defer them this late since it seems Google's validator occurs when they are
@@ -233,9 +241,9 @@ final public class PromoNativeAdView: GADNativeAdView {
 
     // Static sizing values
     private var needsCompactLayout: Bool { traitCollection.verticalSizeClass == .compact }
-    private var maximumWidth: CGFloat { 550 }
+    private var maximumWidth: CGFloat { 500 }
     private var minimumWidth: CGFloat { 340 }
-    private var maximumHeight: CGFloat { 700 }
+    private var maximumHeight: CGFloat { 750 }
     private var padding: CGFloat { 1.0 }
     private var outerMargin: CGFloat { frame.width < 375 ? 8.0 : 16.0 }
     private var innerMargin: CGFloat { needsCompactLayout ? 8.0 : 12.0 }
@@ -252,7 +260,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         // Work out the horizontal width we can support
         // Cap it to the readable content width if applicable
         let aspectRatio = nativeAd.mediaContent.aspectRatio
-        let width = preferredWidth(in: size, aspectRatio: aspectRatio)
+        let width = min(size.width - (padding * 2.0), maximumWidth)
         var iconSize = CGSize.zero
         if nativeAd.icon?.image != nil {
             iconSize = self.iconSize
@@ -287,43 +295,11 @@ final public class PromoNativeAdView: GADNativeAdView {
             height += innerMargin + ctaButtonHeight
         }
 
+        // Cap the height of the size to max supported
+        let maxHeight = min(maximumHeight, size.height - (padding * 2.0))
+        height = min(maxHeight, height)
+
         return CGSize(width: width, height: height)
-    }
-
-    private func minimumHeight() -> CGFloat {
-        // Work out the minimum height we can possibly fit without the media
-        var height = 0.0
-        height += headlineLabel.font.lineHeight * 2.0
-        height += titleVerticalSpacing
-        height += bodyLabel.font.lineHeight * 3.0
-        height += innerMargin
-        if !needsCompactLayout {
-            height += ctaButtonHeight
-        }
-        return height
-    }
-
-    // Given the aspect ratio of the media, and the hypothetical overall height of the other elements,
-    // work out what the proper width should be to fit everything on screen
-    private func preferredWidth(in size: CGSize, aspectRatio: CGFloat) -> CGFloat {
-        // Total width available to us
-        let width = min(size.width - (padding * 2.0), maximumWidth)
-        let height = min(size.height, maximumHeight)
-
-        // Sans the media, how much height we're guaranteed to take up
-        let minimumHeight = minimumHeight()
-
-        // Work out how big the view would be with the media aligned to the width
-
-        let mediaHeight = width / aspectRatio
-
-        // If it's not too tall to fit into our bounds
-        if minimumHeight + mediaHeight < height {
-            return width
-        }
-
-        let availableHeight = height - minimumHeight
-        return max(availableHeight * aspectRatio, minimumWidth)
     }
 }
 
