@@ -160,10 +160,11 @@ final public class PromoNativeAdView: GADNativeAdView {
         // Lay out the icon view
         var iconSize = CGSize.zero
         iconImageView.isHidden = iconImageView.image == nil
-        if !iconImageView.isHidden {
-            iconSize = self.iconSize
+        if !iconImageView.isHidden, let icon = nativeAd.icon?.image {
+            let aspectRatio = icon.size.width / icon.size.height
+            iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
             iconImageView.frame = CGRect(origin: origin, size: iconSize)
-            iconImageView.layer.cornerRadius = iconSize.width * 0.23
+            iconImageView.layer.cornerRadius = iconSize.height * 0.23
         }
 
         // Hide the body if we don't have any text
@@ -269,7 +270,7 @@ final public class PromoNativeAdView: GADNativeAdView {
     private var ctaButtonHeight: CGFloat { 54 }
     private var googleButtonWidth: CGFloat { 20.0 }
     private var displayScale: CGFloat { max(2.0, traitCollection.displayScale) }
-    private var iconSize: CGSize { CGSize(width: 64, height: 64) }
+    private var iconHeight: CGFloat { 64.0 }
     private var compactActionSize: CGSize { CGSize(width: 90, height: 36) }
 
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
@@ -280,8 +281,9 @@ final public class PromoNativeAdView: GADNativeAdView {
         let aspectRatio = nativeAd.mediaContent.aspectRatio
         let width = min(size.width - (padding * 2.0), maximumWidth)
         var iconSize = CGSize.zero
-        if nativeAd.icon?.image != nil {
-            iconSize = self.iconSize
+        if let icon = nativeAd.icon?.image {
+            let aspectRatio = icon.size.width / icon.size.height
+            iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
         }
         var textWidth = width - ((iconSize.width > 0.0 ? innerMargin + iconSize.width : 0.0) + googleButtonWidth)
         if needsCompactLayout { textWidth -= (innerMargin + compactActionSize.width) }
