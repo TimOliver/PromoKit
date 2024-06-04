@@ -33,6 +33,9 @@ final public class PromoNativeAdView: GADNativeAdView {
     // An icon image view optionally shown next to the headline
     private let iconImageView = UIImageView()
 
+    // A container view hosting the media view
+    private let contentMediaContainerView = UIImageView()
+
     // If media, the content view used to show the media
     private let contentMediaView = GADMediaView()
 
@@ -105,14 +108,18 @@ final public class PromoNativeAdView: GADNativeAdView {
         }
         addSubview(iconImageView)
 
-        contentMediaView.isUserInteractionEnabled = true
-        contentMediaView.backgroundColor = UIColor(white: 1.0, alpha: 0.5)
-        contentMediaView.clipsToBounds = true
-        contentMediaView.frame.size = CGSize(width: 120, height: 120)
+        contentMediaContainerView.isUserInteractionEnabled = true
+        contentMediaContainerView.backgroundColor = UIColor(white: 1.0, alpha: 0.5)
+        contentMediaContainerView.clipsToBounds = true
+        contentMediaContainerView.contentMode = .scaleAspectFill
         if #available(iOS 13.0, *) {
-            contentMediaView.layer.cornerCurve = .continuous
+            contentMediaContainerView.layer.cornerCurve = .continuous
         }
-        addSubview(contentMediaView)
+        addSubview(contentMediaContainerView)
+
+        contentMediaView.isUserInteractionEnabled = true
+        contentMediaView.frame.size = CGSize(width: 120, height: 120)
+        contentMediaContainerView.addSubview(contentMediaView)
 
         actionButton.isUserInteractionEnabled = false
         actionButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18.0)
@@ -131,6 +138,7 @@ final public class PromoNativeAdView: GADNativeAdView {
             bodyLabel.attributedText = NSAttributedString(string: body)
         }
 
+        contentMediaContainerView.image = mediaBackgroundImage
         contentMediaView.mediaContent = nativeAd?.mediaContent
 
         actionButton.setTitle(nil, for: .normal)
@@ -200,20 +208,25 @@ final public class PromoNativeAdView: GADNativeAdView {
             actionButton.removeFromSuperview()
         }
 
-        // Position the media
+        // Position the media container
         let mediaContent = nativeAd.mediaContent
         let aspectRatio = mediaContent.aspectRatio > 0.0 ? mediaContent.aspectRatio : 1.0
-        if needsCompactLayout {
-            let mediaSize = CGSize(width: size.width, height: min(floor(size.width / aspectRatio), size.height - origin.y))
-            contentMediaView.frame.size = mediaSize
-        } else {
-            let actionButtonY = actionButton.superview != nil ? (actionButton.frame.minY - innerMargin) : size.height
-            let mediaSize = CGSize(width: size.width, height: actionButtonY - origin.y)
-            contentMediaView.frame.size = mediaSize
-        }
-        contentMediaView.frame.origin = CGPoint(x: padding, y: origin.y)
-        contentMediaView.layer.cornerRadius = 15.0
+        let actionButtonY = (actionButton.superview != nil || !needsCompactLayout) ? (actionButton.frame.minY - innerMargin) : size.height
+        let mediaContainerSize = CGSize(width: size.width, height: actionButtonY - origin.y)
+        contentMediaContainerView.frame.size = mediaContainerSize
+        contentMediaContainerView.frame.origin = CGPoint(x: padding, y: origin.y)
+        contentMediaContainerView.layer.cornerRadius = 15.0
         updateMediaViewBackgroundColor()
+
+        // Fit the media inside the container
+        let isLandscape = aspectRatio > 1.0
+        let mediaSize = CGSize(width: size.width, height: size.width / aspectRatio)
+        let scale = min(mediaContainerSize.width / mediaSize.width,
+                        mediaContainerSize.height / mediaSize.height)
+        contentMediaView.frame.size = CGSize(width: isLandscape ? mediaContainerSize.width : mediaSize.width * scale,
+                                             height: !isLandscape ? mediaContainerSize.height :mediaSize.height * scale)
+        contentMediaView.frame.origin = CGPoint(x: (mediaContainerSize.width - contentMediaView.frame.width) * 0.5,
+                                                y: (mediaContainerSize.height - contentMediaView.frame.height) * 0.5)
 
         // Once all the views are configured, connect them to Google's references.
         // We defer them this late since it seems Google's validator occurs when they are
@@ -236,7 +249,7 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         guard let color, color.getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return }
 
-        contentMediaView.backgroundColor = UIColor(hue: h,
+        contentMediaContainerView.backgroundColor = UIColor(hue: h,
                                                    saturation: max(s - 0.1, 0.0),
                                                    brightness: min(b + 0.05, 1.0),
                                                    alpha: a)

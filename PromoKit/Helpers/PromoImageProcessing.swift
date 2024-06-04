@@ -54,7 +54,10 @@ public class PromoImageProcessing {
     ///   - radius: The amount of blur
     ///   - fittingSize: The size the image is shrunk to
     /// - Returns: The blurred image
-    static func blurredImage(_ image: UIImage, radius: CGFloat = 50, fittingSize: CGSize? = nil) -> UIImage? {
+    static func blurredImage(_ image: UIImage,
+                             radius: CGFloat = 50.0,
+                             brightness: CGFloat = -0.05,
+                             fittingSize: CGSize? = nil) -> UIImage? {
         guard var ciImage = CIImage(image: image) else { return nil }
         var extent = ciImage.extent
         ciImage = ciImage.clampedToExtent()
@@ -68,16 +71,21 @@ public class PromoImageProcessing {
             extent.size.width *= scale
             extent.size.height *= scale
         }
-
         // Create a blur filter
         guard let blurFilter = CIFilter(name: "CIGaussianBlur") else { return nil }
         blurFilter.setValue(ciImage, forKey: kCIInputImageKey)
         blurFilter.setValue(radius, forKey: kCIInputRadiusKey)
         guard let blurImage = blurFilter.outputImage else { return nil }
 
+        // Create brightness filter
+        guard let brightnessFilter = CIFilter(name: "CIColorControls") else { return nil }
+        brightnessFilter.setValue(blurImage, forKey: kCIInputImageKey)
+        brightnessFilter.setValue(brightness, forKey: kCIInputBrightnessKey)
+        guard let brightnessImage = brightnessFilter.outputImage else { return nil }
+
         // Perform the generated operations
         let context = CIContext()
-        guard let cgImage = context.createCGImage(blurImage, from: extent) else { return nil }
+        guard let cgImage = context.createCGImage(brightnessImage, from: extent.integral) else { return nil }
         return UIImage(cgImage: cgImage)
     }
 }

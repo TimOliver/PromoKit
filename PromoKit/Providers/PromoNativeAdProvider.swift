@@ -97,7 +97,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         videoOptions.clickToExpandRequested = true
 
         let mediaLoaderOptions = GADNativeAdMediaAdLoaderOptions()
-        mediaLoaderOptions.mediaAspectRatio = .landscape
+        mediaLoaderOptions.mediaAspectRatio = .any
 
         self.adLoader = GADAdLoader(adUnitID: adUnitID,
                                     rootViewController: promoView.rootViewController,
@@ -114,7 +114,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         promoView?.backgroundQueue.addOperation {
             let fittingSize = CGSize(width: 500, height: 700)
             let blurredImage = PromoImageProcessing
-                .blurredImage(image, radius: 50, fittingSize: fittingSize)
+                .blurredImage(image, radius: 50, brightness: -0.05, fittingSize: fittingSize)
             OperationQueue.main.addOperation { [weak self] in
                 self?.mediaBackgroundImage = blurredImage
                 completion()
