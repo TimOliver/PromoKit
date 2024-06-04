@@ -15,6 +15,12 @@ final public class PromoNativeAdView: GADNativeAdView {
         didSet { updateAdContent() }
     }
 
+    // A generated blurred image placed behind the ad when the aspect ratio
+    // doesn't align
+    public var mediaBackgroundImage: UIImage? {
+        didSet { updateAdContent() }
+    }
+
     // Main, bold headline title shown at the top
     private let headlineLabel = UILabel()
 
@@ -72,6 +78,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         bodyLabel.attributedText = nil
         actionButton.setTitle(nil, for: .normal)
         contentMediaView.mediaContent = nil
+        mediaBackgroundImage = nil
     }
 
     private func configureContentViews() {
@@ -141,8 +148,6 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         let size = frame.insetBy(dx: padding, dy: padding).size
         var origin = CGPoint(x: padding, y: padding)
-
-        let image = nativeAd.images?.first?.image
 
         // Lay out the icon view
         var iconSize = CGSize.zero
@@ -309,6 +314,11 @@ final public class PromoNativeAdContentView: PromoContentView {
     public var nativeAd: GADNativeAd? {
         set { adView.nativeAd = newValue }
         get { adView.nativeAd }
+    }
+
+    public var mediaBackgroundImage: UIImage? {
+        set { adView.mediaBackgroundImage = newValue }
+        get { adView.mediaBackgroundImage }
     }
 
     // The hosted native ad view

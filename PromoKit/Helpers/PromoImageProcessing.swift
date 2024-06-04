@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import CoreImage
 
 /// This file provides a variety of convenience functions for managing and processing images
 /// to be displayed in various promo content views
@@ -28,13 +29,8 @@ public class PromoImageProcessing {
             return image.preparingThumbnail(of: CGSize(width: size.width * scale, height: size.height * scale))
         }
 
-        var newSize = CGSize(width: newImage.width, height: newImage.height)
-        if let fittingSize {
-            let scale = min(fittingSize.width / newSize.width, 
-                            fittingSize.height / newSize.height)
-            newSize.width *= scale
-            newSize.height *= scale
-        }
+        let newSize = Self.size(CGSize(width: newImage.width, height: newImage.height),
+                                fitting: fittingSize)
 
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let context = CGContext(data: nil, 
@@ -50,5 +46,60 @@ public class PromoImageProcessing {
             return UIImage(cgImage: drawnImage, scale: scale, orientation: .up)
         }
         return nil
+    }
+
+    /// Generate a blurred version of the provided image
+    /// - Parameters:
+    ///   - image: The image to blur
+    ///   - radius: The amount of blur
+    ///   - fittingSize: The size the image is shrunk to
+    /// - Returns: The blurred image
+    static func blurredImage(_ image: UIImage, radius: CGFloat = 50, fittingSize: CGSize? = nil) -> UIImage? {
+        guard var ciImage = CIImage(image: image) else { return nil }
+        var extent = ciImage.extent
+        ciImage = ciImage.clampedToExtent()
+
+        // Scale the image down
+        if let fittingSize {
+            let scale = min(fittingSize.width / image.size.width,
+                            fittingSize.height / image.size.height)
+            ciImage = ciImage.samplingNearest()
+                .transformed(by: CGAffineTransformMakeScale(scale, scale))
+            extent.size.width *= scale
+            extent.size.height *= scale
+        }
+
+        // Create a blur filter
+        guard let blurFilter = CIFilter(name: "CIGaussianBlur") else { return nil }
+        blurFilter.setValue(ciImage, forKey: kCIInputImageKey)
+        blurFilter.setValue(radius, forKey: kCIInputRadiusKey)
+        guard let blurImage = blurFilter.outputImage else { return nil }
+
+        // Perform the generated operations
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(blurImage, from: extent) else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
+}
+
+// MARK: - Private
+
+extension PromoImageProcessing {
+
+    /// Given a size and a fitting size, return what the original size would be
+    /// if it was shrunk down/blown up to the fitting size
+    /// - Parameters:
+    ///   - size: The source size to be adjusted
+    ///   - fittingSize: The bounds that size should be adjusted to fit
+    /// - Returns: The adjusted size
+    fileprivate static func size(_ size: CGSize, fitting fittingSize: CGSize?) -> CGSize {
+        var newSize = CGSize(width: size.width, height: size.height)
+        if let fittingSize {
+            let scale = min(fittingSize.width / newSize.width,
+                            fittingSize.height / newSize.height)
+            newSize.width *= scale
+            newSize.height *= scale
+        }
+        return newSize
     }
 }
