@@ -39,6 +39,9 @@ final public class PromoNativeAdView: GADNativeAdView {
     // If media, the content view used to show the media
     private let contentMediaView = GADMediaView()
 
+    // Track when the first size has occurred so we can defer configuring the ad content until then
+    private var didSizeToAdContent = false
+
     // For easier testing, remove the 'Test mode' string from the title
     private var headlineText: String {
 #if DEBUG
@@ -82,6 +85,8 @@ final public class PromoNativeAdView: GADNativeAdView {
         actionButton.setTitle(nil, for: .normal)
         contentMediaView.mediaContent = nil
         mediaBackgroundImage = nil
+
+        didSizeToAdContent = false
     }
 
     private func configureContentViews() {
@@ -153,7 +158,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         super.layoutSubviews()
         
         // Skip layout if we don't have an ad yet
-        guard let nativeAd else { return }
+        guard didSizeToAdContent, let nativeAd else { return }
 
         let size = frame.insetBy(dx: padding, dy: padding).size
         let aspectRatio = nativeAd.mediaContent.aspectRatio
@@ -365,10 +370,12 @@ final public class PromoNativeAdView: GADNativeAdView {
     private var googleButtonWidth: CGFloat { 20.0 }
     private var displayScale: CGFloat { max(2.0, traitCollection.displayScale) }
     private var iconHeight: CGFloat { 64.0 }
-    private var compactActionSize: CGSize { CGSize(width: 100, height: 40) }
+    private var compactActionSize: CGSize { CGSize(width: 120, height: 40) }
 
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
         guard let nativeAd else { return .zero }
+
+        didSizeToAdContent = true
 
         // Aspect ratio of the ad view
         let aspectRatio = nativeAd.mediaContent.aspectRatio
