@@ -152,9 +152,107 @@ final public class PromoNativeAdView: GADNativeAdView {
     public override func layoutSubviews() {
         super.layoutSubviews()
         
+        // Skip layout if we don't have an ad yet
         guard let nativeAd else { return }
 
         let size = frame.insetBy(dx: padding, dy: padding).size
+        let aspectRatio = nativeAd.mediaContent.aspectRatio
+
+        // Layout horizontally on very tightly constrained sizes
+        if needsCompactLayout, aspectRatio < 1.0 {
+            layoutSubviewsInLandscapeFormat(size: size)
+        } else {
+            layoutSubviewsInPortraitFormat(size: size)
+        }
+
+        // Once all the views are configured, connect them to Google's references.
+        // We defer them this late since it seems Google's validator occurs when they are
+        // connected, so they must be in their final resting position by then
+        self.headlineView = headlineLabel
+        self.bodyView = bodyLabel
+        self.iconView = iconImageView
+        self.mediaView = contentMediaView
+        self.callToActionView = actionButton
+    }
+
+    private func layoutSubviewsInLandscapeFormat(size: CGSize) {
+        guard let nativeAd else { return }
+
+        // Lay out the ad view on the right hand side
+        let aspectRatio = nativeAd.mediaContent.aspectRatio
+        let mediaHeight = size.height - (padding * 2.0)
+        let mediaWidth = mediaHeight * aspectRatio
+        contentMediaContainerView.frame.size = CGSize(width: mediaWidth, height: mediaHeight)
+        contentMediaContainerView.frame.origin = CGPoint(x: (size.width - (googleButtonWidth + padding)) - mediaWidth,
+                                                         y: padding)
+        contentMediaView.frame = contentMediaContainerView.bounds
+        contentMediaContainerView.layer.cornerRadius = 15.0
+
+        // With the media view laid out, work out the remaning space we have
+        let mediaTotalWidth = (mediaWidth + googleButtonWidth + padding + innerMargin)
+        let textContentSize = CGSize(width: size.width - mediaTotalWidth,
+                                     height: size.height)
+
+        // Layout the icon if it is available
+        iconImageView.isHidden = iconImageView.image == nil
+        if !iconImageView.isHidden, let icon = nativeAd.icon?.image {
+            let aspectRatio = icon.size.width / icon.size.height
+            let iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
+            let iconOrigin = CGPoint(x: (textContentSize.width - iconSize.width) * 0.5, y: padding)
+            iconImageView.frame = CGRect(origin: iconOrigin, size: iconSize)
+            iconImageView.layer.cornerRadius = iconSize.height * 0.23
+        }
+
+        // Layout the action button at the bottom
+        if !(actionButton.title(for: .normal)?.isEmpty ?? true) {
+            actionButton.backgroundColor = self.tintColor
+            let buttonSize = CGSize(width: textContentSize.width, height: ctaButtonHeight)
+            let buttonOrigin = CGPoint(x: padding, y: size.height - (ctaButtonHeight + padding))
+            actionButton.frame = CGRect(origin: buttonOrigin, size: buttonSize)
+            actionButton.layer.cornerRadius = 15
+            addSubview(actionButton)
+        } else {
+            actionButton.isHidden = true
+            actionButton.removeFromSuperview()
+        }
+
+        // Fill the remaining space with the text labels
+        let iconOriginY = iconImageView.isHidden ? padding : iconImageView.frame.maxY + titleVerticalSpacing
+        let ctaOriginY = actionButton.isHidden ? (size.height - padding) : actionButton.frame.minY - innerMargin
+        let remainingTextSize = CGSize(width: textContentSize.width,
+                                       height: ctaOriginY - iconOriginY)
+
+        // Lay out the title
+        headlineLabel.textAlignment = .center
+        headlineLabel.frame.size = headlineLabel.sizeThatFits(remainingTextSize)
+        headlineLabel.frame.origin = CGPoint(x: (remainingTextSize.width - headlineLabel.frame.width) * 0.5,
+                                             y: iconOriginY)
+
+        // We're done if the label is hidden
+        bodyLabel.isHidden = bodyLabel.text?.isEmpty ?? true
+        if bodyLabel.isHidden { return }
+
+        // Lay out the subtitle
+        bodyLabel.textAlignment = .center
+        bodyLabel.frame.size = bodyLabel.sizeThatFits(remainingTextSize)
+        bodyLabel.frame.origin = CGPoint(x: (remainingTextSize.width - bodyLabel.frame.width) * 0.5,
+                                         y: headlineLabel.frame.maxY + titleVerticalSpacing)
+
+        // Scale the labels down if they overflowed
+        let totalHeight = bodyLabel.frame.height + titleVerticalSpacing + headlineLabel.frame.height
+        if totalHeight < remainingTextSize.height {
+            return
+        }
+
+        let scale = remainingTextSize.height / (totalHeight - titleVerticalSpacing)
+        headlineLabel.frame.size.height *= scale
+        bodyLabel.frame.size.height *= scale
+        bodyLabel.frame.origin.y = headlineLabel.frame.maxY + titleVerticalSpacing
+    }
+
+    private func layoutSubviewsInPortraitFormat(size: CGSize) {
+        guard let nativeAd else { return }
+
         var origin = CGPoint(x: padding, y: padding)
 
         // Lay out the icon view
@@ -175,6 +273,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         let textWidth = size.width - (textX + googleButtonWidth + (padding * 2.0) + (needsCompactLayout ? compactActionSize.width : 0.0))
         let textFittingSize = CGSize(width: textWidth, height: .greatestFiniteMagnitude)
 
+        headlineLabel.textAlignment = .left
         headlineLabel.frame.size = headlineLabel.sizeThatFits(textFittingSize)
         bodyLabel.frame.size = bodyLabel.isHidden ? .zero : bodyLabel.sizeThatFits(textFittingSize)
         let totalTextHeight = headlineLabel.frame.height + titleVerticalSpacing + bodyLabel.frame.height
@@ -187,6 +286,7 @@ final public class PromoNativeAdView: GADNativeAdView {
             addSubview(bodyLabel)
             let textY = headlineLabel.frame.maxY + titleVerticalSpacing
             bodyLabel.frame.origin = CGPoint(x: textX, y: textY)
+            bodyLabel.textAlignment = .left
         } else {
             bodyLabel.removeFromSuperview()
         }
@@ -202,7 +302,9 @@ final public class PromoNativeAdView: GADNativeAdView {
                 actionButton.layer.cornerRadius = 15
             } else {
                 actionButton.frame.size = compactActionSize
-                actionButton.frame.origin = CGPoint(x: size.width - actionButton.frame.width, y: headlineLabel.frame.minY + ((totalTextHeight - compactActionSize.height) / 2.0))
+                actionButton.frame.origin = CGPoint(x: size.width - (actionButton.frame.width + padding),
+                                                    y: max(headlineLabel.frame.minY + ((totalTextHeight - compactActionSize.height) / 2.0),
+                                                           padding + googleButtonWidth + titleVerticalSpacing))
                 actionButton.layer.cornerRadius = compactActionSize.height / 2.0
             }
         } else {
@@ -212,7 +314,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         // Position the media container
         let mediaContent = nativeAd.mediaContent
         let aspectRatio = mediaContent.aspectRatio > 0.0 ? mediaContent.aspectRatio : 1.0
-        let actionButtonY = (actionButton.superview != nil || !needsCompactLayout) ? (actionButton.frame.minY - innerMargin) : size.height
+        let actionButtonY = (actionButton.superview != nil && !needsCompactLayout) ? (actionButton.frame.minY - innerMargin) : size.height
         let mediaContainerSize = CGSize(width: size.width, height: actionButtonY - origin.y)
         contentMediaContainerView.frame.size = mediaContainerSize
         contentMediaContainerView.frame.origin = CGPoint(x: padding, y: origin.y)
@@ -229,14 +331,6 @@ final public class PromoNativeAdView: GADNativeAdView {
         contentMediaView.frame.origin = CGPoint(x: (mediaContainerSize.width - contentMediaView.frame.width) * 0.5,
                                                 y: (mediaContainerSize.height - contentMediaView.frame.height) * 0.5)
 
-        // Once all the views are configured, connect them to Google's references.
-        // We defer them this late since it seems Google's validator occurs when they are
-        // connected, so they must be in their final resting position by then
-        self.headlineView = headlineLabel
-        self.bodyView = bodyLabel
-        self.iconView = iconImageView
-        self.mediaView = contentMediaView
-        self.callToActionView = actionButton
     }
 
     private func updateMediaViewBackgroundColor() {
@@ -265,21 +359,35 @@ final public class PromoNativeAdView: GADNativeAdView {
     private var maximumHeight: CGFloat { 750 }
     private var padding: CGFloat { 1.0 }
     private var outerMargin: CGFloat { frame.width < 375 ? 8.0 : 16.0 }
-    private var innerMargin: CGFloat { needsCompactLayout ? 8.0 : 12.0 }
+    private var innerMargin: CGFloat { 12.0 }
     private var titleVerticalSpacing: CGFloat { 1.0 }
     private var ctaButtonHeight: CGFloat { 54 }
     private var googleButtonWidth: CGFloat { 20.0 }
     private var displayScale: CGFloat { max(2.0, traitCollection.displayScale) }
     private var iconHeight: CGFloat { 64.0 }
-    private var compactActionSize: CGSize { CGSize(width: 90, height: 36) }
+    private var compactActionSize: CGSize { CGSize(width: 100, height: 40) }
 
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
         guard let nativeAd else { return .zero }
 
+        // Aspect ratio of the ad view
+        let aspectRatio = nativeAd.mediaContent.aspectRatio
+
         // Work out the horizontal width we can support
         // Cap it to the readable content width if applicable
-        let aspectRatio = nativeAd.mediaContent.aspectRatio
         let width = min(size.width - (padding * 2.0), maximumWidth)
+
+        // When in compact landscape, and a portrait ad, let's
+        // line both up horizontally
+        let isHorizontalLayout = (aspectRatio < 1.0) && needsCompactLayout
+        if isHorizontalLayout {
+            let height = size.height
+            let mediaWidth = (height * aspectRatio) + innerMargin
+            let adjustedWidth = min(size.width - (padding * 2.0), maximumWidth + mediaWidth)
+            return CGSize(width: adjustedWidth, height: height)
+        }
+
+        // Line out the elements vertically
         var iconSize = CGSize.zero
         if let icon = nativeAd.icon?.image {
             let aspectRatio = icon.size.width / icon.size.height
