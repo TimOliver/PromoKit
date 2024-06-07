@@ -27,6 +27,9 @@ final public class PromoNativeAdView: GADNativeAdView {
     // Any auxiliary body text
     private let bodyLabel = UILabel()
 
+    // An ad badge label
+    private let adLabel = UILabel()
+
     // A large call-to-action button shown at the bottom
     private let actionButton = UIButton(type: .system)
 
@@ -90,18 +93,27 @@ final public class PromoNativeAdView: GADNativeAdView {
     }
 
     private func configureContentViews() {
+        adLabel.text = "Ad"
+        if #available(iOS 13.0, *) {
+            adLabel.backgroundColor = .label
+            adLabel.layer.cornerCurve = .continuous
+        } else {
+            adLabel.backgroundColor = .black
+        }
+        adLabel.textAlignment = .center
+        adLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        adLabel.layer.cornerRadius = 6
+        adLabel.clipsToBounds = true
+        addSubview(adLabel)
+
         let headlineFont = UIFont.systemFont(ofSize: 21, weight: .bold)
         headlineLabel.font = UIFontMetrics.default.scaledFont(for: headlineFont)
-        headlineLabel.adjustsFontSizeToFitWidth = true
-        headlineLabel.minimumScaleFactor = 0.75
         headlineLabel.numberOfLines = 2
         addSubview(headlineLabel)
 
         let bodyFont = UIFont.systemFont(ofSize: 16.0)
         bodyLabel.font = UIFontMetrics.default.scaledFont(for: bodyFont)
         bodyLabel.numberOfLines = 3
-        bodyLabel.adjustsFontSizeToFitWidth = true
-        bodyLabel.minimumScaleFactor = 0.35
         if #available(iOS 13.0, *) {
             bodyLabel.textColor = .secondaryLabel
         }
@@ -138,7 +150,7 @@ final public class PromoNativeAdView: GADNativeAdView {
 
     private func updateAdContent() {
         iconImageView.image = nativeAd?.icon?.image
-        headlineLabel.attributedText = NSAttributedString(string: headlineText)
+
         if let body = bodyText {
             bodyLabel.attributedText = NSAttributedString(string: body)
         }
@@ -201,11 +213,15 @@ final public class PromoNativeAdView: GADNativeAdView {
         // Layout the icon if it is available
         iconImageView.isHidden = iconImageView.image == nil
         if !iconImageView.isHidden, let icon = nativeAd.icon?.image {
+            addSubview(iconImageView)
             let aspectRatio = icon.size.width / icon.size.height
             let iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
-            let iconOrigin = CGPoint(x: (textContentSize.width - iconSize.width) * 0.5, y: padding)
+            let iconOrigin = CGPoint(x: (textContentSize.width - iconSize.width) * 0.5, 
+                                     y: textContentSize.height * 0.12)
             iconImageView.frame = CGRect(origin: iconOrigin, size: iconSize)
             iconImageView.layer.cornerRadius = iconSize.height * 0.23
+        } else {
+            iconImageView.removeFromSuperview()
         }
 
         // Layout the action button at the bottom
@@ -228,10 +244,19 @@ final public class PromoNativeAdView: GADNativeAdView {
                                        height: ctaOriginY - iconOriginY)
 
         // Lay out the title
+        let headlineStyle = NSMutableParagraphStyle()
+        headlineStyle.firstLineHeadIndent = 0
+        headlineLabel.attributedText = NSAttributedString(string: headlineText,
+                                                          attributes: [.paragraphStyle: headlineStyle ])
         headlineLabel.textAlignment = .center
         headlineLabel.frame.size = headlineLabel.sizeThatFits(remainingTextSize)
         headlineLabel.frame.origin = CGPoint(x: (remainingTextSize.width - headlineLabel.frame.width) * 0.5,
                                              y: iconOriginY)
+
+        // Lay out the ad label
+        adLabel.frame.size = adLabelSize
+        adLabel.frame.origin = CGPoint(x: 7, y: 3)
+        adLabel.textColor = backgroundColor
 
         // We're done if the label is hidden
         bodyLabel.isHidden = bodyLabel.text?.isEmpty ?? true
@@ -278,13 +303,25 @@ final public class PromoNativeAdView: GADNativeAdView {
         let textWidth = size.width - (textX + googleButtonWidth + (padding * 2.0) + (needsCompactLayout ? compactActionSize.width : 0.0))
         let textFittingSize = CGSize(width: textWidth, height: .greatestFiniteMagnitude)
 
+        let headlineStyle = NSMutableParagraphStyle()
+        headlineStyle.firstLineHeadIndent = headlineIndent
+        headlineLabel.attributedText = NSAttributedString(string: headlineText,
+                                                          attributes: [.paragraphStyle: headlineStyle ])
+
         headlineLabel.textAlignment = .left
         headlineLabel.frame.size = headlineLabel.sizeThatFits(textFittingSize)
+        headlineLabel.frame.size.width += headlineIndent
         bodyLabel.frame.size = bodyLabel.isHidden ? .zero : bodyLabel.sizeThatFits(textFittingSize)
         let totalTextHeight = headlineLabel.frame.height + titleVerticalSpacing + bodyLabel.frame.height
 
         let textY = totalTextHeight < iconSize.height ? (iconSize.height - totalTextHeight) / 2.0 : padding
         headlineLabel.frame.origin = CGPoint(x: textX, y: textY)
+
+        // Lay out the ad label at the start of the title label
+        adLabel.frame.size = adLabelSize
+        adLabel.frame.origin = CGPoint(x: headlineLabel.frame.minX,
+                                       y: headlineLabel.frame.minY + adLabelOffset)
+        adLabel.textColor = backgroundColor
 
         // Position the body text
         if !bodyLabel.isHidden {
@@ -362,6 +399,9 @@ final public class PromoNativeAdView: GADNativeAdView {
     private var maximumWidth: CGFloat { 500 }
     private var minimumWidth: CGFloat { 340 }
     private var maximumHeight: CGFloat { 750 }
+    private var headlineIndent: CGFloat { 31 }
+    private var adLabelOffset: CGFloat { 4 }
+    private var adLabelSize: CGSize { CGSize(width: 26, height: 18) }
     private var padding: CGFloat { 1.0 }
     private var outerMargin: CGFloat { frame.width < 375 ? 8.0 : 16.0 }
     private var innerMargin: CGFloat { 12.0 }
@@ -390,7 +430,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         if isHorizontalLayout {
             let height = size.height
             let mediaWidth = (height * aspectRatio) + innerMargin
-            let adjustedWidth = min(size.width - (padding * 2.0), maximumWidth + mediaWidth)
+            let adjustedWidth = min(size.width, mediaWidth + 375)
             return CGSize(width: adjustedWidth, height: height)
         }
 

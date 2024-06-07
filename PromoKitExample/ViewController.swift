@@ -30,7 +30,7 @@ class ViewController: UIViewController {
     }
 
     private func layoutAdView() {
-        promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 0).size,
+        promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 20).size,
                                                       providerClass: PromoNativeAdProvider.self)
         promoView.center = view.center
     }
