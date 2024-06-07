@@ -97,7 +97,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         videoOptions.clickToExpandRequested = true
 
         let mediaLoaderOptions = GADNativeAdMediaAdLoaderOptions()
-        mediaLoaderOptions.mediaAspectRatio = .any
+        mediaLoaderOptions.mediaAspectRatio = .landscape
 
         self.adLoader = GADAdLoader(adUnitID: adUnitID,
                                     rootViewController: promoView.rootViewController,
