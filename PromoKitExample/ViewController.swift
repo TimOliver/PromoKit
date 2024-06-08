@@ -15,7 +15,15 @@ class ViewController: UIViewController {
         super.viewDidLoad()
 
         promoView.rootViewController = self
-        promoView.providers = [PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
+        
+        // Native ad layout
+        //promoView.providers = [PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
+        
+        // Banner ad layout
+        promoView.providers = [
+            PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174")
+        ]
+
         view.addSubview(promoView)
     }
 
@@ -31,7 +39,7 @@ class ViewController: UIViewController {
 
     private func layoutAdView() {
         promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 20).size,
-                                                      providerClass: PromoNativeAdProvider.self)
+                                                      providerClass: PromoBannerAdProvider.self)
         promoView.center = view.center
     }
 }

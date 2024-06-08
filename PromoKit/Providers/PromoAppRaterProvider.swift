@@ -54,8 +54,12 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
     }
 
     public func contentView(for promoView: PromoView) -> PromoContentView {
+        var title = "Hope you're enjoying this app!"
+        if let appName = Bundle.main.infoDictionary?[kCFBundleNameKey as String] {
+            title = "Hope you're enjoying \(appName)!"
+        }
         let view = promoView.dequeueContentView(for: PromoTableListContentView.self)
-        view.configure(title: "Hope you're enjoying iComics!", 
+        view.configure(title: title, 
                        detailText: "Please make sure to rate it on the App Store when you get a chance!",
                        image: appIcon)
         return view
