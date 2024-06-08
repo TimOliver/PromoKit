@@ -139,7 +139,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         insertSubview(actionButton, at: 0)
     }
 
-    public  func configureContentViews(with nativeAd: GADNativeAd?) {
+    public func configureContentViews(with nativeAd: GADNativeAd?) {
         guard let nativeAd else {
             return
         }
@@ -510,6 +510,8 @@ final public class PromoNativeAdContentView: PromoContentView {
         fatalError("init(coder:) has not been implemented")
     }
  
+    public override var wantsSizingControl: Bool { true }
+
     public override func layoutSubviews() {
         super.layoutSubviews()
         adView.frame = bounds

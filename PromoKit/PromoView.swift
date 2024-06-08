@@ -213,7 +213,7 @@ extension PromoView {
 
         // If the provider is visible on screen, use the content view to calculate accurate sizing
         var preferredsize = CGSize.zero
-        if provider === currentProvider, let contentView {
+        if provider === currentProvider, let contentView, contentView.wantsSizingControl {
             preferredsize = contentView.sizeThatFits(contentSize)
         }
 

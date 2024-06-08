@@ -21,6 +21,9 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
     // The width x height of the app icon
     private var iconDimension: CGFloat
 
+    // The maximum size this provider should be
+    private let maximumSize: CGSize = CGSize(width: 450, height: 75)
+
     /// Creates a new provider with the app's associated app icon
     /// - Parameters:
     ///   - appIconName: The name of the app icon in the asset bundle
@@ -30,7 +33,12 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
         self.iconDimension = maxIconDimension
     }
 
-    public func fetchNewContent(for promoView: PromoView, 
+    public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
+        CGSize(width: min(maximumSize.width, fittingSize.width),
+               height: min(maximumSize.height, fittingSize.height)) 
+    }
+
+    public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
         guard let appIconName, let appIcon = UIImage(named: appIconName) else {
             resultHandler(.contentAvailable)

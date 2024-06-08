@@ -28,6 +28,11 @@ public class PromoContentView: UIView {
     /// order to get it ready for its next use.
     @objc func prepareForReuse() {}
 
+    /// By default, the provider will always determine appropriate sizing.
+    /// However for complex content views whose size depends on the loaded content,
+    /// return `true` in order to enable `sizeThatFits` for the promo view size.
+    @objc public var wantsSizingControl: Bool { false }
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }

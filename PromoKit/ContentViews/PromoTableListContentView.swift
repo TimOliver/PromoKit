@@ -56,7 +56,7 @@ final public class PromoTableListContentView: PromoContentView {
     ///   - detailText: The text optionally shown below the main title.
     ///   - image: The image optionally shown leading into the title.
     public func configure(title: String, detailText: String? = nil, image: UIImage? = nil) {
-        let titleFont = UIFont.systemFont(ofSize: 28, weight: .bold)
+        let titleFont = UIFont.systemFont(ofSize: 24, weight: .bold)
         let string = NSMutableAttributedString(string: title, attributes: [.font : titleFont]);
         if let detailText {
             var detailColor = UIColor(white: 0.27, alpha: 1.0)
