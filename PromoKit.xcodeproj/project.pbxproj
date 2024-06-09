@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		223EABF32C14E3E3006DBB84 /* PromoCloudKitEventProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223EABF22C14E3E3006DBB84 /* PromoCloudKitEventProvider.swift */; };
 		2257F6622BEB060D0058A2AE /* PromoNativeAdProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */; };
 		2257F6642BEB0C790058A2AE /* PromoNativeAdContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */; };
 		229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D212B2B67CE2600105C9D /* AppDelegate.swift */; };
@@ -50,6 +51,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		223EABF22C14E3E3006DBB84 /* PromoCloudKitEventProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoCloudKitEventProvider.swift; sourceTree = "<group>"; };
 		2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PromoNativeAdProvider.swift; sourceTree = "<group>"; };
 		2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNativeAdContentView.swift; sourceTree = "<group>"; };
 		229D21282B67CE2600105C9D /* PromoKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PromoKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -175,6 +177,7 @@
 			children = (
 				229D21AA2B7A0DCD00105C9D /* PromoAppRaterProvider.swift */,
 				22BF57EA2BD9368D0001A444 /* PromoBannerAdProvider.swift */,
+				223EABF22C14E3E3006DBB84 /* PromoCloudKitEventProvider.swift */,
 				2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */,
 				22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */,
 			);
@@ -354,6 +357,7 @@
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
 				22A105B12BBAE54C00DB3A80 /* PromoImageProcessing.swift in Sources */,
 				22A105AE2BBAC77900DB3A80 /* PromoPathMonitor.swift in Sources */,
+				223EABF32C14E3E3006DBB84 /* PromoCloudKitEventProvider.swift in Sources */,
 				22BF57EB2BD9368D0001A444 /* PromoBannerAdProvider.swift in Sources */,
 				229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */,
 				229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */,
