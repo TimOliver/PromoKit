@@ -35,6 +35,7 @@ final public class PromoTableListContentView: PromoContentView {
         if #available(iOS 13.0, *) {
             imageView.layer.cornerCurve = .continuous
         }
+        imageView.isHidden = true
         addSubview(imageView)
     }
     
@@ -75,6 +76,7 @@ final public class PromoTableListContentView: PromoContentView {
         label.attributedText = string
 
         imageView.image = image
+        imageView.isHidden = (image == nil)
 
         setNeedsLayout()
     }
@@ -90,7 +92,8 @@ extension PromoTableListContentView {
         if !imageView.isHidden {
             let imageSize = imageView.image?.size ?? .zero
             let scale = imageSize.height / imageSize.width
-            imageView.frame.size = CGSize(width: bounds.height * scale, height: bounds.height)
+            imageView.frame.size = CGSize(width: bounds.height * scale, 
+                                          height: bounds.height)
             if let promoView = self.promoView {
                 let radius = promoView.cornerRadius - promoView.contentPadding.top
                 imageView.layer.cornerRadius = max(0, radius)
