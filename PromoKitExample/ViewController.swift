@@ -21,7 +21,7 @@ class ViewController: UIViewController {
         
         // Banner ad layout
         promoView.providers = [
-            //PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174")
+            PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
             PromoAppRaterProvider(appIconName: "AppIcon", maxIconDimension: 128)
         ]
 
@@ -40,7 +40,7 @@ class ViewController: UIViewController {
 
     private func layoutAdView() {
         promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 20).size,
-                                                      providerClass: PromoAppRaterProvider.self)
+                                                      providerClass: PromoBannerAdProvider.self)
         promoView.center = view.center
     }
 }
