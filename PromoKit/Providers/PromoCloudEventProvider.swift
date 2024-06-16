@@ -1,5 +1,5 @@
 //
-//  PromoCloudKitEventProvider.swift
+//  PromoCloudEventProvider.swift
 //
 //  Copyright 2024 Timothy Oliver. All rights reserved.
 //
@@ -21,3 +21,15 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import Foundation
+
+@objc(PMKCloudEventProvider)
+public class PromoCloudEventProvider: NSObject, PromoProvider {
+    public func fetchNewContent(for promoView: PromoView, 
+                                with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
+        resultHandler(.contentAvailable)
+    }
+    
+    public func contentView(for promoView: PromoView) -> PromoContentView {
+        promoView.dequeueContentView(for: PromoContainerContentView.self)
+    }
+}
