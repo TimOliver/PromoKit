@@ -380,12 +380,12 @@ extension PromoView {
         self.contentView = provider.contentView(for: self)
         self.addSubview(contentView!)
         
+        // Inform the delegate a new provider was fetched
+        delegate?.promoView?(self, didUpdateProvider: provider)
+
         // Layout the content view
         setNeedsLayout()
         layoutIfNeeded()
-
-        // Inform the delegate a new provider was fetched
-        delegate?.promoView?(self, didUpdateProvider: provider)
 
         // Animate it fading in
         contentView?.alpha = 0.0

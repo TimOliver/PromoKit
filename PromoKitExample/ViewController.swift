@@ -15,15 +15,16 @@ class ViewController: UIViewController {
         super.viewDidLoad()
 
         promoView.rootViewController = self
-        
+        promoView.delegate = self
+
         // Native ad layout
-        //promoView.providers = [PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
+        promoView.providers = [PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
         
         // Banner ad layout
-        promoView.providers = [
-            PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
-            PromoAppRaterProvider(appIconName: "AppIcon", maxIconDimension: 128)
-        ]
+//        promoView.providers = [
+//            PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
+//            PromoAppRaterProvider(appIconName: "AppIcon", maxIconDimension: 128)
+//        ]
 
         view.addSubview(promoView)
     }
@@ -40,13 +41,13 @@ class ViewController: UIViewController {
 
     private func layoutAdView() {
         promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 20).size,
-                                                      providerClass: PromoBannerAdProvider.self)
+                                                      providerClass: PromoNativeAdProvider.self)
         promoView.center = view.center
     }
 }
 
 extension ViewController: PromoViewDelegate {
-    func promoView(_ promoView: PromoView, didFetchNewProvider provider: any PromoProvider) {
+    func promoView(_ promoView: PromoView, didUpdateProvider provider: any PromoProvider) {
         layoutAdView()
     }
 }

@@ -206,8 +206,8 @@ final public class PromoNativeAdView: GADNativeAdView {
         // We defer them this late since it seems Google's validator occurs when they are
         // connected, so they must be in their final resting position by then
         self.headlineView = headlineLabel
-        self.bodyView = bodyLabel
-        self.iconView = iconImageView
+        self.bodyView = !bodyLabel.isHidden ? bodyLabel : nil
+        self.iconView = !iconImageView.isHidden ? iconImageView : nil
         self.mediaView = contentMediaView
         self.callToActionView = actionButton
     }
@@ -481,6 +481,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         // Add the subtitle text
         if let body = bodyText {
             textHeight += titleVerticalSpacing
+            bodyLabel.numberOfLines = needsCompactLayout ? 2 : 3
             bodyLabel.text = body
             textHeight += bodyLabel.sizeThatFits(textSize).height
         }

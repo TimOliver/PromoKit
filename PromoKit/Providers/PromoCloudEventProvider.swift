@@ -36,8 +36,9 @@ import Foundation
 ///         byline          (String)         - Additional auxillary text shown in a smaller font below the heading.
 ///         thumbnail       (Data)           - An image that may be shown alongside the heading and byline.
 ///         url             (String)         - A url that will open when the user taps the view.
-///         expiration      (Date, Sortable) - A date denoting until when this event is valid to be fetched.
-///         localDuration   (Int)            - Alternatively, once fetched for the first time, how long in seconds the event may be shown after that.
+///         postDate        (Date, Sortable) - The date that this event was posted. The latest one will always be fetched.
+///         expiration      (Date)           - A date denoting when this event should stop being shown.
+///         localDuration   (Int)            - Once downloaded, how long the event should be shown to the user until deleted.
 ///         maxVersion      (String)         - The highest version that this app needs to be at to be shown.
 ///         minVersion      (String)         - Alternatively, the minimum version the app needs to be for this to be shown.
 ///
