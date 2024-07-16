@@ -326,7 +326,6 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         headlineLabel.textAlignment = .left
         headlineLabel.frame.size = headlineLabel.sizeThatFits(textFittingSize)
-        headlineLabel.frame.size.width += headlineIndent
         bodyLabel.frame.size = bodyLabel.isHidden ? .zero : bodyLabel.sizeThatFits(textFittingSize)
         let totalTextHeight = headlineLabel.frame.height + titleVerticalSpacing + bodyLabel.frame.height
 
