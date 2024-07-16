@@ -269,7 +269,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         headlineLabel.textAlignment = .center
         headlineLabel.frame.size = headlineLabel.sizeThatFits(remainingTextSize)
         headlineLabel.frame.origin = CGPoint(x: (remainingTextSize.width - headlineLabel.frame.width) * 0.5,
-                                             y: iconOriginY)
+                                             y: iconImageView.isHidden ? remainingTextSize.height * 0.2 : iconOriginY)
 
         // Lay out the ad label
         adLabel.frame.size = adLabelSize
@@ -277,6 +277,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         adLabel.textColor = backgroundColor
 
         // We're done if the label is hidden
+        bodyLabel.text = bodyText
         bodyLabel.isHidden = bodyLabel.text?.isEmpty ?? true
         if bodyLabel.isHidden { return }
 
