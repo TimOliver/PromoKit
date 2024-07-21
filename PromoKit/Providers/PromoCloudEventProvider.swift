@@ -24,7 +24,7 @@ import Foundation
 
 /// A provider that checks for certain records in this app's public CloudKit database,
 /// and displays the first valid entry found in a table list style content view.
-/// This is useful for broadcasting announcements to users when new updates to the app occur.
+/// This is useful for broadcasting new time-limited announcements about the app to users.
 ///
 /// This provider expects a specific record type to be configured inside this app's CloudKit instance.
 /// The record's parameters are:
@@ -33,12 +33,12 @@ import Foundation
 ///         PromoEvent
 /// Schema:
 ///         heading         (String)         - The main title shown at the top in bold text
-///         byline          (String)         - Additional auxillary text shown in a smaller font below the heading.
+///         byline          (String)         - Additional auxillary text shown in a smaller font below the heading. (Optional)
 ///         thumbnail       (Data)           - An image that may be shown alongside the heading and byline.
 ///         url             (String)         - A url that will open when the user taps the view.
 ///         postDate        (Date, Sortable) - The date that this event was posted. The latest one will always be fetched.
 ///         expiration      (Date)           - A date denoting when this event should stop being shown.
-///         localDuration   (Int)            - Once downloaded, how long the event should be shown to the user until deleted.
+///         localDuration   (Int)            - Once downloaded, the number of hours this event should be cached and shown to users.
 ///         maxVersion      (String)         - The highest version that this app needs to be at to be shown.
 ///         minVersion      (String)         - Alternatively, the minimum version the app needs to be for this to be shown.
 ///
