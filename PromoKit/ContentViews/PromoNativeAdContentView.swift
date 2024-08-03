@@ -99,6 +99,11 @@ final public class PromoNativeAdView: GADNativeAdView {
     }
 
     private func configureContentViews() {
+        let headlineFont = UIFont.systemFont(ofSize: 21, weight: .bold)
+        headlineLabel.font = UIFontMetrics.default.scaledFont(for: headlineFont)
+        headlineLabel.numberOfLines = 2
+        addSubview(headlineLabel)
+
         adLabel.text = "Ad"
         if #available(iOS 13.0, *) {
             adLabel.backgroundColor = .label
@@ -111,11 +116,6 @@ final public class PromoNativeAdView: GADNativeAdView {
         adLabel.layer.cornerRadius = 6
         adLabel.clipsToBounds = true
         addSubview(adLabel)
-
-        let headlineFont = UIFont.systemFont(ofSize: 21, weight: .bold)
-        headlineLabel.font = UIFontMetrics.default.scaledFont(for: headlineFont)
-        headlineLabel.numberOfLines = 2
-        addSubview(headlineLabel)
 
         let bodyFont = UIFont.systemFont(ofSize: 16.0)
         bodyLabel.font = UIFontMetrics.default.scaledFont(for: bodyFont)
@@ -531,7 +531,10 @@ final public class PromoNativeAdContentView: PromoContentView {
     public override func layoutSubviews() {
         super.layoutSubviews()
         adView.frame = bounds
+
         adView.backgroundColor = promoView?.backgroundView.backgroundColor
+        adView.headlineView?.backgroundColor = adView.backgroundColor
+        adView.bodyView?.backgroundColor = adView.backgroundColor
     }
 
     override func prepareForReuse() {
