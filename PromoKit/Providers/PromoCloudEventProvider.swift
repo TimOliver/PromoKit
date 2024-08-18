@@ -21,6 +21,7 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import Foundation
+import CloudKit
 
 /// A provider that checks for certain records in this app's public CloudKit database,
 /// and displays the first valid entry found in a table list style content view.
@@ -32,22 +33,44 @@ import Foundation
 /// Name:   
 ///         PromoEvent
 /// Schema:
-///         heading         (String)         - The main title shown at the top in bold text
-///         byline          (String)         - Additional auxillary text shown in a smaller font below the heading. (Optional)
-///         thumbnail       (Data)           - An image that may be shown alongside the heading and byline.
-///         url             (String)         - A url that will open when the user taps the view.
-///         postDate        (Date, Sortable) - The date that this event was posted. The latest one will always be fetched.
-///         expiration      (Date)           - A date denoting when this event should stop being shown.
-///         localDuration   (Int)            - Once downloaded, the number of hours this event should be cached and shown to users.
-///         maxVersion      (String)         - The highest version that this app needs to be at to be shown.
-///         minVersion      (String)         - Alternatively, the minimum version the app needs to be for this to be shown.
+///         recordName       (Ref, Queryable)    - The CloudKit metadata name for this record. Can be used to uniquely identify this record.
+///         createdTimestamp (Date, Sortable)    - The CloudKit metadata creation date for this record. Can be used to sort events.
+///         heading          (String)            - The main title shown at the top in bold text.
+///         byline           (String)            - Additional auxillary text shown in a smaller font below the heading. (Optional)
+///         thumbnail        (Data)              - An image that may be shown alongside the heading and byline. (Optional)
+///         url              (String)            - A url that will open when the user taps the view. (Optional)
+///         expirationDate   (Date, Sortable)    - A date denoting when this event should stop being shown. (Optional)
+///         localDuration    (Int)               - Once downloaded, the number of hours this event should be cached and shown to users. (Optional)
+///         maxVersion       (String)            - The highest version that this app needs to be at to be shown. (Optional)
+///         minVersion       (String)            - Alternatively, the minimum version the app needs to be for this to be shown. (Optional)
 ///
 
 @objc(PMKCloudEventProvider)
 public class PromoCloudEventProvider: NSObject, PromoProvider {
-    public func fetchNewContent(for promoView: PromoView, 
+
+    // Constant CloudKit names
+    private struct Constants {
+        let recordType = "PromoEvent"
+    }
+
+    // The container that will be queried. Default value is this app's default container
+    private let containerIdentifier: String?
+
+    // Fetches the public database for the initial container
+    private lazy var publicDatabase: CKDatabase = {
+        if let containerIdentifier { return CKContainer(identifier: containerIdentifier).publicCloudDatabase }
+        return CKContainer.default().publicCloudDatabase
+    }()
+
+    /// Create a new instance of this provider with the specified CloudKit container name
+    /// - Parameter containerIdentifier: The container name to use (eg iCloud.dev.tim.promokit). Specify nil for the app's default container
+    init(containerIdentifier: String? = nil) {
+        self.containerIdentifier = containerIdentifier
+    }
+
+    public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
-        resultHandler(.contentAvailable)
+
     }
     
     public func contentView(for promoView: PromoView) -> PromoContentView {

@@ -18,7 +18,7 @@ class ViewController: UIViewController {
         promoView.delegate = self
 
         // Native ad layout
-        promoView.providers = [PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
+        promoView.providers = [PromoCloudEventProvider(), PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
         
         // Banner ad layout
 //        promoView.providers = [

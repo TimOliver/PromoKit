@@ -54,6 +54,7 @@
 		223EABF22C14E3E3006DBB84 /* PromoCloudEventProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoCloudEventProvider.swift; sourceTree = "<group>"; };
 		2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PromoNativeAdProvider.swift; sourceTree = "<group>"; };
 		2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNativeAdContentView.swift; sourceTree = "<group>"; };
+		226EAA6F2C610B0C0039AE73 /* PromoKitExample.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PromoKitExample.entitlements; sourceTree = "<group>"; };
 		229D21282B67CE2600105C9D /* PromoKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PromoKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		229D212B2B67CE2600105C9D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		229D212F2B67CE2600105C9D /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -131,6 +132,7 @@
 		229D212A2B67CE2600105C9D /* PromoKitExample */ = {
 			isa = PBXGroup;
 			children = (
+				226EAA6F2C610B0C0039AE73 /* PromoKitExample.entitlements */,
 				229D212B2B67CE2600105C9D /* AppDelegate.swift */,
 				229D212F2B67CE2600105C9D /* ViewController.swift */,
 				229D21312B67CE2600105C9D /* Main.storyboard */,
@@ -544,6 +546,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PromoKitExample/PromoKitExample.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6LF3GMKZAB;
@@ -562,6 +566,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.PromoKit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -576,6 +581,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = PromoKitExample/PromoKitExample.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 6LF3GMKZAB;
@@ -594,6 +601,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.PromoKit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
