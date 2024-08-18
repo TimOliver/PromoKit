@@ -39,7 +39,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     private var mediaBackgroundImage: UIImage?
 
     // Store the result handler so we can call it when the ad has returned a value
-    private var resultHandler: ((PromoProviderFetchContentResult) -> Void)?
+    private var resultHandler: PromoProviderContentFetchHandler?
 
     // Store a reference to the promo view we can use when the ad delegate returns
     private weak var promoView: PromoView?
@@ -53,7 +53,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     public func didMoveToPromoView(_ promoView: PromoView) { self.promoView = promoView }
 
     public func fetchNewContent(for promoView: PromoView,
-                                with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
+                                with resultHandler: @escaping PromoProviderContentFetchHandler) {
         makeAdLoaderIfNeeded(with: promoView)
         adLoader?.load(GADRequest())
 

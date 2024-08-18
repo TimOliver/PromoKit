@@ -42,7 +42,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     private let adView = GADBannerView()
 
     // Store the result handler so we can call it when the ad has returned a value
-    private var resultHandler: ((PromoProviderFetchContentResult) -> Void)?
+    private var resultHandler: PromoProviderContentFetchHandler?
 
     // Store a reference to the promo view we can use when the ad delegate returns
     private weak var promoView: PromoView?

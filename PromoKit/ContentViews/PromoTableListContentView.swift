@@ -72,7 +72,7 @@ final public class PromoTableListContentView: PromoContentView {
     ///   - detailText: The text optionally shown below the main title.
     ///   - image: The image optionally shown leading into the title.
     public func configure(title: String, detailText: String? = nil, image: UIImage? = nil) {
-        let titleFont = UIFont.systemFont(ofSize: 24, weight: .bold)
+        let titleFont = UIFont.systemFont(ofSize: 20.0, weight: .bold)
         let string = NSMutableAttributedString(string: title, attributes: [.font : titleFont]);
         if let detailText {
             var detailColor = UIColor(white: 0.27, alpha: 1.0)
@@ -83,7 +83,7 @@ final public class PromoTableListContentView: PromoContentView {
                 })
             }
 
-            let detailFont = UIFont.systemFont(ofSize: 23.0, weight: .semibold)
+            let detailFont = UIFont.systemFont(ofSize: 17.0, weight: .regular)
             string.append(NSAttributedString(string: "\n"))
             string.append(NSAttributedString(string: detailText,
                                              attributes: [.font : detailFont, .foregroundColor: detailColor]))
@@ -103,7 +103,7 @@ extension PromoTableListContentView {
     public override func layoutSubviews() {
         super.layoutSubviews()
 
-        var xOffset = 0.0
+        var xOffset = promoView?.contentPadding.left ?? 0.0
         if !imageView.isHidden {
             let imageSize = imageView.image?.size ?? .zero
             let scale = imageSize.height / imageSize.width

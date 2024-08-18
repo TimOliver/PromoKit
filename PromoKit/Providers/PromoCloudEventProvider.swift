@@ -33,16 +33,16 @@ import CloudKit
 /// Name:   
 ///         PromoEvent
 /// Schema:
-///         recordName       (Ref, Queryable)    - The CloudKit metadata name for this record. Can be used to uniquely identify this record.
-///         createdTimestamp (Date, Sortable)    - The CloudKit metadata creation date for this record. Can be used to sort events.
-///         heading          (String)            - The main title shown at the top in bold text.
-///         byline           (String)            - Additional auxillary text shown in a smaller font below the heading. (Optional)
-///         thumbnail        (Data)              - An image that may be shown alongside the heading and byline. (Optional)
-///         url              (String)            - A url that will open when the user taps the view. (Optional)
-///         expirationDate   (Date, Sortable)    - A date denoting when this event should stop being shown. (Optional)
-///         localDuration    (Int)               - Once downloaded, the number of hours this event should be cached and shown to users. (Optional)
-///         maxVersion       (String)            - The highest version that this app needs to be at to be shown. (Optional)
-///         minVersion       (String)            - Alternatively, the minimum version the app needs to be for this to be shown. (Optional)
+///         recordName       (Ref)    - (Queryable) The CloudKit metadata name for this record. Can be used to uniquely identify this record.
+///         createdTimestamp (Date)   - (Sortable) The CloudKit metadata creation date for this record. Can be used to sort events.
+///         heading          (String) - The main title shown at the top in bold text.
+///         byline           (String) - Additional auxillary text shown in a smaller font below the heading. (Optional)
+///         thumbnail        (Data)   - An image that may be shown alongside the heading and byline. (Optional)
+///         url              (String) - A url that will open when the user taps the view. (Optional)
+///         expirationDate   (Date)   - (Sortable, Queryable) A date denoting when this event should stop being shown. (Optional)
+///         localDuration    (Int)    - Once downloaded, the number of hours this event should be cached and shown to users. (Optional)
+///         maxVersion       (String) - The highest version that this app needs to be at to be shown. (Optional)
+///         minVersion       (String) - Alternatively, the minimum version the app needs to be for this to be shown. (Optional)
 ///
 
 @objc(PMKCloudEventProvider)
@@ -50,7 +50,9 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     // Constant CloudKit names
     private struct Constants {
-        let recordType = "PromoEvent"
+        static let recordType = "PromoEvent"
+        static let headingKey = "heading"
+        static let bylineKey = "byline"
     }
 
     // The container that will be queried. Default value is this app's default container
@@ -62,6 +64,20 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         return CKContainer.default().publicCloudDatabase
     }()
 
+    // The maximum size this provider should be
+    private let maximumSize: CGSize = CGSize(width: 450, height: 75)
+
+    // Retain the result handler until we've downloaded all the data
+    public var resultHandler: PromoProviderContentFetchHandler?
+
+    // The ID of the record we queried
+    public var recordName: String?
+
+    // If found, the record to show
+    private var record: CKRecord?
+
+    // MARK: - Init
+
     /// Create a new instance of this provider with the specified CloudKit container name
     /// - Parameter containerIdentifier: The container name to use (eg iCloud.dev.tim.promokit). Specify nil for the app's default container
     init(containerIdentifier: String? = nil) {
@@ -69,11 +85,53 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     }
 
     public func fetchNewContent(for promoView: PromoView,
-                                with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
-
+                                with resultHandler: @escaping PromoProviderContentFetchHandler) {
+        self.resultHandler = resultHandler
+        fetchLatestEventRecord()
     }
     
     public func contentView(for promoView: PromoView) -> PromoContentView {
-        promoView.dequeueContentView(for: PromoContainerContentView.self)
+        let contentView = promoView.dequeueContentView(for: PromoTableListContentView.self)
+        if let heading = record?[Constants.headingKey] as? String, let byline = record?[Constants.bylineKey] as? String {
+            contentView.configure(title: heading, detailText: byline)
+        }
+        return contentView
+    }
+
+    public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
+        CGSize(width: min(maximumSize.width, fittingSize.width),
+               height: min(maximumSize.height, fittingSize.height))
+    }
+
+    // MARK: - Private
+
+    private func fetchLatestEventRecord() {
+        // Create the query, searching for the first item that hasn't expired yet
+        let predicate = NSPredicate(format: "expirationDate > now()")
+        let query = CKQuery(recordType: Constants.recordType, predicate: predicate)
+        query.sortDescriptors = [NSSortDescriptor(key: "expirationDate", ascending: true)]
+
+        // Create the query operation
+        let queryOperation = CKQueryOperation(query: query)
+        queryOperation.resultsLimit = 1
+        queryOperation.desiredKeys = ["recordName"]
+        queryOperation.recordFetchedBlock = { [weak self] record in
+            // Skip downloading the data again if we've already downloaded it
+            guard record.recordID.recordName != self?.recordName else { return }
+            self?.fetchEventRecordWithID(record.recordID)
+        }
+        publicDatabase.add(queryOperation)
+    }
+
+    private func fetchEventRecordWithID(_ recordID: CKRecord.ID) {
+        publicDatabase.fetch(withRecordID: recordID) { record, error in
+            guard record != nil, error == nil else {
+                self.resultHandler?(.fetchRequestFailed)
+                return
+            }
+            self.record = record
+            self.recordName = record?.recordID.recordName
+            self.resultHandler?(.contentAvailable)
+        }
     }
 }

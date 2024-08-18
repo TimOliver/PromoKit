@@ -18,8 +18,9 @@ class ViewController: UIViewController {
         promoView.delegate = self
 
         // Native ad layout
-        promoView.providers = [PromoCloudEventProvider(), PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
-        
+        promoView.providers = [PromoCloudEventProvider(containerIdentifier: "iCloud.dev.tim.promokit"),
+                               PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
+
         // Banner ad layout
 //        promoView.providers = [
 //            PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
@@ -41,7 +42,7 @@ class ViewController: UIViewController {
 
     private func layoutAdView() {
         promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 20).size,
-                                                      providerClass: PromoNativeAdProvider.self)
+                                                      providerClass: PromoCloudEventProvider.self)
         promoView.center = view.center
     }
 }
