@@ -48,7 +48,7 @@ final public class PromoTableListContentView: PromoContentView {
     public let imageView = UIImageView()
 
     /// Spacing between headnote and text
-    private let labelSpacing = 7.0
+    private let labelSpacing = 5.0
 
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
@@ -56,7 +56,8 @@ final public class PromoTableListContentView: PromoContentView {
         super.init(promoView: promoView)
 
         stackView.axis = .vertical
-        stackView.distribution = .fillProportionally
+        stackView.distribution = .fill
+        stackView.spacing = labelSpacing
         addSubview(stackView)
 
         headnoteLabel.font = UIFont.systemFont(ofSize: 13.0, weight: .medium)
