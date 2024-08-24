@@ -48,7 +48,7 @@ final public class PromoTableListContentView: PromoContentView {
     public let imageView = UIImageView()
 
     /// Spacing between headnote and text
-    private let labelSpacing = 5.0
+    private let labelSpacing = 7.0
 
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
@@ -61,7 +61,11 @@ final public class PromoTableListContentView: PromoContentView {
 
         headnoteLabel.font = UIFont.systemFont(ofSize: 13.0, weight: .medium)
         if #available(iOS 13.0, *) {
-            headnoteLabel.textColor = .tertiaryLabel
+            headnoteLabel.textColor = UIColor(dynamicProvider: { traits in
+                traits.userInterfaceStyle == .dark ? .tertiaryLabel : .init(white: 0.45, alpha: 1.0)
+            })
+        } else {
+            headnoteLabel.textColor = UIColor(white: 0.45, alpha: 1.0)
         }
         stackView.addArrangedSubview(headnoteLabel)
 
@@ -111,7 +115,7 @@ final public class PromoTableListContentView: PromoContentView {
             if #available(iOS 13.0, *) {
                 // Use a manual color here to make it darker on the background
                 detailColor = UIColor(dynamicProvider: { traits in
-                    traits.userInterfaceStyle == .dark ? .systemGray : .init(white: 0.35, alpha: 1.0)
+                    traits.userInterfaceStyle == .dark ? .secondaryLabel : .init(white: 0.35, alpha: 1.0)
                 })
             }
             let detailFont = UIFont.systemFont(ofSize: 15.0, weight: .regular)
@@ -148,15 +152,15 @@ extension PromoTableListContentView {
             xOffset = imageView.frame.maxX + (promoView?.contentPadding.left ?? 0.0)
         }
 
-        let size = bounds.size
-        let fittingSize = CGSize(width: size.width - xOffset, height: size.height)
-
         var headnoteHeight = 0.0
         if headnoteLabel.text != nil {
-            headnoteHeight = headnoteLabel.sizeThatFits(fittingSize).height + labelSpacing
+            headnoteLabel.sizeToFit()
+            headnoteHeight = headnoteLabel.frame.height + labelSpacing
         }
 
-        let labelHeight = min(label.sizeThatFits(fittingSize).height, size.height)
+        let size = bounds.size
+        let fittingSize = CGSize(width: size.width - xOffset, height: size.height - headnoteHeight)
+        let labelHeight = label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize), limitedToNumberOfLines: 4).height
         let height = min(size.height, labelHeight + headnoteHeight)
 
         stackView.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),
