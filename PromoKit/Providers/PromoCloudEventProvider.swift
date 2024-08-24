@@ -120,7 +120,8 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
             headnote = url.host
         }
 
-        if let heading = record?[Constants.title] as? String, let byline = record?[Constants.subtitle] as? String {
+        if let heading = record?[Constants.title] as? String {
+            let byline = record?[Constants.subtitle] as? String
             contentView.configure(title: heading, detailText: byline, footnote: headnote, image: thumbnail)
         }
         return contentView

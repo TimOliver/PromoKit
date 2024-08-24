@@ -35,38 +35,28 @@ final public class PromoTableListContentView: PromoContentView {
     /// A label that displays a headnote at the top
     public let footnoteLabel = UILabel()
 
-    /// Stack view that aligns both views
-    public let stackView = UIStackView()
-
     // An optional image displayed horizontally along the leading edge of the view
     public let imageView = UIImageView()
 
     /// Spacing between headnote and text
-    private let labelSpacing = 4.0
+    private let labelSpacing = 6.0
 
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
     required init(promoView: PromoView) {
         super.init(promoView: promoView)
 
-        stackView.axis = .vertical
-        stackView.distribution = .fillProportionally
-        stackView.spacing = labelSpacing
-        addSubview(stackView)
-
         label.adjustsFontSizeToFitWidth = true
         label.numberOfLines = 0
-        stackView.addArrangedSubview(label)
+        addSubview(label)
 
         footnoteLabel.font = UIFont.systemFont(ofSize: 13.0, weight: .medium)
         if #available(iOS 13.0, *) {
-            footnoteLabel.textColor = UIColor(dynamicProvider: { traits in
-                traits.userInterfaceStyle == .dark ? .tertiaryLabel : .init(white: 0.45, alpha: 1.0)
-            })
+            footnoteLabel.textColor = .secondaryLabel
         } else {
-            footnoteLabel.textColor = UIColor(white: 0.45, alpha: 1.0)
+            footnoteLabel.textColor = UIColor(white: 0.35, alpha: 1.0)
         }
-        stackView.addArrangedSubview(footnoteLabel)
+        addSubview(footnoteLabel)
 
         imageView.clipsToBounds = true
         if #available(iOS 13.0, *) {
@@ -106,12 +96,10 @@ final public class PromoTableListContentView: PromoContentView {
 
         // Detail text
         if let detailText {
-            var detailColor = UIColor(white: 0.27, alpha: 1.0)
+            var detailColor = UIColor.black // UIColor(white: 0.27, alpha: 1.0)
             if #available(iOS 13.0, *) {
                 // Use a manual color here to make it darker on the background
-                detailColor = UIColor(dynamicProvider: { traits in
-                    traits.userInterfaceStyle == .dark ? .secondaryLabel : .init(white: 0.35, alpha: 1.0)
-                })
+                detailColor = .label
             }
             let detailFont = UIFont.systemFont(ofSize: 15.0, weight: .regular)
             string.append(NSAttributedString(string: "\n"))
@@ -158,7 +146,9 @@ extension PromoTableListContentView {
         let labelHeight = label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize), limitedToNumberOfLines: 4).height
         let height = min(size.height, labelHeight + footnoteHeight )
 
-        stackView.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),
-                                 size: CGSize(width: fittingSize.width, height: height))
+        var yOffset = (size.height - height) * 0.5
+        label.frame = CGRect(origin: CGPoint(x: xOffset, y: yOffset),
+                             size: CGSize(width: fittingSize.width, height: labelHeight))
+        footnoteLabel.frame.origin = CGPoint(x: xOffset, y: label.frame.maxY + labelSpacing)
     }
 }
