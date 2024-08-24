@@ -27,24 +27,47 @@ import UIKit
 /// against the leading edge.
 @objc(PMKPromoTableListContentView)
 final public class PromoTableListContentView: PromoContentView {
-
     // MARK: - Public Properties
 
-    /// A label that displays both the title and subtitle text
+    /// A label that displays the title and subtitle text
     public let label = UILabel()
+
+    /// A label that displays a headnote at the top
+    public let headnoteLabel = UILabel()
+
+    /// Stack view that aligns both views
+    public let stackView = UIStackView()
+
+    /// A label that displays the subtitle text
+    public let subtitleLabel = UILabel()
+
+    /// A label that displays the footnote text
+    public let footnoteLabel = UILabel()
 
     // An optional image displayed horizontally along the leading edge of the view
     public let imageView = UIImageView()
+
+    /// Spacing between headnote and text
+    private let labelSpacing = 5.0
 
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
     required init(promoView: PromoView) {
         super.init(promoView: promoView)
 
+        stackView.axis = .vertical
+        stackView.distribution = .fillProportionally
+        addSubview(stackView)
+
+        headnoteLabel.font = UIFont.systemFont(ofSize: 13.0, weight: .medium)
+        if #available(iOS 13.0, *) {
+            headnoteLabel.textColor = .tertiaryLabel
+        }
+        stackView.addArrangedSubview(headnoteLabel)
+
         label.adjustsFontSizeToFitWidth = true
-        label.minimumScaleFactor = 0.3
         label.numberOfLines = 0
-        addSubview(label)
+        stackView.addArrangedSubview(label)
 
         imageView.clipsToBounds = true
         if #available(iOS 13.0, *) {
@@ -63,6 +86,7 @@ final public class PromoTableListContentView: PromoContentView {
         // It is best practice to nil out all view content since these can contribute to
         // the overall memory footprint
         label.text = nil
+        headnoteLabel.text = nil
         imageView.image = nil
     }
 
@@ -71,9 +95,17 @@ final public class PromoTableListContentView: PromoContentView {
     ///   - title: The text that will be displayed as the main title.
     ///   - detailText: The text optionally shown below the main title.
     ///   - image: The image optionally shown leading into the title.
-    public func configure(title: String, detailText: String? = nil, image: UIImage? = nil) {
-        let titleFont = UIFont.systemFont(ofSize: 20.0, weight: .bold)
-        let string = NSMutableAttributedString(string: title, attributes: [.font : titleFont]);
+    public func configure(title: String, detailText: String? = nil, headnote: String? = nil, image: UIImage? = nil) {
+        // Headnote
+        headnoteLabel.text = headnote
+
+        let string = NSMutableAttributedString()
+
+        // Title text
+        let titleFont = UIFont.systemFont(ofSize: 17.0, weight: .bold)
+        string.append(NSMutableAttributedString(string: title, attributes: [.font : titleFont]))
+
+        // Detail text
         if let detailText {
             var detailColor = UIColor(white: 0.27, alpha: 1.0)
             if #available(iOS 13.0, *) {
@@ -82,12 +114,12 @@ final public class PromoTableListContentView: PromoContentView {
                     traits.userInterfaceStyle == .dark ? .systemGray : .init(white: 0.35, alpha: 1.0)
                 })
             }
-
-            let detailFont = UIFont.systemFont(ofSize: 17.0, weight: .regular)
+            let detailFont = UIFont.systemFont(ofSize: 15.0, weight: .regular)
             string.append(NSAttributedString(string: "\n"))
             string.append(NSAttributedString(string: detailText,
                                              attributes: [.font : detailFont, .foregroundColor: detailColor]))
         }
+
         label.attributedText = string
 
         imageView.image = image
@@ -106,9 +138,9 @@ extension PromoTableListContentView {
         var xOffset = promoView?.contentPadding.left ?? 0.0
         if !imageView.isHidden {
             let imageSize = imageView.image?.size ?? .zero
-            let scale = imageSize.height / imageSize.width
-            imageView.frame.size = CGSize(width: bounds.height * scale, 
-                                          height: bounds.height)
+            let scale = min(bounds.width / imageSize.width, bounds.height / imageSize.height)
+            imageView.frame.size = CGSize(width: imageSize.width * scale,
+                                          height: imageSize.height * scale)
             if let promoView = self.promoView {
                 let radius = promoView.cornerRadius - promoView.contentPadding.top
                 imageView.layer.cornerRadius = max(0, radius)
@@ -117,11 +149,17 @@ extension PromoTableListContentView {
         }
 
         let size = bounds.size
-        var labelSize = label.sizeThatFits(size)
-        labelSize.width = min(size.width, labelSize.width) - xOffset
-        labelSize.height = min(size.height, labelSize.height)
-        label.frame.size = labelSize
-        label.frame.origin.x = xOffset
-        label.frame.origin.y = (frame.height - label.frame.height) * 0.5
+        let fittingSize = CGSize(width: size.width - xOffset, height: size.height)
+
+        var headnoteHeight = 0.0
+        if headnoteLabel.text != nil {
+            headnoteHeight = headnoteLabel.sizeThatFits(fittingSize).height + labelSpacing
+        }
+
+        let labelHeight = min(label.sizeThatFits(fittingSize).height, size.height)
+        let height = min(size.height, labelHeight + headnoteHeight)
+
+        stackView.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),
+                                 size: CGSize(width: fittingSize.width, height: height))
     }
 }

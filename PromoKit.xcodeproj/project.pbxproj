@@ -10,6 +10,7 @@
 		223EABF32C14E3E3006DBB84 /* PromoCloudEventProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223EABF22C14E3E3006DBB84 /* PromoCloudEventProvider.swift */; };
 		2257F6622BEB060D0058A2AE /* PromoNativeAdProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */; };
 		2257F6642BEB0C790058A2AE /* PromoNativeAdContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */; };
+		226B902F2C720AC00072FD1C /* PromoCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226B902E2C720AC00072FD1C /* PromoCache.swift */; };
 		229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D212B2B67CE2600105C9D /* AppDelegate.swift */; };
 		229D21302B67CE2600105C9D /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D212F2B67CE2600105C9D /* ViewController.swift */; };
 		229D21332B67CE2600105C9D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 229D21312B67CE2600105C9D /* Main.storyboard */; };
@@ -54,6 +55,7 @@
 		223EABF22C14E3E3006DBB84 /* PromoCloudEventProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoCloudEventProvider.swift; sourceTree = "<group>"; };
 		2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PromoNativeAdProvider.swift; sourceTree = "<group>"; };
 		2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNativeAdContentView.swift; sourceTree = "<group>"; };
+		226B902E2C720AC00072FD1C /* PromoCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoCache.swift; sourceTree = "<group>"; };
 		226EAA6F2C610B0C0039AE73 /* PromoKitExample.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PromoKitExample.entitlements; sourceTree = "<group>"; };
 		229D21282B67CE2600105C9D /* PromoKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PromoKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		229D212B2B67CE2600105C9D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -199,6 +201,7 @@
 		22A105AF2BBAE50800DB3A80 /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
+				226B902E2C720AC00072FD1C /* PromoCache.swift */,
 				22A105B02BBAE54C00DB3A80 /* PromoImageProcessing.swift */,
 			);
 			path = Helpers;
@@ -207,8 +210,8 @@
 		22FD36152BA9DA4D0058B32A /* Internal */ = {
 			isa = PBXGroup;
 			children = (
-				22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */,
 				22A105AD2BBAC77900DB3A80 /* PromoPathMonitor.swift */,
+				22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */,
 			);
 			path = Internal;
 			sourceTree = "<group>";
@@ -358,6 +361,7 @@
 				2257F6642BEB0C790058A2AE /* PromoNativeAdContentView.swift in Sources */,
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
 				22A105B12BBAE54C00DB3A80 /* PromoImageProcessing.swift in Sources */,
+				226B902F2C720AC00072FD1C /* PromoCache.swift in Sources */,
 				22A105AE2BBAC77900DB3A80 /* PromoPathMonitor.swift in Sources */,
 				223EABF32C14E3E3006DBB84 /* PromoCloudEventProvider.swift in Sources */,
 				22BF57EB2BD9368D0001A444 /* PromoBannerAdProvider.swift in Sources */,

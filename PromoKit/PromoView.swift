@@ -201,7 +201,7 @@ extension PromoView {
     /// - Returns: The most appropriate size this view should be to fit the container view
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
         var providerClass: AnyClass? = nil
-        if let provider = providers?.first {
+        if let provider = currentProvider ?? providers?.first {
             providerClass = type(of: provider)
         }
         return sizeThatFits(size, providerClass: providerClass)

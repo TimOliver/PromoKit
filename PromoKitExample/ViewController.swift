@@ -41,8 +41,7 @@ class ViewController: UIViewController {
     }
 
     private func layoutAdView() {
-        promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 20).size,
-                                                      providerClass: PromoCloudEventProvider.self)
+        promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 20).size)
         promoView.center = view.center
     }
 }
