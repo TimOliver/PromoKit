@@ -121,7 +121,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         }
 
         if let heading = record?[Constants.title] as? String, let byline = record?[Constants.subtitle] as? String {
-            contentView.configure(title: heading, detailText: byline, headnote: headnote, image: thumbnail)
+            contentView.configure(title: heading, detailText: byline, footnote: headnote, image: thumbnail)
         }
         return contentView
     }

@@ -33,22 +33,16 @@ final public class PromoTableListContentView: PromoContentView {
     public let label = UILabel()
 
     /// A label that displays a headnote at the top
-    public let headnoteLabel = UILabel()
+    public let footnoteLabel = UILabel()
 
     /// Stack view that aligns both views
     public let stackView = UIStackView()
-
-    /// A label that displays the subtitle text
-    public let subtitleLabel = UILabel()
-
-    /// A label that displays the footnote text
-    public let footnoteLabel = UILabel()
 
     // An optional image displayed horizontally along the leading edge of the view
     public let imageView = UIImageView()
 
     /// Spacing between headnote and text
-    private let labelSpacing = 5.0
+    private let labelSpacing = 4.0
 
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
@@ -56,23 +50,23 @@ final public class PromoTableListContentView: PromoContentView {
         super.init(promoView: promoView)
 
         stackView.axis = .vertical
-        stackView.distribution = .fill
+        stackView.distribution = .fillProportionally
         stackView.spacing = labelSpacing
         addSubview(stackView)
-
-        headnoteLabel.font = UIFont.systemFont(ofSize: 13.0, weight: .medium)
-        if #available(iOS 13.0, *) {
-            headnoteLabel.textColor = UIColor(dynamicProvider: { traits in
-                traits.userInterfaceStyle == .dark ? .tertiaryLabel : .init(white: 0.45, alpha: 1.0)
-            })
-        } else {
-            headnoteLabel.textColor = UIColor(white: 0.45, alpha: 1.0)
-        }
-        stackView.addArrangedSubview(headnoteLabel)
 
         label.adjustsFontSizeToFitWidth = true
         label.numberOfLines = 0
         stackView.addArrangedSubview(label)
+
+        footnoteLabel.font = UIFont.systemFont(ofSize: 13.0, weight: .medium)
+        if #available(iOS 13.0, *) {
+            footnoteLabel.textColor = UIColor(dynamicProvider: { traits in
+                traits.userInterfaceStyle == .dark ? .tertiaryLabel : .init(white: 0.45, alpha: 1.0)
+            })
+        } else {
+            footnoteLabel.textColor = UIColor(white: 0.45, alpha: 1.0)
+        }
+        stackView.addArrangedSubview(footnoteLabel)
 
         imageView.clipsToBounds = true
         if #available(iOS 13.0, *) {
@@ -91,7 +85,7 @@ final public class PromoTableListContentView: PromoContentView {
         // It is best practice to nil out all view content since these can contribute to
         // the overall memory footprint
         label.text = nil
-        headnoteLabel.text = nil
+        footnoteLabel.text = nil
         imageView.image = nil
     }
 
@@ -100,9 +94,9 @@ final public class PromoTableListContentView: PromoContentView {
     ///   - title: The text that will be displayed as the main title.
     ///   - detailText: The text optionally shown below the main title.
     ///   - image: The image optionally shown leading into the title.
-    public func configure(title: String, detailText: String? = nil, headnote: String? = nil, image: UIImage? = nil) {
+    public func configure(title: String, detailText: String? = nil, footnote: String? = nil, image: UIImage? = nil) {
         // Headnote
-        headnoteLabel.text = headnote
+        footnoteLabel.text = footnote
 
         let string = NSMutableAttributedString()
 
@@ -153,16 +147,16 @@ extension PromoTableListContentView {
             xOffset = imageView.frame.maxX + (promoView?.contentPadding.left ?? 0.0)
         }
 
-        var headnoteHeight = 0.0
-        if headnoteLabel.text != nil {
-            headnoteLabel.sizeToFit()
-            headnoteHeight = headnoteLabel.frame.height + labelSpacing
+        var footnoteHeight = 0.0
+        if footnoteLabel.text != nil {
+            footnoteLabel.sizeToFit()
+            footnoteHeight = footnoteLabel.frame.height + labelSpacing
         }
 
         let size = bounds.size
-        let fittingSize = CGSize(width: size.width - xOffset, height: size.height - headnoteHeight)
+        let fittingSize = CGSize(width: size.width - xOffset, height: size.height - footnoteHeight)
         let labelHeight = label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize), limitedToNumberOfLines: 4).height
-        let height = min(size.height, labelHeight + headnoteHeight)
+        let height = min(size.height, labelHeight + footnoteHeight )
 
         stackView.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),
                                  size: CGSize(width: fittingSize.width, height: height))
