@@ -60,6 +60,9 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         adView.adSize = bannerSizeFor(promoSize: promoView.frame.size)
         adView.load(GADRequest())
         self.resultHandler = resultHandler
+
+        // When calling `adView.load`, the ad automatically hides, so we need to manually show the loading spinner here
+        promoView.setIsLoading(true, animated: true)
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
