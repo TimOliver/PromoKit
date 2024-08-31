@@ -44,9 +44,6 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     // Store the result handler so we can call it when the ad has returned a value
     private var resultHandler: PromoProviderContentFetchHandler?
 
-    // Store a reference to the promo view we can use when the ad delegate returns
-    private weak var promoView: PromoView?
-
     /// Create new instance of a Google ad banner provider
     /// - Parameter adUnitID: The Google ad unit ID for this banner
     init(adUnitID: String) {
@@ -63,10 +60,6 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         adView.adSize = bannerSizeFor(promoSize: promoView.frame.size)
         adView.load(GADRequest())
         self.resultHandler = resultHandler
-
-        // Show a loading spinner since the Google ad is blank while it's loading
-        promoView.setIsLoading(true, animated: true)
-        self.promoView = promoView
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
@@ -91,10 +84,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     }
 
     private func didReceiveResult(_ result: Result<Void, Error>) {
-        // Set the loading spinner to hide
-        promoView?.setIsLoading(false, animated: true)
-        promoView = nil
-
+        
         // Inform the promo view of the results
         switch result {
         case .success(_):

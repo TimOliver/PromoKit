@@ -58,9 +58,6 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         adLoader?.load(GADRequest())
 
         self.resultHandler = resultHandler
-
-        // Show a loading spinner since the Google ad is blank while it's loading
-        promoView.setIsLoading(true, animated: true)
         self.promoView = promoView
     }
 
@@ -86,9 +83,6 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     }
 
     private func didReceiveResult(_ result: Result<Void, Error>) {
-        // Set the loading spinner to hide
-        promoView?.setIsLoading(false, animated: true)
-
         // Inform the promo view of the results
         if resultHandler != nil {
             switch result {

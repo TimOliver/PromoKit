@@ -104,11 +104,12 @@ public class PromoView: UIView {
         PromoView.sharedBackgroundQueue
     }
 
-    /// Shows a loading spinner view. Promo views can directly control this if they are blank while loading content
+    /// Shows a loading spinner view. This is used as a placeholder whenever a provider isn't being shown.
     public var isLoading: Bool {
         set { setIsLoading(newValue, animated: false) }
-        get { spinnerView != nil }
+        get { _isLoading }
     }
+    private var _isLoading: Bool = false
 
     /// Changing the frame of this promo view
     public override var frame: CGRect {
@@ -194,6 +195,14 @@ public class PromoView: UIView {
 // MARK: - View Sizing & Layout
 
 extension PromoView {
+
+    /// When the view moves to the superview, the loading spinner will be visible by default.
+    /// This shows some placeholder content while giving the hosting app time to determine which providers it wishes to show.
+    public override func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        guard superview != nil else { return }
+        setIsLoading(true, animated: true)
+    }
 
     /// Returns the most appropriate size this view should be when fitting into the provided container size.
     /// This will then be passed to the current provider object that can calculate the size itself, or forward it to a content view.
@@ -376,10 +385,13 @@ extension PromoView {
 
     // Get the provider to generate and configure its view content, and then display it
     private func displayNewProvider(_ provider: PromoProvider) {
+        // If we were loading, hide the spinner view
+        setIsLoading(false, animated: true)
+
         // Fetch a new view from the provider
         self.contentView = provider.contentView(for: self)
         self.addSubview(contentView!)
-        
+
         // Inform the delegate a new provider was fetched
         delegate?.promoView?(self, didUpdateProvider: provider)
 
@@ -409,14 +421,16 @@ extension PromoView {
     ///   - isLoading: Whether the spinner should be visible or not.
     ///   - animated: Whether the loading animation is animated or not.
     public func setIsLoading(_ isLoading: Bool, animated: Bool = false) {
-        guard isLoading != self.isLoading else { return }
+        guard isLoading != _isLoading else { return }
+
+        _isLoading = isLoading
 
         // Create the spinner view and configure it to our current environment.
         if isLoading {
-            spinnerView = UIActivityIndicatorView(style: .gray)
-            insertSubview(spinnerView!, aboveSubview: backgroundView)
-            refreshSpinnerView()
-            spinnerView?.center = CGPointMake(bounds.midX, bounds.midY)
+            if spinnerView == nil {
+                spinnerView = UIActivityIndicatorView(style: .gray)
+                insertSubview(spinnerView!, aboveSubview: backgroundView)
+            }
             spinnerView?.startAnimating()
         }
 
@@ -427,7 +441,7 @@ extension PromoView {
         let scalingAnimationBlock: (() -> Void) = {
             spinnerView.transform = isLoading ?
                 .identity :
-                .init(rotationAngle: .pi).scaledBy(x: 0.01, y: 0.01)
+                .identity.rotated(by: .pi).scaledBy(x: 0.01, y: 0.01)
         }
 
         let crossFadeAnimationBlock: (() -> Void) = {
@@ -435,13 +449,13 @@ extension PromoView {
         }
 
         let completionBlock: ((Bool) -> Void) = { _ in
-            if !isLoading { spinnerView.removeFromSuperview() }
+            spinnerView.isHidden = !isLoading
         }
 
-        // In either case, if we're stopping loading, set the spinner view
-        // to nil now. That way, subsequent calls to `setIsLoading` even if the animation
-        // hasn't completed yet will start a brand new pass with a new view
-        if !isLoading { self.spinnerView = nil }
+        spinnerView.isHidden = false
+        spinnerView.layer.removeAllAnimations()
+        spinnerView.transform = .identity
+        refreshSpinnerView()
 
         // If not animated, call these blocks right away
         if !animated {
@@ -452,11 +466,11 @@ extension PromoView {
         }
 
         // Call the animation blocks
-        spinnerView.transform = isLoading ? .init(rotationAngle: .pi).scaledBy(x: 0.01, y: 0.01) : .identity
+        spinnerView.transform = isLoading ? .identity.rotated(by: .pi).scaledBy(x: 0.01, y: 0.01) : .identity
         spinnerView.alpha = isLoading ? 0.0 : 1.0
-        UIView.animate(withDuration: 0.45, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0.0,
+        UIView.animate(withDuration: 0.45, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0.0, options: [],
                        animations: scalingAnimationBlock, completion: completionBlock)
-        UIView.animate(withDuration: 0.2, animations: crossFadeAnimationBlock)
+        UIView.animate(withDuration: 0.2, delay: 0.0, options: [], animations: crossFadeAnimationBlock)
     }
 
     /// Create a new spinner view instance based on the promo view's current state.
@@ -486,8 +500,12 @@ extension PromoView {
         spinnerView.color = isDarkMode ? .white : .gray
 
         // Update the style based on how large the promo view is
-        let useLargeSize = frame.height > PromoView.largeSpinnerRequiredHeight
-        spinnerView.style = useLargeSize ? .whiteLarge : .gray
+        // Only do this when we're loading (ie, we're going *into* a fetch cycle)
+        // so the size doesn't randomly change as we're winding down
+        if isLoading {
+            let useLargeSize = frame.height > PromoView.largeSpinnerRequiredHeight
+            spinnerView.style = useLargeSize ? .whiteLarge : .gray
+        }
         spinnerView.sizeToFit()
 
         // Position the spinner in the middle of the view

@@ -77,9 +77,6 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         return CKContainer.default().publicCloudDatabase
     }()
 
-    // The parent promo view
-    private weak var promoView: PromoView?
-
     // A cache to store local state about the CloudKit records and
     private let cache = PromoCache()
 
@@ -108,9 +105,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping PromoProviderContentFetchHandler) {
         self.resultHandler = resultHandler
-        self.promoView = promoView
         fetchLatestEventRecordID()
-        promoView.setIsLoading(true, animated: true)
     }
     
     public func contentView(for promoView: PromoView) -> PromoContentView {
@@ -266,7 +261,6 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// - Parameter result: The final content discovery result
     private func handleResult(_ result: PromoProviderFetchContentResult) {
         DispatchQueue.main.async { [weak self] in
-            self?.promoView?.setIsLoading(false, animated: true)
             self?.resultHandler?(result)
         }
     }
