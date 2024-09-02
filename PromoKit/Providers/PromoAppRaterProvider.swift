@@ -43,7 +43,7 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
     /// - Parameters:
     ///   - appIconName: The name of the app icon in the asset bundle
     ///   - maxIconDimension: The maximum expected size the icon will be rendered at, in points
-    init(appIconName: String = "AppIcon", maxIconDimension: Int = 96) {
+    init(appIconName: String = "AppIcon", maxIconDimension: Int = 76) {
         self.appIconName = appIconName
         self.iconDimension = maxIconDimension
     }
@@ -60,18 +60,20 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
             return
         }
 
+        // Perform the decoding and resizing on this promo view's background queue
         let scale = promoView.traitCollection.displayScale
         let operation = BlockOperation()
         operation.addExecutionBlock {
             guard !operation.isCancelled,
                   let appIconName = self.appIconName,
-                  let appIconURL = PromoFileManager.urlForAppIcon(named: appIconName, dimension: self.iconDimension),
+                  let appIconURL = PromoFileManager.urlForAppIcon(named: appIconName, targetDimension: self.iconDimension),
                   let appIcon = UIImage(contentsOfFile: appIconURL.path)
             else {
                 OperationQueue.main.addOperation { resultHandler(.contentAvailable) }
                 return
             }
 
+            // Decode and resize the image to the desired dimensions.
             let size = CGSize(width: self.iconDimension, height: self.iconDimension)
             let image = PromoImageProcessing.decodedImage(appIcon, fittingSize: size, scale: scale)
 
@@ -95,5 +97,7 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
         return view
     }
 
-    public func cornerRadius(for promoView: PromoView, with contentPadding: UIEdgeInsets) -> CGFloat { 25.0 }
+    public func cornerRadius(for promoView: PromoView, with contentPadding: UIEdgeInsets) -> CGFloat {
+        promoView.frame.height * 0.3
+    }
 }
