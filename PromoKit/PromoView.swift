@@ -398,8 +398,8 @@ extension PromoView {
         delegate?.promoView?(self, didUpdateProvider: provider)
 
         // Layout the content view
-        setNeedsLayout()
-        layoutIfNeeded()
+        let contentPadding = contentPadding(for: provider)
+        contentView?.frame = CGRectIntegral(bounds.inset(by: contentPadding))
 
         // Animate it fading in
         contentView?.alpha = 0.0
