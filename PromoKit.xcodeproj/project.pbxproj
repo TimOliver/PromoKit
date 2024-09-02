@@ -205,6 +205,7 @@
 			children = (
 				226B902E2C720AC00072FD1C /* PromoCache.swift */,
 				22A105B02BBAE54C00DB3A80 /* PromoImageProcessing.swift */,
+				22642E922C85F80D00F006F4 /* PromoFileManager.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -212,7 +213,6 @@
 		22FD36152BA9DA4D0058B32A /* Internal */ = {
 			isa = PBXGroup;
 			children = (
-				22642E922C85F80D00F006F4 /* PromoFileManager.swift */,
 				22A105AD2BBAC77900DB3A80 /* PromoPathMonitor.swift */,
 				22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */,
 			);

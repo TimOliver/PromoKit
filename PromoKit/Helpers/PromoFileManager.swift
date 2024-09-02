@@ -22,7 +22,7 @@
 
 import Foundation
 
-internal class PromoFileManager {
+public class PromoFileManager {
 
     /// Convenienice property for accessing this app's default file manager object
     public static var fileManager = FileManager.default
@@ -37,7 +37,7 @@ internal class PromoFileManager {
     /// - Parameter named: The name of the app icon to search for (eg "AppIcon" for matching "AppIcon76x76@2x.png")
     /// - Parameter dimension: The desired size in points. The icon with the closest largest to this value will be used
     /// - Returns: The absolute URL to the largest icon
-    public static func urlForAppIcon(named iconName: String, dimension: Int = 128) -> URL? {
+    public static func urlForAppIcon(named iconName: String, targetDimension dimension: Int = 128) -> URL? {
         guard let contents = try? fileManager.contentsOfDirectory(atPath: resourceURL?.path ?? ""), !contents.isEmpty else { return nil }
 
         // Save the file name and extracted sizing data
