@@ -59,9 +59,10 @@ public class PromoView: UIView {
     /// The content view from the currently active promo provider
     public var contentView: PromoContentView?
 
-    /// The corner radius of the promo view
-    public var cornerRadius: CGFloat = 20.0 {
-        didSet { backgroundView.layer.cornerRadius = cornerRadius }
+    /// The corner radius of the promo view (Default is 20.0)
+    public var cornerRadius: CGFloat {
+        set { backgroundView.layer.cornerRadius = newValue }
+        get { backgroundView.layer.cornerRadius }
     }
 
     /// Whether a close button is shown on the trailing side of the ad view (Default is false)
@@ -166,6 +167,7 @@ public class PromoView: UIView {
         } else {
             backgroundView.backgroundColor = .init(white: 0.2, alpha: 1.0)
         }
+        backgroundView.layer.cornerRadius = 20.0
 
         // Class initialization
         super.init(frame: frame)

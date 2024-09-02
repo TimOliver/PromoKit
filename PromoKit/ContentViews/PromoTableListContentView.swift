@@ -145,9 +145,8 @@ extension PromoTableListContentView {
         let fittingSize = CGSize(width: size.width - xOffset, height: size.height - footnoteHeight)
         let labelHeight = label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize), limitedToNumberOfLines: 4).height
         let height = min(size.height, labelHeight + footnoteHeight )
-
-        var yOffset = (size.height - height) * 0.5
-        label.frame = CGRect(origin: CGPoint(x: xOffset, y: yOffset),
+        
+        label.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),
                              size: CGSize(width: fittingSize.width, height: labelHeight))
         footnoteLabel.frame.origin = CGPoint(x: xOffset, y: label.frame.maxY + labelSpacing)
     }
