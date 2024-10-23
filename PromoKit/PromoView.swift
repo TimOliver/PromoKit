@@ -69,7 +69,7 @@ public class PromoView: UIView {
     public var showCloseButton: Bool = false
 
     /// The background view displayed behind the content view
-    private(set) public var backgroundView: UIView
+    public let backgroundView: UIView = UIView()
 
     /// When providers don't specify their own insetting, the content insetting of the promo view is used instead
     /// The default value is the view's `layoutMargins`
@@ -111,6 +111,9 @@ public class PromoView: UIView {
         get { _isLoading }
     }
     private var _isLoading: Bool = false
+
+    /// A separate container view that is used to play an interactive animation when tapped.
+    private let containerView = UIView()
 
     /// Changing the frame of this promo view
     public override var frame: CGRect {
@@ -159,8 +162,9 @@ public class PromoView: UIView {
     /// Create a new promo view instance with the provided frame
     /// - Parameter frame: The frame of the promo view
     public override init(frame: CGRect) {
+        super.init(frame: frame)
+
         // Background view
-        backgroundView = UIView()
         if #available(iOS 13.0, *) {
             backgroundView.backgroundColor = .secondarySystemBackground
             backgroundView.layer.cornerCurve = .continuous
@@ -169,11 +173,11 @@ public class PromoView: UIView {
         }
         backgroundView.layer.cornerRadius = 20.0
 
-        // Class initialization
-        super.init(frame: frame)
+        // Configure views
+        containerView.isUserInteractionEnabled = true
+        addSubview(containerView)
 
-        // Configure views post creation
-        addSubview(backgroundView)
+        containerView.addSubview(backgroundView)
 
         // Configure default values
         self.defaultContentPadding = self.layoutMargins
@@ -258,8 +262,9 @@ extension PromoView {
     public override func layoutSubviews() {
         super.layoutSubviews()
         
-        // Set the background to match the
-        backgroundView.frame = bounds
+        // Set the container view to match the outer view, and align the rest to that
+        containerView.frame = bounds
+        backgroundView.frame = containerView.bounds
 
         // Set the content view to be inset over the background view
         let contentPadding = contentPadding(for: currentProvider)
@@ -363,7 +368,7 @@ extension PromoView {
         // Fade the current content view out
         if let snapshot = contentView.snapshotView(afterScreenUpdates: false) {
             snapshot.frame = contentView.frame
-            addSubview(snapshot)
+            containerView.addSubview(snapshot)
             UIView.animate(withDuration: 0.25) {
                 snapshot.alpha = 0.0
             } completion: { _ in
@@ -392,7 +397,7 @@ extension PromoView {
 
         // Fetch a new view from the provider
         self.contentView = provider.contentView(for: self)
-        self.addSubview(contentView!)
+        self.containerView.addSubview(contentView!)
 
         // Inform the delegate a new provider was fetched
         delegate?.promoView?(self, didUpdateProvider: provider)
@@ -512,5 +517,21 @@ extension PromoView {
 
         // Position the spinner in the middle of the view
         spinnerView.center = CGPointMake(bounds.midX, bounds.midY)
+    }
+}
+
+// MARK: - Interaction
+
+extension PromoView {
+    public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesBegan(touches, with: event)
+    }
+
+    public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesEnded(touches, with: event)
+    }
+
+    public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesCancelled(touches, with: event)
     }
 }

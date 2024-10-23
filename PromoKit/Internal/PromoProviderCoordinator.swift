@@ -182,6 +182,7 @@ extension PromoProviderCoordinator {
     private func nextValidProvider(from fromProvider: PromoProvider? = nil,
                                    after afterProvider: PromoProvider? = nil) -> PromoProvider? {
         guard let providers = self.providers, !providers.isEmpty else { return nil }
+
         // Fetch the index after the given provider, or start at the beginning otherwise
         let provider = afterProvider ?? fromProvider ?? nil
         var startIndex = (provider != nil) ? (providers.firstIndex{ $0 === provider } ?? 0) : 0

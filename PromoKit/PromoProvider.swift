@@ -51,16 +51,19 @@ public protocol PromoProvider: AnyObject {
     /// internet connection, these providers will still be called in order to be given a chance to display their cache instead.
     @objc optional var isOfflineCacheAvailable: Bool { get }
 
-    /// If true, when the frame size of the promo view changes, this provider will be given a chance to optionally
-    /// reload its content. This is useful for banner ads who might need to load a larger or smaller variant to fit the new size.
+    /// If true, when the frame size of the promo view changes, this provider will be given a chance to reload its content if it needs to.
+    /// This is useful for banner ads who might need to load a larger or smaller variant to fit the new size.
     @objc optional var needsReloadOnSizeChange: Bool { get }
 
     /// For successful fetches, the amount of time that must pass before another fetch will be made.
     /// This is for providers who aren't real-time, so it isn't necessary to check them very often.
     @objc optional var fetchRefreshInterval: TimeInterval { get }
 
-    /// Clears all of the local state and resets this provider back to where it was when 
-    /// it was first created.
+    /// Indicates that when the user taps down on the promo view, a subtle interaction animation should play.
+    /// Use this to disable the animation if the promo has its own inner interactive elements.
+    @objc optional var shouldPlayInteractionAnimation: Bool { get }
+
+    /// Clears all of the local state and resets this provider back to where it was when it was first created.
     @objc optional func reset()
 
     /// Called when a provider has started being hosted by a promo view.
