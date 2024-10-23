@@ -99,7 +99,7 @@ public class PromoImageProcessing {
         guard let brightnessImage = brightnessFilter.outputImage else { return nil }
 
         // Perform the generated operations
-        let context = CIContext()
+        let context = CIContext(options: [.useSoftwareRenderer: true])
         guard let cgImage = context.createCGImage(brightnessImage, from: extent.integral) else { return nil }
         return UIImage(cgImage: cgImage)
     }
