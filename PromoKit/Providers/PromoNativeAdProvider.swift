@@ -90,12 +90,9 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     }
 
     public func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool {
-        // We only want to suppress the tap animation if the user taps the little Google ad info button in the top right corner
-        guard let adView = promoView.contentView as? PromoNativeAdContentView else { return true }
-        let adChoicesViewFrame = adView.adChoicesViewFrame
-        if adChoicesViewFrame == .zero { return true }
-        let location = touch.location(in: promoView.contentView)
-        return !adChoicesViewFrame.insetBy(dx: -15.0, dy: -15.0).contains(location)
+        // Google ads is really finicky. The zoom animation triggers a warning that the inner ad content is overflowing and this
+        // behaviour will stopped being supported in future. We need to disable the animation to handle this.
+        false
     }
 
     // MARK: - Private
