@@ -107,7 +107,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         self.resultHandler = resultHandler
         fetchLatestEventRecordID()
     }
-    
+
     public func contentView(for promoView: PromoView) -> PromoContentView {
         let contentView = promoView.dequeueContentView(for: PromoTableListContentView.self)
         var headnote: String?

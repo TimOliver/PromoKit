@@ -28,7 +28,7 @@ public enum PromoProviderFetchContentResult: Int {
     case fetchRequestFailed    = 0 /// An error occurred (eg, no internet, or invalid connection) and another attempt should be made.
     case noContentAvailable    = 1 /// The fetch succeeded, but no valid content was found, so this provider should be skipped.
     case contentAvailable      = 2 /// The fetch succeeded and this provider has valid content it can show.
-};
+}
 
 public typealias PromoProviderContentFetchHandler = ((PromoProviderFetchContentResult) -> Void)
 

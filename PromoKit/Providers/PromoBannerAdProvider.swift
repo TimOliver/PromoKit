@@ -87,12 +87,12 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     }
 
     private func didReceiveResult(_ result: Result<Void, Error>) {
-        
+
         // Inform the promo view of the results
         switch result {
-        case .success(_):
+        case .success:
             self.resultHandler?(.contentAvailable)
-        case .failure(_):
+        case .failure:
             self.resultHandler?(.fetchRequestFailed)
         }
         self.resultHandler = nil

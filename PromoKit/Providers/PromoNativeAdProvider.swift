@@ -101,9 +101,9 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         // Inform the promo view of the results
         if resultHandler != nil {
             switch result {
-            case .success(_):
+            case .success:
                 self.resultHandler?(.contentAvailable)
-            case .failure(_):
+            case .failure:
                 self.resultHandler?(.fetchRequestFailed)
             }
             self.resultHandler = nil
@@ -133,7 +133,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         self.adLoader?.delegate = self
     }
 
-    private func makeBlurredMediaImageIfAvailable(completion: @escaping () -> (Void)) {
+    private func makeBlurredMediaImageIfAvailable(completion: @escaping () -> Void) {
         guard let image = nativeAd?.images?.first?.image else {
             completion()
             return
@@ -161,7 +161,7 @@ extension PromoNativeAdProvider: GADNativeAdLoaderDelegate {
         }
 
         self.nativeAd = nativeAd
-        
+
         // Generate a blurred background image to position behind the media view
         makeBlurredMediaImageIfAvailable {
             self.didReceiveResult(.success(()))

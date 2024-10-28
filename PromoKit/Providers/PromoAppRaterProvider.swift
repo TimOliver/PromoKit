@@ -50,7 +50,7 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
         CGSize(width: min(maximumSize.width, fittingSize.width),
-               height: min(maximumSize.height, fittingSize.height)) 
+               height: min(maximumSize.height, fittingSize.height))
     }
 
     public func fetchNewContent(for promoView: PromoView,
@@ -91,7 +91,7 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
             title = "Hope you're enjoying \(appName)!"
         }
         let view = promoView.dequeueContentView(for: PromoTableListContentView.self)
-        view.configure(title: title, 
+        view.configure(title: title,
                        detailText: "Please make sure to rate it on the App Store when you get a chance!",
                        image: appIcon)
         return view

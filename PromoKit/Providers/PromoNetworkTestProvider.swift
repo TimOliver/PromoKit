@@ -28,7 +28,7 @@ public class PromoNetworkTestProvider: NSObject, PromoProvider {
 
     public var isInternetAccessRequired: Bool { true }
 
-    public func fetchNewContent(for promoView: PromoView, 
+    public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping PromoProviderContentFetchHandler) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             resultHandler(.contentAvailable)

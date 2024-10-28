@@ -65,11 +65,11 @@ final public class PromoTableListContentView: PromoContentView {
         imageView.isHidden = true
         addSubview(imageView)
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     /// Reset all of the view state when the content view is being recycled
     public override func prepareForReuse() {
         // It is best practice to nil out all view content since these can contribute to
@@ -92,7 +92,7 @@ final public class PromoTableListContentView: PromoContentView {
 
         // Title text
         let titleFont = UIFont.systemFont(ofSize: 17.0, weight: .bold)
-        string.append(NSMutableAttributedString(string: title, attributes: [.font : titleFont]))
+        string.append(NSMutableAttributedString(string: title, attributes: [.font: titleFont]))
 
         // Detail text
         if let detailText {
@@ -104,7 +104,7 @@ final public class PromoTableListContentView: PromoContentView {
             let detailFont = UIFont.systemFont(ofSize: 15.0, weight: .regular)
             string.append(NSAttributedString(string: "\n"))
             string.append(NSAttributedString(string: detailText,
-                                             attributes: [.font : detailFont, .foregroundColor: detailColor]))
+                                             attributes: [.font: detailFont, .foregroundColor: detailColor]))
         }
 
         label.attributedText = string
@@ -145,7 +145,7 @@ extension PromoTableListContentView {
         let fittingSize = CGSize(width: size.width - xOffset, height: size.height - footnoteHeight)
         let labelHeight = label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize), limitedToNumberOfLines: 4).height
         let height = min(size.height, labelHeight + footnoteHeight )
-        
+
         label.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),
                              size: CGSize(width: fittingSize.width, height: labelHeight))
         footnoteLabel.frame.origin = CGPoint(x: xOffset, y: label.frame.maxY + labelSpacing)

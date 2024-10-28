@@ -48,7 +48,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
     /// Track fetching state
     private(set) public var isFetching = false
-    
+
     // MARK: Private
 
     // The network connection observer
@@ -61,7 +61,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     let providerFetchResults = NSMapTable<AnyObject, NSNumber>(keyOptions: .weakMemory, valueOptions: .copyIn)
 
     // Track the last time a fetch attempt was made so we can defer any new fetches until the retry intervals have passed.
-    var previousFetchTime: Date? = nil
+    var previousFetchTime: Date?
 
     // MARK: - Class Creation
     init(promoView: PromoView) {
@@ -157,7 +157,7 @@ extension PromoProviderCoordinator {
 
     private func didReceiveResult(_ result: PromoProviderFetchContentResult, from provider: PromoProvider) {
         // Save the result to our map table so we can consider it for future fetches
-        providerFetchResults.setObject(NSNumber(integerLiteral: result.rawValue), forKey: provider)
+        providerFetchResults.setObject(result.rawValue as NSNumber, forKey: provider)
 
         // If this provider reported it has valid content, lets make it the current provider and stop here
         if result == .contentAvailable {
@@ -185,7 +185,7 @@ extension PromoProviderCoordinator {
 
         // Fetch the index after the given provider, or start at the beginning otherwise
         let provider = afterProvider ?? fromProvider ?? nil
-        var startIndex = (provider != nil) ? (providers.firstIndex{ $0 === provider } ?? 0) : 0
+        var startIndex = (provider != nil) ? (providers.firstIndex { $0 === provider } ?? 0) : 0
         if afterProvider != nil { startIndex += 1 }
 
         // If the network is up, start with whatever first provider we have. If not, find the first not needing internet
@@ -224,7 +224,7 @@ extension PromoProviderCoordinator {
         if previousFetchTime.timeIntervalSinceNow < timeInterval,
            let nextProvider = nextValidProvider(after: provider) {
             DispatchQueue.main.async { [weak self] in
-                guard (self?.isFetching ?? false) else { return }
+                guard self?.isFetching ?? false else { return }
                 self?.startContentFetch(for: nextProvider)
             }
         }

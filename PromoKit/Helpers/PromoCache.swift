@@ -96,7 +96,7 @@ public class PromoCache {
     ///   - objectType: An additional optional string to identify unique copies of the hosting object
     public func setValue(_ value: Any?, forKey key: String, fromObject object: AnyObject, objectType: String? = nil) {
         let userDefaultsKey = userDefaultsKey(fromObject: object, objectType: objectType)
-        var settings = UserDefaults.standard.dictionary(forKey: userDefaultsKey) ?? [String : String]()
+        var settings = UserDefaults.standard.dictionary(forKey: userDefaultsKey) ?? [String: String]()
         settings[key] = value
         UserDefaults.standard.set(settings, forKey: userDefaultsKey)
     }

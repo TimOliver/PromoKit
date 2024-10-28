@@ -78,7 +78,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         super.init(frame: .zero)
         configureContentViews()
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -188,7 +188,7 @@ final public class PromoNativeAdView: GADNativeAdView {
 
     public func layoutSubviews(for nativeAd: GADNativeAd?) {
         super.layoutSubviews()
-        
+
         // Skip layout if we don't have an ad yet
         guard let nativeAd else { return }
 
@@ -234,7 +234,7 @@ final public class PromoNativeAdView: GADNativeAdView {
             addSubview(iconImageView)
             let aspectRatio = icon.size.width / icon.size.height
             let iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
-            let iconOrigin = CGPoint(x: (textContentSize.width - iconSize.width) * 0.5, 
+            let iconOrigin = CGPoint(x: (textContentSize.width - iconSize.width) * 0.5,
                                      y: textContentSize.height * 0.12)
             iconImageView.frame = CGRect(origin: iconOrigin, size: iconSize)
             iconImageView.layer.cornerRadius = iconSize.height * 0.23
@@ -501,12 +501,10 @@ final public class PromoNativeAdView: GADNativeAdView {
 }
 
 final public class PromoNativeAdContentView: PromoContentView {
-    
+
     /// The ad model object that is being displayed
     public var nativeAd: GADNativeAd? {
-        didSet {
-            adView.configureContentViews(with: nativeAd)
-        }
+        didSet { adView.configureContentViews(with: nativeAd) }
     }
 
     /// A blurred image of the video thumbnail to be used as a backdrop
@@ -530,11 +528,11 @@ final public class PromoNativeAdContentView: PromoContentView {
         super.init(promoView: promoView)
         addSubview(adView)
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
- 
+
     public override var wantsSizingControl: Bool {
         // The final size of this view will vary depending on the size of the content
         // loaded, so we need to divert sizing control to this object.

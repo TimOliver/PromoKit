@@ -38,7 +38,8 @@ public class PromoFileManager {
     /// - Parameter dimension: The desired size in points. The icon with the closest largest to this value will be used
     /// - Returns: The absolute URL to the largest icon
     public static func urlForAppIcon(named iconName: String, targetDimension dimension: Int = 128) -> URL? {
-        guard let contents = try? fileManager.contentsOfDirectory(atPath: resourceURL?.path ?? ""), !contents.isEmpty else { return nil }
+        guard let contents = try? fileManager.contentsOfDirectory(atPath: resourceURL?.path ?? ""),
+              !contents.isEmpty else { return nil }
 
         // Save the file name and extracted sizing data
         var appIcon = (name: "", size: 0, scale: 0)

@@ -48,7 +48,7 @@ public class PromoImageProcessing {
                                 fitting: fittingSize)
 
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let context = CGContext(data: nil, 
+        let context = CGContext(data: nil,
                                 width: Int(newSize.width * scale),
                                 height: Int(newSize.height * scale),
                                 bitsPerComponent: 8,

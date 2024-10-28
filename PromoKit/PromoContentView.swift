@@ -38,7 +38,7 @@ public class PromoContentView: UIView {
         self.promoView = promoView
         super.init(frame: .zero)
     }
-    
+
     /// Called after a content view instance has been reclaimed in 
     /// order to get it ready for its next use.
     @objc func prepareForReuse() {}
@@ -53,4 +53,3 @@ public class PromoContentView: UIView {
     }
 
 }
-

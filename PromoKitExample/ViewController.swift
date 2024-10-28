@@ -51,4 +51,3 @@ extension ViewController: PromoViewDelegate {
         layoutAdView()
     }
 }
-

@@ -61,8 +61,8 @@ public class PromoView: UIControl {
 
     /// The corner radius of the promo view (Default is 20.0)
     public var cornerRadius: CGFloat {
-        set { backgroundView.layer.cornerRadius = newValue }
         get { backgroundView.layer.cornerRadius }
+        set { backgroundView.layer.cornerRadius = newValue }
     }
 
     /// Whether a close button is shown on the trailing side of the ad view (Default is false)
@@ -84,20 +84,20 @@ public class PromoView: UIControl {
 
     /// The promo providers currently assigned to this promo view, sorted in order of priority.
     public var providers: [PromoProvider]? {
-        set { providerCoordinator.providers = newValue; reload() }
         get { providerCoordinator.providers }
+        set { providerCoordinator.providers = newValue; reload() }
     }
 
     /// The current provider being displayed by this view
     public var currentProvider: PromoProvider? {
-        set { providerCoordinator.currentProvider = newValue }
         get { providerCoordinator.currentProvider }
+        set { providerCoordinator.currentProvider = newValue }
     }
 
     /// The retry interval to wait between failed online provider fetches (Default is 30 seconds)
     public var providerRetryInterval: TimeInterval {
-        set { providerCoordinator.retryInterval = newValue }
         get { providerCoordinator.retryInterval }
+        set { providerCoordinator.retryInterval = newValue }
     }
 
     /// A shared operation queue that providers may use to perform background processing (ie, data parsing or image decoding)
@@ -107,8 +107,8 @@ public class PromoView: UIControl {
 
     /// Shows a loading spinner view. This is used as a placeholder whenever a provider isn't being shown.
     public var isLoading: Bool {
-        set { setIsLoading(newValue, animated: false) }
         get { _isLoading }
+        set { setIsLoading(newValue, animated: false) }
     }
     private var _isLoading: Bool = false
 
@@ -148,7 +148,7 @@ public class PromoView: UIControl {
     }()
 
     /// The store for recycled content view objects
-    private var queuedContentViews = [ObjectIdentifier : Array<PromoContentView>]()
+    private var queuedContentViews = [ObjectIdentifier: [PromoContentView]]()
 
     /// An operation queue shared between all promo views that allow background processing of its fetched results
     private static var sharedBackgroundQueue: OperationQueue = {
@@ -206,7 +206,7 @@ public class PromoView: UIControl {
             self.delegate?.promoViewProviderFetchFailed?(self)
         }
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
@@ -229,7 +229,7 @@ extension PromoView {
     /// - Parameter size: The size of the outer container that this promo view should size itself to fit (Including inset padding).
     /// - Returns: The most appropriate size this view should be to fit the container view
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
-        var providerClass: AnyClass? = nil
+        var providerClass: AnyClass?
         if let provider = currentProvider ?? providers?.first {
             providerClass = type(of: provider)
         }
@@ -265,7 +265,7 @@ extension PromoView {
         if preferredsize == .zero {
             preferredsize = provider.preferredContentSize?(fittingSize: contentSize, for: self) ?? contentSize
         }
-        
+
         // Add the padding back in
         preferredsize.width += padding.left + padding.right
         preferredsize.height += padding.top + padding.bottom
@@ -278,7 +278,7 @@ extension PromoView {
 
         // Set the content view to be inset over the background view
         let contentPadding = contentPadding(for: currentProvider)
-        contentView?.frame = CGRectIntegral(bounds.inset(by: contentPadding))
+        contentView?.frame = bounds.inset(by: contentPadding).integral
 
         // Update the corner radius
         updateCornerRadius()
@@ -413,7 +413,7 @@ extension PromoView {
 
         // Layout the content view
         let contentPadding = contentPadding(for: provider)
-        contentView?.frame = CGRectIntegral(bounds.inset(by: contentPadding))
+        contentView?.frame = bounds.inset(by: contentPadding).integral
 
         // Animate it fading in
         contentView?.alpha = 0.0
@@ -506,7 +506,7 @@ extension PromoView {
         if let backgroundViewColor, backgroundViewColor != UIColor.clear {
             var red: CGFloat = 0.0, green: CGFloat = 0.0, blue: CGFloat = 0.0
             backgroundViewColor.getRed(&red, green: &green, blue: &blue, alpha: nil)
-            let brightness =  ((red * 299) + (green * 587) + (blue * 114)) / 1000;
+            let brightness =  ((red * 299) + (green * 587) + (blue * 114)) / 1000
             isDarkMode = brightness < 0.5
         } else {
             if #available(iOS 13.0, *) {
@@ -525,7 +525,7 @@ extension PromoView {
         spinnerView.sizeToFit()
 
         // Position the spinner in the middle of the view
-        spinnerView.center = CGPointMake(bounds.midX, bounds.midY)
+        spinnerView.center = CGPoint(x: bounds.midX, y: bounds.midY)
     }
 }
 
