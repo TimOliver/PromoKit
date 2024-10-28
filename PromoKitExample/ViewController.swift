@@ -18,14 +18,14 @@ class ViewController: UIViewController {
         promoView.delegate = self
 
         // Native ad layout
-        promoView.providers = [/*PromoCloudEventProvider(containerIdentifier: "iCloud.dev.tim.promokit"),*/
+        promoView.providers = [PromoCloudEventProvider(containerIdentifier: "iCloud.dev.tim.promokit"),
                                PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
 
         // Banner ad layout
-        promoView.providers = [
-            PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
-            PromoAppRaterProvider(appIconName: "AppIcon", maxIconDimension: 128)
-        ]
+//        promoView.providers = [
+//            PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
+//            PromoAppRaterProvider(appIconName: "AppIcon", maxIconDimension: 128)
+//        ]
 
         view.addSubview(promoView)
     }

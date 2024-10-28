@@ -46,7 +46,7 @@ public protocol PromoViewDelegate: NSObjectProtocol {
 /// content, such as app news announcements to automatically override and display instead.
 /// It also has fallback mechanisms for displaying alternative content if there is no internet connection.
 @objc(PMKPromoView)
-public class PromoView: UIView {
+public class PromoView: UIControl {
 
     // MARK: - Public Properties -
 
@@ -118,15 +118,26 @@ public class PromoView: UIView {
     /// Changing the frame of this promo view
     public override var frame: CGRect {
         didSet {
+            guard oldValue.size != frame.size else { return }
+
+            // Because the 'transform' property influences view frames,
+            // if a frame change happens mid animation, put the transform briefly back to handle it.
+            // But don't touch the container view any other time.
+            let transform = containerView.transform
+            containerView.transform = .identity
+            containerView.frame = bounds
+            backgroundView.frame = containerView.bounds
+            containerView.transform = transform
+
+            // If the provider needs to refresh on a bounds change, do it now
             refreshCurrentProviderIfNeeded()
-            previousFrameSize = frame.size
         }
     }
 
     // MARK: - Private Properties
 
-    /// Keep a reference to the old frame size so we can compare
-    private var previousFrameSize = CGSize.zero
+    /// Track if the view is zoomed to avoid doubling up on animations
+    private var isZoomed: Bool = false
 
     /// A coordinator for determining the current provider
     private lazy var providerCoordinator: PromoProviderCoordinator = {
@@ -261,10 +272,6 @@ extension PromoView {
 
     public override func layoutSubviews() {
         super.layoutSubviews()
-        
-        // Set the container view to match the outer view, and align the rest to that
-        containerView.frame = bounds
-        backgroundView.frame = containerView.bounds
 
         // Set the content view to be inset over the background view
         let contentPadding = contentPadding(for: currentProvider)
@@ -337,8 +344,7 @@ extension PromoView {
 
     /// Refresh the current provider if needed
     private func refreshCurrentProviderIfNeeded() {
-        guard frame.size != previousFrameSize,
-                currentProvider?.needsReloadOnSizeChange ?? false else { return }
+        guard currentProvider?.needsReloadOnSizeChange ?? false else { return }
         providerCoordinator.fetchBestProvider(from: currentProvider)
     }
 }
@@ -520,18 +526,41 @@ extension PromoView {
     }
 }
 
-// MARK: - Interaction
+// MARK: - Interaction Animations
 
 extension PromoView {
+
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesBegan(touches, with: event)
+        setZoomed(true, animated: true)
+    }
+
+    public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesMoved(touches, with: event)
+        guard let touch = touches.first else { return }
+        let zoomed = bounds.contains(touch.location(in: self))
+        setZoomed(zoomed, animated: true)
     }
 
     public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesEnded(touches, with: event)
+        setZoomed(false, animated: true)
     }
 
     public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesCancelled(touches, with: event)
+        setZoomed(false, animated: true)
+    }
+
+    private func setZoomed(_ zoomed: Bool, animated: Bool = false) {
+        guard !isLoading, isZoomed != zoomed else { return }
+        isZoomed = zoomed
+        UIView.animate(withDuration: animated ? 0.45 : 0.0,
+                       delay: 0.0,
+                       usingSpringWithDamping: 1.0,
+                       initialSpringVelocity: 1.0,
+                       options: [.beginFromCurrentState, .allowUserInteraction]) {
+            self.containerView.transform = zoomed ? CGAffineTransformScale(.identity, 0.985, 0.985) : .identity
+        }
     }
 }
