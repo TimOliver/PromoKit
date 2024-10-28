@@ -509,9 +509,18 @@ final public class PromoNativeAdContentView: PromoContentView {
         }
     }
 
+    /// A blurred image of the video thumbnail to be used as a backdrop
+    /// against the video
     public var mediaBackgroundImage: UIImage? {
         set { adView.mediaBackgroundImage = newValue }
         get { adView.mediaBackgroundImage }
+    }
+
+    public var adChoicesViewFrame: CGRect {
+        // Find the object named GADNativeAdAttributionView and return its frame if found
+        adView.subviews.first(where: {
+            NSStringFromClass(type(of: $0)).contains("GADNativeAdAttributionView")
+        })?.frame ?? .zero
     }
 
     // The hosted native ad view
@@ -526,7 +535,11 @@ final public class PromoNativeAdContentView: PromoContentView {
         fatalError("init(coder:) has not been implemented")
     }
  
-    public override var wantsSizingControl: Bool { true }
+    public override var wantsSizingControl: Bool {
+        // The final size of this view will vary depending on the size of the content
+        // loaded, so we need to divert sizing control to this object.
+        true
+    }
 
     public override func layoutSubviews() {
         super.layoutSubviews()

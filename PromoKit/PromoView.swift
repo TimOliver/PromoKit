@@ -136,6 +136,9 @@ public class PromoView: UIControl {
 
     // MARK: - Private Properties
 
+    /// Track if a tap animation was invalid at the start to prevent it from starting mid-way
+    private var canPlayTapAnimation: Bool = true
+
     /// Track if the view is zoomed to avoid doubling up on animations
     private var isZoomed: Bool = false
 
@@ -532,28 +535,45 @@ extension PromoView {
 
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesBegan(touches, with: event)
+        // Disable the animation while we're showing a spinner
+        if isLoading {
+            canPlayTapAnimation = false
+            return
+        }
+
+        // If we have a promo visible, check its delegate to make sure we can play the anim
+        if let provider = currentProvider,
+            let touch = touches.first,
+            !(provider.shouldPlayInteractionAnimation?(for: self, with: touch) ?? true) {
+            canPlayTapAnimation = false
+            return
+        }
+
+        // Start playing the zoom animation
         setZoomed(true, animated: true)
     }
 
     public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesMoved(touches, with: event)
-        guard let touch = touches.first else { return }
+        guard canPlayTapAnimation, let touch = touches.first else { return }
         let zoomed = bounds.contains(touch.location(in: self))
         setZoomed(zoomed, animated: true)
     }
 
     public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesEnded(touches, with: event)
+        canPlayTapAnimation = true
         setZoomed(false, animated: true)
     }
 
     public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesCancelled(touches, with: event)
+        canPlayTapAnimation = true
         setZoomed(false, animated: true)
     }
 
     private func setZoomed(_ zoomed: Bool, animated: Bool = false) {
-        guard !isLoading, isZoomed != zoomed else { return }
+        guard isZoomed != zoomed else { return }
         isZoomed = zoomed
         UIView.animate(withDuration: animated ? 0.45 : 0.0,
                        delay: 0.0,

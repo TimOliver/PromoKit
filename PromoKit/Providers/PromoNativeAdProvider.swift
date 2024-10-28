@@ -50,15 +50,22 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         self.adUnitID = adUnitID
     }
 
-    public func didMoveToPromoView(_ promoView: PromoView) { self.promoView = promoView }
+    // MARK: - PromoProvider Implementation
+
+    public func didMoveToPromoView(_ promoView: PromoView) {
+        // Capture a weak reference to our parent promo view since we'll be using
+        // it to perform image generation and to force a reload if the Google ad changes
+        self.promoView = promoView
+    }
 
     public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping PromoProviderContentFetchHandler) {
+        // Save a reference to the result handler so we can call it when the Google ad delegate returns
+        self.resultHandler = resultHandler
+
+        // Kick off the ad request
         makeAdLoaderIfNeeded(with: promoView)
         adLoader?.load(GADRequest())
-
-        self.resultHandler = resultHandler
-        self.promoView = promoView
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
@@ -81,6 +88,17 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         adContentView.mediaBackgroundImage = mediaBackgroundImage
         return adContentView
     }
+
+    public func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool {
+        // We only want to suppress the tap animation if the user taps the little Google ad info button in the top right corner
+        guard let adView = promoView.contentView as? PromoNativeAdContentView else { return true }
+        let adChoicesViewFrame = adView.adChoicesViewFrame
+        if adChoicesViewFrame == .zero { return true }
+        let location = touch.location(in: promoView.contentView)
+        return !adChoicesViewFrame.insetBy(dx: -15.0, dy: -15.0).contains(location)
+    }
+
+    // MARK: - Private
 
     private func didReceiveResult(_ result: Result<Void, Error>) {
         // Inform the promo view of the results
@@ -108,10 +126,13 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         let mediaLoaderOptions = GADNativeAdMediaAdLoaderOptions()
         mediaLoaderOptions.mediaAspectRatio = .any
 
+        let viewAdOptions = GADNativeAdViewAdOptions()
+        viewAdOptions.preferredAdChoicesPosition = .topRightCorner
+
         self.adLoader = GADAdLoader(adUnitID: adUnitID,
                                     rootViewController: promoView.rootViewController,
                                     adTypes: [.native],
-                                    options: [videoOptions, mediaLoaderOptions])
+                                    options: [videoOptions, mediaLoaderOptions, viewAdOptions])
         self.adLoader?.delegate = self
     }
 

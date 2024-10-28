@@ -59,10 +59,6 @@ public protocol PromoProvider: AnyObject {
     /// This is for providers who aren't real-time, so it isn't necessary to check them very often.
     @objc optional var fetchRefreshInterval: TimeInterval { get }
 
-    /// Indicates that when the user taps down on the promo view, a subtle interaction animation should play.
-    /// Use this to disable the animation if the promo has its own inner interactive elements.
-    @objc optional var shouldPlayInteractionAnimation: Bool { get }
-
     /// Clears all of the local state and resets this provider back to where it was when it was first created.
     @objc optional func reset()
 
@@ -95,4 +91,8 @@ public protocol PromoProvider: AnyObject {
     /// - Parameter promoView: The hosting promo view requesting the content view
     /// - Returns: A fully configured content view
     @objc func contentView(for promoView: PromoView) -> PromoContentView
+
+    /// Indicates that when the user taps down on the promo view, a subtle interaction animation should play.
+    /// Use this to disable the animation if the user taps a specific location in the content view.
+    @objc optional func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool
 }
