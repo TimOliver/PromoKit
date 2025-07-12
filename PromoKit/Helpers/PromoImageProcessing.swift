@@ -23,9 +23,8 @@
 import UIKit
 import CoreImage
 
-/// This file provides a variety of convenience functions for managing and processing images
-/// to be displayed in various promo content views
-
+/// A collection of convenience functions for managing and processing images
+/// to be displayed in various promo content views.
 public class PromoImageProcessing {
 
     /// Takes a `UIImage` instance containing un-decoded image data, and forcefully decodes

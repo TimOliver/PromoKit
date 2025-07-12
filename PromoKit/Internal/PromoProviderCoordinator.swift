@@ -23,30 +23,30 @@
 import Foundation
 import Network
 
-/// A class that handles querying for, and choosing
-/// the provider that should be currently displayed.
+/// A model object that handles querying for, and choosing
+/// the highest priority provider to be displayed.
 internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
-    /// The promo view managing this provider coordinator
+    /// The promo view managing this provider coordinator.
     private(set) var promoView: PromoView?
 
     /// The array of providers managed by this coordinator,
-    /// in order of priority
+    /// in order of priority.
     public var providers: [PromoProvider]?
 
-    /// The currently displayed provider
+    /// The currently displayed provider.
     public var currentProvider: PromoProvider?
 
-    /// A retry interval for failed provider fetches
+    /// A retry interval for failed provider fetches.
     public var retryInterval: TimeInterval = 30
 
-    /// A handler that is triggered whenever a new provider is chosen
+    /// A handler that is triggered whenever a new provider is chosen.
     public var providerUpdatedHandler: ((PromoProvider?) -> Void)?
 
-    /// A handler called if the fetch fails, and no valid provider is found
+    /// A handler called if the fetch fails, and no valid provider is found.
     public var providerFetchFailedHandler: (() -> Void)?
 
-    /// Track fetching state
+    /// Track fetching state.
     private(set) public var isFetching = false
 
     // MARK: Private
@@ -57,13 +57,16 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     // The provider currently being fetched
     var queryingProvider: PromoProvider?
 
-    // Tracking the last known response of each provider, so we know what retry policy to apply
-    let providerFetchResults = NSMapTable<AnyObject, NSNumber>(keyOptions: .weakMemory, valueOptions: .copyIn)
+    // Tracking the last known response of each provider, so we know which retry policy to apply
+    let providerFetchResults = NSMapTable<AnyObject, NSNumber>(keyOptions: .weakMemory,
+                                                               valueOptions: .copyIn)
 
-    // Track the last time a fetch attempt was made so we can defer any new fetches until the retry intervals have passed.
+    // Track the last time a fetch attempt was made
+    // so we can defer any new fetches until the retry intervals have passed.
     var previousFetchTime: Date?
 
-    // MARK: - Class Creation
+    // MARK: Init
+
     init(promoView: PromoView) {
         self.promoView = promoView
         networkMonitor.delegate = self
@@ -97,7 +100,9 @@ extension PromoProviderCoordinator {
 // MARK: - Provider Fetching
 
 extension PromoProviderCoordinator {
-    /// Start the process of looping through each provider, and see which one is most appropriate right now
+
+    /// Start the process of looping through each provider,
+    /// and see which one is most appropriate at the moment.
     internal func fetchBestProvider(from provider: PromoProvider? = nil) {
         guard let provider = nextValidProvider(from: provider) else {
             providerUpdatedHandler?(nil)
@@ -114,12 +119,17 @@ extension PromoProviderCoordinator {
     /// Cancels an in-progress fetch.
     /// It's possible the cancel request can happen right after a web request has been made.
     /// In this case, that fetch is allowed to continue, and that provider may become the current one, but
-    /// subsequent fetches are then canceled. This is to ensure we don't cancel partial requests without confirming the next time interval.
+    /// subsequent fetches are then canceled. This is to ensure we don't cancel
+    /// partial requests without confirming the next time interval.
     internal func cancelFetch() {
         previousFetchTime = Date()
         isFetching = false
     }
 
+    /// When a potentially valid provider is found, instruct it to start loading
+    /// its content (whether that is on disk, or via network) and return whether
+    /// any valid content was found or not.
+    /// - Parameter provider: The provider to be instructed to load its content.
     private func startContentFetch(for provider: PromoProvider) {
         guard isFetching else { return }
 
@@ -155,6 +165,11 @@ extension PromoProviderCoordinator {
         }
     }
 
+    /// Callback method invoked by a provider after it has finished attempting fetching its content and
+    /// is ready to return the results of its fetch.
+    /// - Parameters:
+    ///   - result: The result of the content fetch reported by the provider
+    ///   - provider: The provider performing the request
     private func didReceiveResult(_ result: PromoProviderFetchContentResult, from provider: PromoProvider) {
         // Save the result to our map table so we can consider it for future fetches
         providerFetchResults.setObject(result.rawValue as NSNumber, forKey: provider)
@@ -178,7 +193,12 @@ extension PromoProviderCoordinator {
         startContentFetch(for: nextProvider)
     }
 
-    /// Find the next valid provider, either from the start, from a provided provider, or from the next one in line
+    /// Find the next valid provider, either from the start, from a previously tested provider,
+    /// or from the next one in line.
+    /// - Parameters:
+    ///   - fromProvider: A provider to start testing from. If nil, the first provider is used.
+    ///   - afterProvider: Alternatively, skipping this provider, the next valid provider after this one.
+    /// - Returns: The next provider that should be tested for new content.
     private func nextValidProvider(from fromProvider: PromoProvider? = nil,
                                    after afterProvider: PromoProvider? = nil) -> PromoProvider? {
         guard let providers = self.providers, !providers.isEmpty else { return nil }
@@ -204,6 +224,8 @@ extension PromoProviderCoordinator {
     }
 
     /// Checks if the provider should be skipped because it isn't eligible to be fetched again yet
+    /// - Parameter provider: The provider to check
+    /// - Returns: A boolean on whether this provider should be skipped or not
     private func skipToNextProvider(_ provider: PromoProvider) -> Bool {
         guard (provider.isInternetAccessRequired ?? false),
               let previousFetchTime,
@@ -232,10 +254,10 @@ extension PromoProviderCoordinator {
     }
 }
 
-// MARK: - Network Path
+// MARK: - PromoPathMonitorDelegate
 
 extension PromoProviderCoordinator {
-
+    
     func pathMonitor(_ pathMonitor: PromoPathMonitor, didUpdateToPath path: NWPath?) {
         guard let path, let provider = currentProvider else { return }
 
