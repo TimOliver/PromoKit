@@ -36,7 +36,6 @@ public typealias PromoProviderContentFetchHandler = ((PromoProviderFetchContentR
 /// and configuring a promo content view with that data.
 @objc(PMKPromoProvider)
 public protocol PromoProvider: AnyObject {
-
     /// The background color that the hosting promo view should be set to when this provider is visible.
     /// Default is `nil`, which defaults back to the background color state of the promo view.
     @objc optional var backgroundColor: UIColor? { get }
@@ -94,5 +93,18 @@ public protocol PromoProvider: AnyObject {
 
     /// Indicates that when the user taps down on the promo view, a subtle interaction animation should play.
     /// Use this to disable the animation if the user taps a specific location in the content view.
+    /// - Parameters:
+    ///   - promoView: The hosting promo view that received the touch
+    ///   - touch: The UITouch object generated in this interaction
+    /// - Returns: If true, the tap animation will play. If false, no visible changes will occur.
     @objc optional func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool
+
+    /// Callback event for when the user has tapped down and released their finger inside the bounds
+    /// of the promo view. Users can cancel taps by dragging their finger outside of the promo view,
+    /// but this event is guaranteed to fire if the user taps up inside. Providers can use this
+    /// to perform full-screen actions such as showing an ad overlay, or opening a page in Safari.
+    /// - Parameters:
+    ///   - promoView: The promo view that received the tap event
+    ///   - touch: The touch event that was generated in the 'touchUpInside' event.
+    @objc optional func didTapUpInside(promoView: PromoView, with touch: UITouch)
 }
