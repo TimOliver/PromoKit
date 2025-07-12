@@ -40,7 +40,7 @@ class ViewController: UIViewController {
     }
 
     private func layoutAdView() {
-        let safeAreaInset = view.safeAreaInsets.top
+        let safeAreaInset = max(view.safeAreaInsets.top, view.safeAreaInsets.bottom)
         let layoutMargins = view.layoutMargins.left
         let promoBounds = view.bounds.insetBy(dx: layoutMargins, dy: safeAreaInset)
         promoView.frame.size = promoView.sizeThatFits(promoBounds.size)
