@@ -93,7 +93,10 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     }
 
     public func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool {
-        guard let adContentView = promoView.contentView as? PromoNativeAdContentView else { return true }
+        guard let adContentView = promoView.contentView as? PromoNativeAdContentView else { return false }
+
+        // Cancel the animation if the user taps in the outer margin between the ad view and the background view.
+        guard adContentView.frame.contains(touch.location(in: promoView)) else { return false }
 
         // Don't play the tap animation if the user was aiming for the ad choices view.
         let adChoicesViewFrame = adContentView.adChoicesViewFrame
