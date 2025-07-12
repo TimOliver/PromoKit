@@ -1,7 +1,7 @@
 //
 //  PromoBannerAdProvider.swift
 //
-//  Copyright 2024 Timothy Oliver. All rights reserved.
+//  Copyright 2024-2025 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -29,6 +29,9 @@ public enum PromoBannerAdSize: Int {
     case full     // Full iPad size: 468x60
 }
 
+/// A promo provider for vending Google ad banners.
+/// It is capable of vending iPhone and iPad appropriate banner sizes, with
+/// the ability to switch between the two on the fly.
 @objc(PMKPromoBannerAdProvider)
 public class PromoBannerAdProvider: NSObject, PromoProvider {
 
@@ -117,5 +120,4 @@ extension PromoBannerAdProvider: GADBannerViewDelegate {
     public func bannerView(_ bannerView: GADBannerView, didFailToReceiveAdWithError error: Error) {
         didReceiveResult(.failure(error))
     }
-
 }

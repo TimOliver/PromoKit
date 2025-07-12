@@ -1,7 +1,7 @@
 //
 //  PromoNetworkTestProvider.swift
 //
-//  Copyright 2024 Timothy Oliver. All rights reserved.
+//  Copyright 2024-2025 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -23,6 +23,7 @@
 import Foundation
 import UIKit
 
+/// A dummy provider for simulating network loading times.
 @objc(PMKPromoNetworkTestProvider)
 public class PromoNetworkTestProvider: NSObject, PromoProvider {
 

@@ -1,7 +1,7 @@
 //
 //  PromoView.swift
 //
-//  Copyright 2024 Timothy Oliver. All rights reserved.
+//  Copyright 2024-2025 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -22,6 +22,7 @@
 
 import UIKit
 
+/// A delegate object that external objects can use to receive updates from this promo view.
 @objc(PMKPromoViewDelegate)
 public protocol PromoViewDelegate: NSObjectProtocol {
 

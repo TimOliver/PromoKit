@@ -37,12 +37,15 @@ class ViewController: UIViewController {
 
 //        //promoView.defaultContentPadding = UIEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
 //        promoView.frame.size = CGSize(width: 336, height: 66) //CGSize(width: 728, height: 90)
-
     }
 
     private func layoutAdView() {
         promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 20).size)
         promoView.center = view.center
+    }
+
+    override func present(_ viewControllerToPresent: UIViewController, animated flag: Bool, completion: (() -> Void)? = nil) {
+        super.present(viewControllerToPresent, animated: flag, completion: completion)
     }
 }
 

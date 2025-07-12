@@ -1,7 +1,7 @@
 //
 //  PromoNativeAdProvider.swift
 //
-//  Copyright 2024 Timothy Oliver. All rights reserved.
+//  Copyright 2024-2025 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -23,6 +23,9 @@
 import Foundation
 import GoogleMobileAds
 
+/// A provider for loading and displaying a full-size native Google AdMob ad.
+/// The ad is rendered using native UIKit components and can fluidly resize itself
+/// to fit any available outer view size.
 @objc(PMKPromoNativeAdProvider)
 public class PromoNativeAdProvider: NSObject, PromoProvider {
 

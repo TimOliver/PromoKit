@@ -1,7 +1,7 @@
 //
 //  PromoProvider.swift
 //
-//  Copyright 2024 Timothy Oliver. All rights reserved.
+//  Copyright 2024-2025 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -63,7 +63,7 @@ public protocol PromoProvider: AnyObject {
     @objc optional func reset()
 
     /// Called when a provider has started being hosted by a promo view.
-    /// This can be used by providers who need to retain reference to the promo view for future updates.
+    /// This can be used by providers who need to retain a reference to the promo view for future updates.
     @objc optional func didMoveToPromoView(_ promoView: PromoView)
 
     /// The amount of padding between the content view and the edge of the promo view.

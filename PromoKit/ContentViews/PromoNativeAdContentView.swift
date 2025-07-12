@@ -1,7 +1,7 @@
 //
 //  PromoNativeAdView.swift
 //
-//  Copyright 2024 Timothy Oliver. All rights reserved.
+//  Copyright 2024-2025 Timothy Oliver. All rights reserved.
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to
@@ -23,6 +23,67 @@
 import Foundation
 import GoogleMobileAds
 
+/// A content view that can display a complete native Google AdMob view.
+/// The ad is sized to fit the current bounds, and is completely rendered with native UI elements.
+final public class PromoNativeAdContentView: PromoContentView {
+
+    /// The ad model object that is being displayed
+    public var nativeAd: GADNativeAd? {
+        didSet { adView.configureContentViews(with: nativeAd) }
+    }
+
+    /// A blurred image of the video thumbnail to be used as a backdrop
+    /// against the video
+    public var mediaBackgroundImage: UIImage? {
+        set { adView.mediaBackgroundImage = newValue }
+        get { adView.mediaBackgroundImage }
+    }
+
+    public var adChoicesViewFrame: CGRect {
+        // Find the object named GADNativeAdAttributionView and return its frame if found
+        adView.subviews.first(where: {
+            NSStringFromClass(type(of: $0)).contains("GADNativeAdAttributionView")
+        })?.frame ?? .zero
+    }
+
+    // The hosted native ad view
+    private let adView = PromoNativeAdView()
+
+    required init(promoView: PromoView) {
+        super.init(promoView: promoView)
+        addSubview(adView)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    public override var wantsSizingControl: Bool { true }
+
+    public override func layoutSubviews() {
+        super.layoutSubviews()
+        adView.frame = bounds
+
+        adView.backgroundColor = promoView?.backgroundView.backgroundColor
+        adView.headlineView?.backgroundColor = adView.backgroundColor
+        adView.bodyView?.backgroundColor = adView.backgroundColor
+    }
+
+    override func prepareForReuse() {
+        self.nativeAd = nil
+        adView.reset()
+    }
+
+    public override func sizeThatFits(_ size: CGSize) -> CGSize {
+        adView.sizeThatFits(size)
+    }
+}
+
+// MARK: - PromoNativeAdView
+
+/// The inner ad view view that is managed by `PromoNativeAdContentView`.
+/// It is a subclass of `GADNativeAdView` and manages all of the UI configuration
+/// and events between PromoKit and Google AdMob.
 final public class PromoNativeAdView: GADNativeAdView {
 
     // A generated blurred image placed behind the ad when the aspect ratio
@@ -500,60 +561,3 @@ final public class PromoNativeAdView: GADNativeAdView {
     }
 }
 
-final public class PromoNativeAdContentView: PromoContentView {
-
-    /// The ad model object that is being displayed
-    public var nativeAd: GADNativeAd? {
-        didSet { adView.configureContentViews(with: nativeAd) }
-    }
-
-    /// A blurred image of the video thumbnail to be used as a backdrop
-    /// against the video
-    public var mediaBackgroundImage: UIImage? {
-        set { adView.mediaBackgroundImage = newValue }
-        get { adView.mediaBackgroundImage }
-    }
-
-    public var adChoicesViewFrame: CGRect {
-        // Find the object named GADNativeAdAttributionView and return its frame if found
-        adView.subviews.first(where: {
-            NSStringFromClass(type(of: $0)).contains("GADNativeAdAttributionView")
-        })?.frame ?? .zero
-    }
-
-    // The hosted native ad view
-    private let adView = PromoNativeAdView()
-
-    required init(promoView: PromoView) {
-        super.init(promoView: promoView)
-        addSubview(adView)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    public override var wantsSizingControl: Bool {
-        // The final size of this view will vary depending on the size of the content
-        // loaded, so we need to divert sizing control to this object.
-        true
-    }
-
-    public override func layoutSubviews() {
-        super.layoutSubviews()
-        adView.frame = bounds
-
-        adView.backgroundColor = promoView?.backgroundView.backgroundColor
-        adView.headlineView?.backgroundColor = adView.backgroundColor
-        adView.bodyView?.backgroundColor = adView.backgroundColor
-    }
-
-    override func prepareForReuse() {
-        self.nativeAd = nil
-        adView.reset()
-    }
-
-    public override func sizeThatFits(_ size: CGSize) -> CGSize {
-        adView.sizeThatFits(size)
-    }
-}
