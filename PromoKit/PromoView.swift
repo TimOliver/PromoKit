@@ -565,6 +565,9 @@ extension PromoView {
         super.touchesEnded(touches, with: event)
         canPlayTapAnimation = true
         setZoomed(false, animated: true)
+        if let provider = currentProvider, let touch = touches.first {
+            provider.didTapUpInside?(promoView: self, with: touch)
+        }
     }
 
     public override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
