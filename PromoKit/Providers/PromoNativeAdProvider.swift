@@ -93,9 +93,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     }
 
     public func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool {
-        // Google ads is really finicky. The zoom animation triggers a warning that the inner ad content is overflowing and this
-        // behaviour will stopped being supported in future. We need to disable the animation to handle this.
-        false
+        true
     }
 
     // MARK: - Private

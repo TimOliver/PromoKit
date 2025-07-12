@@ -40,7 +40,10 @@ class ViewController: UIViewController {
     }
 
     private func layoutAdView() {
-        promoView.frame.size = promoView.sizeThatFits(view.bounds.insetBy(dx: 16, dy: 20).size)
+        let safeAreaInset = view.safeAreaInsets.top + view.safeAreaInsets.bottom
+        let layoutMargins = view.layoutMargins.left + view.layoutMargins.right
+        let promoBounds = view.bounds.insetBy(dx: layoutMargins, dy: safeAreaInset)
+        promoView.frame.size = promoView.sizeThatFits(promoBounds.size)
         promoView.center = view.center
     }
 
