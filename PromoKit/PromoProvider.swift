@@ -99,9 +99,24 @@ public protocol PromoProvider: AnyObject {
     /// - Returns: If true, the tap animation will play. If false, no visible changes will occur.
     @objc optional func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool
 
+    /// Callback event for when the user has tapped down inside the promo view. This event occurs once at the
+    /// start of a touch interaction and can be used to capture initial touch state or start a timer. It occurs
+    /// regardless of whether a tap interaction occurs or not.
+    /// - Parameters:
+    ///   - promoView: The promo view that received the tap event
+    ///   - touch: The touch event that was generated in the 'touchDownInside' event.
+    @objc optional func didTapDownInside(promoView: PromoView, with touch: UITouch)
+
+    /// Callback event that occurs after the user has tapped down inside the promo view and subsequently drags
+    /// their finger around. This event occurs every single frame update that occurs while a drag occurred.
+    /// - Parameters:
+    ///   - promoView: The promo view that received the drag event
+    ///   - touch: The touch event that was generated in the 'didDragInside' event.
+    @objc optional func didDragInside(promoView: PromoView, with touch: UITouch)
+
     /// Callback event for when the user has tapped down and released their finger inside the bounds
     /// of the promo view. Users can cancel taps by dragging their finger outside of the promo view,
-    /// but this event is guaranteed to fire if the user taps up inside. Providers can use this
+    /// but this event is guaranteed to fire if the user taps up inside the view. Providers can use this
     /// to perform full-screen actions such as showing an ad overlay, or opening a page in Safari.
     /// - Parameters:
     ///   - promoView: The promo view that received the tap event

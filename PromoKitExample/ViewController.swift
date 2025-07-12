@@ -27,6 +27,10 @@ class ViewController: UIViewController {
 //            PromoAppRaterProvider(appIconName: "AppIcon", maxIconDimension: 128)
 //        ]
 
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.5) {
+            self.promoView.cancelTapInteraction(animated: true)
+        }
+
         view.addSubview(promoView)
     }
 
