@@ -93,7 +93,20 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     }
 
     public func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool {
-        true
+        guard let adContentView = promoView.contentView as? PromoNativeAdContentView else { return true }
+
+        // Don't play the tap animation if the user was aiming for the ad choices view.
+        let adChoicesViewFrame = adContentView.adChoicesViewFrame
+        guard adChoicesViewFrame != .zero else { return true }
+
+        // Since the ad choices view is so tiny, expand its bounds to 44x44
+        // in order to properly test if the user was aiming for it.
+        let adChoicesViewPaddedFrame = adChoicesViewFrame
+            .insetBy(
+                dx: -max(0, 44.0 - adChoicesViewFrame.width) * 0.5,
+                dy: -max(0, 44.0 - adChoicesViewFrame.height) * 0.5
+        )
+        return !adChoicesViewPaddedFrame.contains(touch.location(in: adContentView))
     }
 
     // MARK: - Private

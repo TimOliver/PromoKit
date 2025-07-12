@@ -39,6 +39,7 @@ final public class PromoNativeAdContentView: PromoContentView {
         get { adView.mediaBackgroundImage }
     }
 
+    /// Fetch the frame for the Ad Choices view (The small info button in the top corner)
     public var adChoicesViewFrame: CGRect {
         // Find the object named GADNativeAdAttributionView and return its frame if found
         adView.subviews.first(where: {
