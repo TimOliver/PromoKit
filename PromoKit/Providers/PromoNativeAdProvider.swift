@@ -31,7 +31,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
     private struct Constants {
         // The amount of time the ad can be tapped before it times out
-        static let adTapTimeout = 1.0
+        static let adTapTimeout = 1.5
         // The distance the finger can be dragged before the ad tap is cancelled
         static let adTapDistanceThreshold: CGFloat = 44
     }

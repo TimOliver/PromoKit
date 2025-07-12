@@ -558,7 +558,7 @@ extension PromoView {
 
         // If we're not loading, handle interaction events
         if let provider = currentProvider, let touch = touches.first {
-            provider.didDragInside?(promoView: self, with: touch)
+            provider.didTapDownInside?(promoView: self, with: touch)
         }
 
         // If we have a promo visible, check its delegate to make sure we can play the anim
