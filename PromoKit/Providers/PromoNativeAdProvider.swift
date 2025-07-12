@@ -29,6 +29,13 @@ import GoogleMobileAds
 @objc(PMKPromoNativeAdProvider)
 public class PromoNativeAdProvider: NSObject, PromoProvider {
 
+    private struct Constants {
+        // The amount of time the ad can be tapped before it times out
+        static let adTapTimeout = 1.0
+        // The distance the finger can be dragged before the ad tap is cancelled
+        static let adTapDistanceThreshold: CGFloat = 44
+    }
+
     /// The Google ad identifier for this native ad
     private let adUnitID: String
 
@@ -46,6 +53,12 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
     // Store a reference to the promo view we can use when the ad delegate returns
     private weak var promoView: PromoView?
+
+    // Store a reference to where the user first tapped down in the ad view
+    private var firstTapLocation: CGPoint?
+
+    // Store a timer that starts after the user taps down
+    private var tapDownTimer: Timer?
 
     /// Create new instance of a Google ad banner provider
     /// - Parameter adUnitID: The Google ad unit ID for this banner
@@ -110,6 +123,44 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
                 dy: -max(0, 44.0 - adChoicesViewFrame.height) * 0.5
         )
         return !adChoicesViewPaddedFrame.contains(touch.location(in: adContentView))
+    }
+
+    public func didTapDownInside(promoView: PromoView, with touch: UITouch) {
+        // Google native ads seem to have an interesting behaviour. It cancels
+        // tap-down events if the user leaves their finger on the glass for more than
+        // a second, or if they drag their finger more than 44 points away from the initial point.
+        // Track these so we can try and intelligently play a 'cancel' animation when this happens
+        let touchPoint = touch.location(in: promoView)
+        guard let contentView = promoView.contentView, contentView.frame.contains(touchPoint) else { return }
+        firstTapLocation = touch.location(in: contentView)
+        tapDownTimer = Timer.scheduledTimer(withTimeInterval: Constants.adTapTimeout, repeats: false, block: { [weak self] _ in
+            guard let self else { return }
+            self.promoView?.cancelTapInteraction(animated: true)
+            self.resetAdTimeout()
+        })
+    }
+
+    public func didDragInside(promoView: PromoView, with touch: UITouch) {
+        guard let firstTapLocation, let contentView = promoView.contentView else { return }
+        let newPoint = touch.location(in: contentView)
+        guard abs(newPoint.x - firstTapLocation.x) > Constants.adTapDistanceThreshold
+                || abs(newPoint.y - firstTapLocation.y) > Constants.adTapDistanceThreshold else { return }
+        promoView.cancelTapInteraction(animated: true)
+        resetAdTimeout()
+    }
+
+    public func didTapUpInside(promoView: PromoView, with touch: UITouch) {
+        self.resetAdTimeout()
+    }
+
+    public func didCancelTap(promoView: PromoView, with touch: UITouch) {
+        self.resetAdTimeout()
+    }
+
+    private func resetAdTimeout() {
+        tapDownTimer?.invalidate()
+        tapDownTimer = nil
+        firstTapLocation = nil
     }
 
     // MARK: - Private

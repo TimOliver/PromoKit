@@ -122,4 +122,11 @@ public protocol PromoProvider: AnyObject {
     ///   - promoView: The promo view that received the tap event
     ///   - touch: The touch event that was generated in the 'touchUpInside' event.
     @objc optional func didTapUpInside(promoView: PromoView, with touch: UITouch)
+
+    /// Callback event for when something has cancelled the touch interaction (eg, the promo view was
+    /// in a scroll view that moved). This can be used to reset any internal state.
+    /// - Parameters:
+    ///   - promoView: The promo view that received the tap event
+    ///   - touch: The touch event that was generated in the 'touchUpInside' event.
+    @objc optional func didCancelTap(promoView: PromoView, with touch: UITouch)
 }
