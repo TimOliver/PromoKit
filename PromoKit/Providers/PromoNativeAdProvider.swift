@@ -133,6 +133,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         let touchPoint = touch.location(in: promoView)
         guard let contentView = promoView.contentView, contentView.frame.contains(touchPoint) else { return }
         firstTapLocation = touch.location(in: contentView)
+        guard tapDownTimer == nil else { return }
         tapDownTimer = Timer.scheduledTimer(withTimeInterval: Constants.adTapTimeout, repeats: false, block: { [weak self] _ in
             guard let self else { return }
             self.promoView?.cancelTapInteraction(animated: true)

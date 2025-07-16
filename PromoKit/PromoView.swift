@@ -597,6 +597,9 @@ extension PromoView {
         super.touchesCancelled(touches, with: event)
         canPlayTapAnimation = true
         setZoomed(false, animated: true)
+        if let provider = currentProvider, let touch = touches.first {
+            provider.didCancelTap?(promoView: self, with: touch)
+        }
     }
 
     private func setZoomed(_ zoomed: Bool, animated: Bool = false) {

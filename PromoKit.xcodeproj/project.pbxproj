@@ -138,8 +138,8 @@
 			children = (
 				226EAA6F2C610B0C0039AE73 /* PromoKitExample.entitlements */,
 				229D212B2B67CE2600105C9D /* AppDelegate.swift */,
-				229D212F2B67CE2600105C9D /* ViewController.swift */,
 				229D21312B67CE2600105C9D /* Main.storyboard */,
+				229D212F2B67CE2600105C9D /* ViewController.swift */,
 				229D21342B67CE2700105C9D /* Assets.xcassets */,
 				229D21362B67CE2700105C9D /* LaunchScreen.storyboard */,
 				229D21392B67CE2700105C9D /* Info.plist */,

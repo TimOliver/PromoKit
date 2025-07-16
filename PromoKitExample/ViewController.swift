@@ -23,7 +23,7 @@ class ViewController: UIViewController {
 
         // Banner ad layout
 //        promoView.providers = [
-//            PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
+//            //PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
 //            PromoAppRaterProvider(appIconName: "AppIcon", maxIconDimension: 128)
 //        ]
 
