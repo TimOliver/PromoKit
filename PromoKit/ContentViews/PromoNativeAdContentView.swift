@@ -210,6 +210,10 @@ final public class PromoNativeAdView: GADNativeAdView {
         actionButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18.0)
         actionButton.setTitleColor(.white, for: .normal)
         actionButton.clipsToBounds = true
+        if #available(iOS 26.0, *) {
+            actionButton.configuration = .prominentGlass()
+            actionButton.cornerConfiguration = .capsule()
+        }
         if #available(iOS 13.0, *) {
             actionButton.layer.cornerCurve = .continuous
         }

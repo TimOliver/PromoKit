@@ -182,6 +182,9 @@ public class PromoView: UIControl {
     public override init(frame: CGRect) {
         super.init(frame: frame)
 
+        // Configure default values
+        self.defaultContentPadding = self.layoutMargins
+
         // Background view
         if #available(iOS 13.0, *) {
             backgroundView.backgroundColor = .secondarySystemBackground
@@ -193,13 +196,8 @@ public class PromoView: UIControl {
 
         // Configure views
         containerView.isUserInteractionEnabled = true
-        addSubview(containerView)
-
         containerView.addSubview(backgroundView)
-
-        // Configure default values
-        self.defaultContentPadding = self.layoutMargins
-        backgroundView.layer.cornerRadius = 20
+        addSubview(containerView)
 
         // Coordinator changes
         providerCoordinator.providerUpdatedHandler = { [weak self] provider in

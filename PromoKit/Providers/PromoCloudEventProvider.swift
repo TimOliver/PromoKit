@@ -40,7 +40,7 @@ import UIKit
 ///         subtitle         (String) - Additional auxillary text shown in a smaller font below the heading. (Optional)
 ///         thumbnail        (Asset)  - An image that may be shown alongside the heading and byline. (Optional)
 ///         url              (String) - A url that will open when the user taps the view. (Optional)
-///         type             (String) - (Queryable) A type that can be used to filter types of events between different in-app promo views (eg "home", "settings", etc)
+///         type             (String) - (Queryable) A generic field that can categorize types of events so they can be filtered (ie "app-update" vs "ad")
 ///         expirationDate   (Date)   - (Sortable, Queryable) A date denoting when this event should stop being shown. (Optional)
 ///         localDuration    (Int)    - Once downloaded, the number of hours this event should be cached and shown to users. (Optional)
 ///         maxVersion       (String) - The highest version that this app needs to be at to be shown. (Optional)
