@@ -372,10 +372,13 @@ final public class PromoNativeAdView: GADNativeAdView {
         var iconSize = CGSize.zero
         iconImageView.isHidden = iconImageView.image == nil
         if !iconImageView.isHidden, let icon = nativeAd.icon?.image {
+            if iconImageView.superview == nil { addSubview(iconImageView) }
             let aspectRatio = icon.size.width / icon.size.height
             iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
             iconImageView.frame = CGRect(origin: origin, size: iconSize)
             iconImageView.layer.cornerRadius = iconSize.height * 0.23
+        } else {
+            iconImageView.removeFromSuperview()
         }
 
         // Hide the body if we don't have any text
