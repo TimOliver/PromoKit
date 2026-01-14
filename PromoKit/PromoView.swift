@@ -608,7 +608,7 @@ extension PromoView {
                        usingSpringWithDamping: 1.0,
                        initialSpringVelocity: 1.0,
                        options: [.beginFromCurrentState, .allowUserInteraction]) {
-            self.containerView.transform = zoomed ? CGAffineTransformScale(.identity, 0.985, 0.985) : .identity
+            self.containerView.transform = zoomed ? CGAffineTransform(scaleX: 0.985, y: 0.985) : .identity
         }
     }
 }
