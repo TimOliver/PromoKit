@@ -297,7 +297,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         // Layout the icon if it is available
         iconImageView.isHidden = iconImageView.image == nil
         if !iconImageView.isHidden, let icon = nativeAd.icon?.image {
-            addSubview(iconImageView)
+            if iconImageView.superview == nil { addSubview(iconImageView) }
             let aspectRatio = icon.size.width / icon.size.height
             let iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
             let iconOrigin = CGPoint(x: (textContentSize.width - iconSize.width) * 0.5,
@@ -315,7 +315,7 @@ final public class PromoNativeAdView: GADNativeAdView {
             let buttonOrigin = CGPoint(x: padding, y: size.height - (ctaButtonHeight + padding))
             actionButton.frame = CGRect(origin: buttonOrigin, size: buttonSize)
             actionButton.layer.cornerRadius = 15
-            addSubview(actionButton)
+            if actionButton.superview == nil { addSubview(actionButton) }
         } else {
             actionButton.isHidden = true
             actionButton.removeFromSuperview()
@@ -407,7 +407,7 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         // Position the body text
         if !bodyLabel.isHidden {
-            addSubview(bodyLabel)
+            if bodyLabel.superview == nil { addSubview(bodyLabel) }
             let textY = headlineLabel.frame.maxY + titleVerticalSpacing
             bodyLabel.frame.origin = CGPoint(x: textX, y: textY)
             bodyLabel.textAlignment = .left
@@ -418,6 +418,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         origin.y = max(iconImageView.frame.maxY, max(headlineLabel.frame.maxY, bodyLabel.frame.maxY)) + innerMargin
 
         if !(actionButton.title(for: .normal)?.isEmpty ?? true) {
+            if actionButton.superview == nil { addSubview(actionButton) }
             actionButton.backgroundColor = self.tintColor
             if !needsCompactLayout {
                 let buttonSize = CGSize(width: size.width, height: ctaButtonHeight)
@@ -431,6 +432,8 @@ final public class PromoNativeAdView: GADNativeAdView {
                                                            padding + googleButtonWidth + titleVerticalSpacing))
                 actionButton.layer.cornerRadius = compactActionSize.height / 2.0
             }
+            actionButton.titleLabel?.sizeToFit()
+            actionButton.setNeedsLayout()
         } else {
             actionButton.removeFromSuperview()
         }
