@@ -90,7 +90,6 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     }
 
     private func didReceiveResult(_ result: Result<Void, Error>) {
-
         // Inform the promo view of the results
         switch result {
         case .success:

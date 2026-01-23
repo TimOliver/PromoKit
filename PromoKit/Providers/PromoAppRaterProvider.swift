@@ -92,7 +92,7 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
         }
         let view = promoView.dequeueContentView(for: PromoTableListContentView.self)
         view.configure(title: title,
-                       detailText: "Please make sure to rate it on the App Store when you get a chance!",
+                       detailText: "If you are, please consider rating it on the App Store!",
                        image: appIcon)
         return view
     }

@@ -32,7 +32,7 @@ final public class PromoTableListContentView: PromoContentView {
     /// A label that displays the title and subtitle text
     public let label = UILabel()
 
-    /// A label that displays a headnote at the top
+    /// A label that displays a footnote at the top
     public let footnoteLabel = UILabel()
 
     // An optional image displayed horizontally along the leading edge of the view
