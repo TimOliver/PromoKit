@@ -22,6 +22,13 @@
 
 import UIKit
 
+/// The size of the close button displayed on the promo view
+@objc(PMKPromoViewCloseButtonSize)
+public enum PromoViewCloseButtonSize: Int {
+    case small
+    case large
+}
+
 /// A delegate object that external objects can use to receive updates from this promo view.
 @objc(PMKPromoViewDelegate)
 public protocol PromoViewDelegate: NSObjectProtocol {
@@ -66,8 +73,23 @@ public class PromoView: UIControl {
         set { backgroundView.layer.cornerRadius = newValue }
     }
 
-    /// Whether a close button is shown on the trailing side of the ad view (Default is false)
-    public var showCloseButton: Bool = false
+    /// Whether a close button is shown on the trailing side of the ad view (Default is false).
+    /// Note: This property requires iOS 13.0 or later. On earlier versions, setting this has no effect.
+    public var showCloseButton: Bool = false {
+        didSet {
+            guard #available(iOS 13.0, *) else { return }
+            updateCloseButtonVisibility()
+        }
+    }
+
+    /// The size of the close button (Default is small)
+    public var closeButtonSize: PromoViewCloseButtonSize = .small {
+        didSet {
+            guard #available(iOS 13.0, *) else { return }
+            configureCloseButton()
+            setNeedsLayout()
+        }
+    }
 
     /// The background view displayed behind the content view
     public let backgroundView: UIView = UIView()
@@ -166,6 +188,9 @@ public class PromoView: UIControl {
     /// An optional loading spinner view that can be shown by the providers while they load their content
     private var spinnerView: UIActivityIndicatorView?
 
+    /// The close button displayed at the top-right corner outside the view bounds
+    private var closeButton: UIButton?
+
     // MARK: - View Creation
 
     /// Create a new promo view instance with a list of preconfigured providers.
@@ -181,6 +206,9 @@ public class PromoView: UIControl {
     /// - Parameter frame: The frame of the promo view
     public override init(frame: CGRect) {
         super.init(frame: frame)
+
+        // Allow close button to render outside bounds
+        clipsToBounds = false
 
         // Configure default values
         self.defaultContentPadding = self.layoutMargins
@@ -287,6 +315,9 @@ extension PromoView {
 
         // Layout the spinner view if the promo view is currently loading
         refreshSpinnerView()
+
+        // Layout the close button
+        layoutCloseButton()
     }
 
     private func contentPadding(for provider: PromoProvider? = nil) -> UIEdgeInsets {
@@ -528,6 +559,67 @@ extension PromoView {
 
         // Position the spinner in the middle of the view
         spinnerView.center = CGPoint(x: bounds.midX, y: bounds.midY)
+    }
+}
+
+// MARK: - Close Button
+
+extension PromoView {
+
+    /// Updates the visibility of the close button based on the showCloseButton property
+    @available(iOS 13.0, *)
+    private func updateCloseButtonVisibility() {
+        if showCloseButton {
+            if closeButton == nil {
+                createCloseButton()
+            }
+            closeButton?.isHidden = false
+        } else {
+            closeButton?.isHidden = true
+        }
+    }
+
+    /// Creates and configures the close button
+    @available(iOS 13.0, *)
+    private func createCloseButton() {
+        let button = UIButton(type: .system)
+        button.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
+        addSubview(button)
+        closeButton = button
+        configureCloseButton()
+    }
+
+    /// Configures the close button appearance based on the current size setting
+    @available(iOS 13.0, *)
+    private func configureCloseButton() {
+        guard let closeButton else { return }
+
+        let symbolConfig: UIImage.SymbolConfiguration
+        switch closeButtonSize {
+        case .small:
+            symbolConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
+        case .large:
+            symbolConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
+        }
+
+        let image = UIImage(systemName: "xmark.circle.fill", withConfiguration: symbolConfig)
+        closeButton.setImage(image, for: .normal)
+        closeButton.tintColor = .secondaryLabel
+        closeButton.sizeToFit()
+    }
+
+    /// Lays out the close button at the top-right corner, outside the view bounds
+    private func layoutCloseButton() {
+        guard let closeButton, !closeButton.isHidden else { return }
+
+        let buttonSize = closeButton.bounds.size
+        let offset: CGFloat = buttonSize.width * 0.25
+        closeButton.frame.origin = CGPoint(x: bounds.maxX - buttonSize.width + offset,
+                                           y: -offset)
+    }
+
+    @objc private func closeButtonTapped() {
+        sendActions(for: .primaryActionTriggered)
     }
 }
 
