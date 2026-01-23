@@ -594,28 +594,27 @@ extension PromoView {
     private func configureCloseButton() {
         guard let closeButton else { return }
 
-        let symbolConfig: UIImage.SymbolConfiguration
+        let image: UIImage?
         switch closeButtonSize {
         case .small:
-            symbolConfig = UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 13, weight: .bold)
+            image = UIImage(systemName: "xmark", withConfiguration: symbolConfig)
         case .large:
-            symbolConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .semibold)
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 17, weight: .bold)
+            image = UIImage(systemName: "xmark.circle.fill", withConfiguration: symbolConfig)
         }
 
-        let image = UIImage(systemName: "xmark.circle.fill", withConfiguration: symbolConfig)
         closeButton.setImage(image, for: .normal)
-        closeButton.tintColor = .secondaryLabel
+        closeButton.tintColor = .tertiaryLabel
         closeButton.sizeToFit()
     }
 
-    /// Lays out the close button at the top-right corner, outside the view bounds
+    /// Lays out the close button to the right of the view
     private func layoutCloseButton() {
         guard let closeButton, !closeButton.isHidden else { return }
-
-        let buttonSize = closeButton.bounds.size
-        let offset: CGFloat = buttonSize.width * 0.25
-        closeButton.frame.origin = CGPoint(x: bounds.maxX - buttonSize.width + offset,
-                                           y: -offset)
+        let spacing = CGSize(width: 6, height: 4)
+        closeButton.frame.origin = CGPoint(x: bounds.maxX + spacing.width,
+                                           y: spacing.height)
     }
 
     @objc private func closeButtonTapped() {
