@@ -47,6 +47,7 @@ final public class PromoTableListContentView: PromoContentView {
         super.init(promoView: promoView)
 
         label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.5
         label.numberOfLines = 0
         addSubview(label)
 
@@ -144,7 +145,7 @@ extension PromoTableListContentView {
         let size = bounds.size
         let fittingSize = CGSize(width: size.width - xOffset, height: size.height - footnoteHeight)
         let labelHeight = label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize), limitedToNumberOfLines: 4).height
-        let height = min(size.height, labelHeight + footnoteHeight )
+        let height = min(size.height, labelHeight + footnoteHeight)
 
         label.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),
                              size: CGSize(width: fittingSize.width, height: labelHeight))

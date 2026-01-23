@@ -81,7 +81,7 @@ public class PromoImageProcessing {
             let scale = min(fittingSize.width / image.size.width,
                             fittingSize.height / image.size.height)
             ciImage = ciImage.samplingNearest()
-                .transformed(by: CGAffineTransformMakeScale(scale, scale))
+                .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
             extent.size.width *= scale
             extent.size.height *= scale
         }
