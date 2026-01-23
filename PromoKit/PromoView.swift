@@ -135,6 +135,13 @@ public class PromoView: UIControl {
     }
     private var _isLoading: Bool = false
 
+    /// The total width of the promo view, including the close button if it is visible.
+    /// The close button shouldn't normally be included in layout calculations unless
+    /// it is necessary to fit the whole view on screen.
+//    public var totalWidth: CGFloat {
+//        return showCloseButton ? c
+//    }
+
     /// A separate container view that is used to play an interactive animation when tapped.
     private let containerView = UIView()
 
@@ -619,6 +626,28 @@ extension PromoView {
 
     @objc private func closeButtonTapped() {
         sendActions(for: .primaryActionTriggered)
+    }
+
+    /// Extends hit testing to include the close button which is positioned outside bounds
+    public override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        if let closeButton, !closeButton.isHidden {
+            // Expand the close button's hit area for easier tapping
+            let expandedFrame = closeButton.frame.insetBy(dx: -10, dy: -10)
+            if expandedFrame.contains(point) {
+                return true
+            }
+        }
+        return super.point(inside: point, with: event)
+    }
+
+    public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if let closeButton, !closeButton.isHidden {
+            let expandedFrame = closeButton.frame.insetBy(dx: -10, dy: -10)
+            if expandedFrame.contains(point) {
+                return closeButton
+            }
+        }
+        return super.hitTest(point, with: event)
     }
 }
 
