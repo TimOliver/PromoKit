@@ -46,6 +46,11 @@ public protocol PromoViewDelegate: NSObjectProtocol {
     ///   - promoView: The promo view in which the error occurred
     ///   - error: The error that occurred
     @objc optional func promoViewProviderFetchFailed(_ promoView: PromoView)
+
+    /// The user tapped the close button displayed next to the promo view
+    /// - Parameters:
+    ///   - promoView: The promo view that owns the close button
+    @objc optional func promoViewProviderDidTapCloseButton(_ promoView: PromoView)
 }
 
 /// A UI component for displaying promotional or advertising content from a variety of sources,
@@ -664,7 +669,7 @@ extension PromoView {
     }
 
     @objc private func closeButtonTapped() {
-        sendActions(for: .primaryActionTriggered)
+        delegate?.promoViewProviderDidTapCloseButton?(self)
     }
 
     /// Extends hit testing to include the close button which is positioned outside bounds
