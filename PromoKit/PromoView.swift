@@ -135,12 +135,27 @@ public class PromoView: UIControl {
     }
     private var _isLoading: Bool = false
 
-    /// The total width of the promo view, including the close button if it is visible.
+    /// When visible, the amount of vertical or horizontal spacing between the promo view and close button
+    public var closeButtonSpacing = CGSize(width: 6.0, height: 4.0) {
+        didSet { setNeedsLayout() }
+    }
+
+    /// The size of the close button and its spacing relative to the promo view
+    /// Use this to add to any sizing calculations to shrink the promo view if needed.
+    public var closeButtonOffset: CGSize {
+        guard let closeButton, showCloseButton else { return .zero }
+        return CGSize(width: closeButtonSpacing.width + closeButton.frame.width,
+                      height: closeButtonSpacing.height + closeButton.frame.height)
+    }
+
+    /// The total size of the promo view, including the close button if it is visible.
     /// The close button shouldn't normally be included in layout calculations unless
     /// it is necessary to fit the whole view on screen.
-//    public var totalWidth: CGFloat {
-//        return showCloseButton ? c
-//    }
+    public var totalBoundsSize: CGSize {
+        guard let closeButton, showCloseButton else { return bounds.size }
+        return CGSize(width: bounds.width + closeButtonSpacing.width + closeButton.frame.width,
+                      height: bounds.height + closeButtonSpacing.height + closeButton.frame.height)
+    }
 
     /// A separate container view that is used to play an interactive animation when tapped.
     private let containerView = UIView()
@@ -460,6 +475,7 @@ extension PromoView {
         UIView.animate(withDuration: 0.25) {
             self.contentView?.alpha = 1.0
             self.updateCornerRadius(for: provider)
+            self.layoutCloseButton()
         }
     }
 }
@@ -616,12 +632,35 @@ extension PromoView {
         closeButton.sizeToFit()
     }
 
-    /// Lays out the close button to the right of the view
+    /// Lays out the close button to the right of the view, or above if there's no horizontal space
     private func layoutCloseButton() {
         guard let closeButton, !closeButton.isHidden else { return }
-        let spacing = CGSize(width: 6, height: 4)
-        closeButton.frame.origin = CGPoint(x: bounds.maxX + spacing.width,
-                                           y: spacing.height)
+
+        let buttonSize = closeButton.bounds.size
+        let spacing = closeButtonSpacing
+
+        // Check available horizontal space to the right
+        let availableRight = (superview?.bounds.width ?? .greatestFiniteMagnitude) - frame.maxX
+        if availableRight >= buttonSize.width + spacing.width {
+            // Position to the right of the view
+            closeButton.frame.origin = CGPoint(x: bounds.maxX + spacing.width,
+                                               y: cornerRadius * 0.4)
+        } else {
+            // Position above the view, aligned with the promo view's right edge
+            var xPosition = bounds.maxX - (buttonSize.width + (cornerRadius * 0.4))
+
+            // Check if this position would cause the button to be clipped by the side of the superview still
+            if let superview = superview {
+                let buttonRightEdgeInSuperview = frame.minX + xPosition + buttonSize.width
+                if buttonRightEdgeInSuperview > superview.bounds.width {
+                    let overflow = buttonRightEdgeInSuperview - superview.bounds.width
+                    xPosition -= (overflow + 8)
+                }
+            }
+            
+            closeButton.frame.origin = CGPoint(x: xPosition,
+                                               y: -buttonSize.height - spacing.height)
+        }
     }
 
     @objc private func closeButtonTapped() {
