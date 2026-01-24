@@ -22,6 +22,13 @@
 
 import UIKit
 
+/// The size of the close button displayed on the promo view
+@objc(PMKPromoViewCloseButtonSize)
+public enum PromoViewCloseButtonSize: Int {
+    case small
+    case large
+}
+
 /// A delegate object that external objects can use to receive updates from this promo view.
 @objc(PMKPromoViewDelegate)
 public protocol PromoViewDelegate: NSObjectProtocol {
@@ -66,8 +73,23 @@ public class PromoView: UIControl {
         set { backgroundView.layer.cornerRadius = newValue }
     }
 
-    /// Whether a close button is shown on the trailing side of the ad view (Default is false)
-    public var showCloseButton: Bool = false
+    /// Whether a close button is shown on the trailing side of the ad view (Default is false).
+    /// Note: This property requires iOS 13.0 or later. On earlier versions, setting this has no effect.
+    public var showCloseButton: Bool = false {
+        didSet {
+            guard #available(iOS 13.0, *) else { return }
+            updateCloseButtonVisibility()
+        }
+    }
+
+    /// The size of the close button (Default is small)
+    public var closeButtonSize: PromoViewCloseButtonSize = .small {
+        didSet {
+            guard #available(iOS 13.0, *) else { return }
+            configureCloseButton()
+            setNeedsLayout()
+        }
+    }
 
     /// The background view displayed behind the content view
     public let backgroundView: UIView = UIView()
@@ -112,6 +134,28 @@ public class PromoView: UIControl {
         set { setIsLoading(newValue, animated: false) }
     }
     private var _isLoading: Bool = false
+
+    /// When visible, the amount of vertical or horizontal spacing between the promo view and close button
+    public var closeButtonSpacing = CGSize(width: 6.0, height: 4.0) {
+        didSet { setNeedsLayout() }
+    }
+
+    /// The size of the close button and its spacing relative to the promo view
+    /// Use this to add to any sizing calculations to shrink the promo view if needed.
+    public var closeButtonOffset: CGSize {
+        guard let closeButton, showCloseButton else { return .zero }
+        return CGSize(width: closeButtonSpacing.width + closeButton.frame.width,
+                      height: closeButtonSpacing.height + closeButton.frame.height)
+    }
+
+    /// The total size of the promo view, including the close button if it is visible.
+    /// The close button shouldn't normally be included in layout calculations unless
+    /// it is necessary to fit the whole view on screen.
+    public var totalBoundsSize: CGSize {
+        guard let closeButton, showCloseButton else { return bounds.size }
+        return CGSize(width: bounds.width + closeButtonSpacing.width + closeButton.frame.width,
+                      height: bounds.height + closeButtonSpacing.height + closeButton.frame.height)
+    }
 
     /// A separate container view that is used to play an interactive animation when tapped.
     private let containerView = UIView()
@@ -166,6 +210,9 @@ public class PromoView: UIControl {
     /// An optional loading spinner view that can be shown by the providers while they load their content
     private var spinnerView: UIActivityIndicatorView?
 
+    /// The close button displayed at the top-right corner outside the view bounds
+    private var closeButton: UIButton?
+
     // MARK: - View Creation
 
     /// Create a new promo view instance with a list of preconfigured providers.
@@ -181,6 +228,9 @@ public class PromoView: UIControl {
     /// - Parameter frame: The frame of the promo view
     public override init(frame: CGRect) {
         super.init(frame: frame)
+
+        // Allow close button to render outside bounds
+        clipsToBounds = false
 
         // Configure default values
         self.defaultContentPadding = self.layoutMargins
@@ -287,6 +337,9 @@ extension PromoView {
 
         // Layout the spinner view if the promo view is currently loading
         refreshSpinnerView()
+
+        // Layout the close button
+        layoutCloseButton()
     }
 
     private func contentPadding(for provider: PromoProvider? = nil) -> UIEdgeInsets {
@@ -422,6 +475,7 @@ extension PromoView {
         UIView.animate(withDuration: 0.25) {
             self.contentView?.alpha = 1.0
             self.updateCornerRadius(for: provider)
+            self.layoutCloseButton()
         }
     }
 }
@@ -528,6 +582,111 @@ extension PromoView {
 
         // Position the spinner in the middle of the view
         spinnerView.center = CGPoint(x: bounds.midX, y: bounds.midY)
+    }
+}
+
+// MARK: - Close Button
+
+extension PromoView {
+
+    /// Updates the visibility of the close button based on the showCloseButton property
+    @available(iOS 13.0, *)
+    private func updateCloseButtonVisibility() {
+        if showCloseButton {
+            if closeButton == nil {
+                createCloseButton()
+            }
+            closeButton?.isHidden = false
+        } else {
+            closeButton?.isHidden = true
+        }
+    }
+
+    /// Creates and configures the close button
+    @available(iOS 13.0, *)
+    private func createCloseButton() {
+        let button = UIButton(type: .system)
+        button.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
+        addSubview(button)
+        closeButton = button
+        configureCloseButton()
+    }
+
+    /// Configures the close button appearance based on the current size setting
+    @available(iOS 13.0, *)
+    private func configureCloseButton() {
+        guard let closeButton else { return }
+
+        let image: UIImage?
+        switch closeButtonSize {
+        case .small:
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 13, weight: .bold)
+            image = UIImage(systemName: "xmark", withConfiguration: symbolConfig)
+        case .large:
+            let symbolConfig = UIImage.SymbolConfiguration(pointSize: 17, weight: .bold)
+            image = UIImage(systemName: "xmark.circle.fill", withConfiguration: symbolConfig)
+        }
+
+        closeButton.setImage(image, for: .normal)
+        closeButton.tintColor = .tertiaryLabel
+        closeButton.sizeToFit()
+    }
+
+    /// Lays out the close button to the right of the view, or above if there's no horizontal space
+    private func layoutCloseButton() {
+        guard let closeButton, !closeButton.isHidden else { return }
+
+        let buttonSize = closeButton.bounds.size
+        let spacing = closeButtonSpacing
+
+        // Check available horizontal space to the right
+        let availableRight = (superview?.bounds.width ?? .greatestFiniteMagnitude) - frame.maxX
+        if availableRight >= buttonSize.width + spacing.width {
+            // Position to the right of the view
+            closeButton.frame.origin = CGPoint(x: bounds.maxX + spacing.width,
+                                               y: cornerRadius * 0.4)
+        } else {
+            // Position above the view, aligned with the promo view's right edge
+            var xPosition = bounds.maxX - (buttonSize.width + (cornerRadius * 0.4))
+
+            // Check if this position would cause the button to be clipped by the side of the superview still
+            if let superview = superview {
+                let buttonRightEdgeInSuperview = frame.minX + xPosition + buttonSize.width
+                if buttonRightEdgeInSuperview > superview.bounds.width {
+                    let overflow = buttonRightEdgeInSuperview - superview.bounds.width
+                    xPosition -= (overflow + 8)
+                }
+            }
+            
+            closeButton.frame.origin = CGPoint(x: xPosition,
+                                               y: -buttonSize.height - spacing.height)
+        }
+    }
+
+    @objc private func closeButtonTapped() {
+        sendActions(for: .primaryActionTriggered)
+    }
+
+    /// Extends hit testing to include the close button which is positioned outside bounds
+    public override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        if let closeButton, !closeButton.isHidden {
+            // Expand the close button's hit area for easier tapping
+            let expandedFrame = closeButton.frame.insetBy(dx: -10, dy: -10)
+            if expandedFrame.contains(point) {
+                return true
+            }
+        }
+        return super.point(inside: point, with: event)
+    }
+
+    public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if let closeButton, !closeButton.isHidden {
+            let expandedFrame = closeButton.frame.insetBy(dx: -10, dy: -10)
+            if expandedFrame.contains(point) {
+                return closeButton
+            }
+        }
+        return super.hitTest(point, with: event)
     }
 }
 

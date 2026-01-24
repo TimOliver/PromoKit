@@ -14,6 +14,7 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        promoView.showCloseButton = true
         promoView.rootViewController = self
         promoView.delegate = self
 
@@ -23,8 +24,8 @@ class ViewController: UIViewController {
 
         // Banner ad layout
 //        promoView.providers = [
-//            //PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
-//            PromoAppRaterProvider(appIconName: "AppIcon", maxIconDimension: 128)
+//            PromoBannerAdProvider(adUnitID: "ca-app-pub-3940256099942544/2435281174"),
+//            PromoAppRaterProvider(appIconName: "AppIcon")
 //        ]
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 10.5) {
@@ -49,6 +50,12 @@ class ViewController: UIViewController {
         let promoBounds = view.bounds.insetBy(dx: layoutMargins, dy: safeAreaInset)
         promoView.frame.size = promoView.sizeThatFits(promoBounds.size)
         promoView.center = view.center
+
+//        // Since we're showing the close button, offset the view if we have to
+//        if promoView.totalSize.width < view.bounds.width,
+//            promoView.frame.minX + promoView.totalSize.width > view.bounds.width {
+//            promoView.frame.origin.x = (view.bounds.width - promoView.totalSize.width) * 0.5
+//        }
     }
 
     override func present(_ viewControllerToPresent: UIViewController, animated flag: Bool, completion: (() -> Void)? = nil) {
