@@ -6,7 +6,7 @@
 //
 
 import XCTest
-@testable import PromoKitExample
+@testable import PromoKit
 
 final class PromoKitTests: XCTestCase {
 

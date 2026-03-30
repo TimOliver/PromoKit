@@ -21,6 +21,9 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import Foundation
+#if canImport(PromoKit)
+import PromoKit
+#endif
 import GoogleMobileAds
 
 @objc(PMKPromoBannerAdSize)
@@ -49,7 +52,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
 
     /// Create new instance of a Google ad banner provider
     /// - Parameter adUnitID: The Google ad unit ID for this banner
-    init(adUnitID: String) {
+    public init(adUnitID: String) {
         self.adUnitID = adUnitID
     }
 

@@ -26,6 +26,8 @@ import Foundation
 /// data in user defaults, and file data to the app's tmp directory.
 public class PromoCache {
 
+    public init() {}
+
     // MARK: - File Management
 
     /// If available, loads the data from disk for a previously cached file.

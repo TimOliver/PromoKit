@@ -96,7 +96,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     /// Create a new instance of this provider with the specified CloudKit container name
     /// - Parameter containerIdentifier: The container name to use (eg iCloud.dev.tim.promokit). Specify nil for the app's default container
-    init(recordType: String = "PromoEvent", containerIdentifier: String? = nil, eventType: String? = nil) {
+    public init(recordType: String = "PromoEvent", containerIdentifier: String? = nil, eventType: String? = nil) {
         self.recordType = recordType
         self.containerIdentifier = containerIdentifier
         self.eventType = eventType

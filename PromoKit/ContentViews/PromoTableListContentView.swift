@@ -43,7 +43,7 @@ final public class PromoTableListContentView: PromoContentView {
 
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
-    required init(promoView: PromoView) {
+    public required init(promoView: PromoView) {
         super.init(promoView: promoView)
 
         label.adjustsFontSizeToFitWidth = true
@@ -67,7 +67,7 @@ final public class PromoTableListContentView: PromoContentView {
         addSubview(imageView)
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 

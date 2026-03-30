@@ -1,6 +1,6 @@
 import XCTest
 import UIKit
-@testable import PromoKitExample
+@testable import PromoKit
 
 @MainActor
 final class PromoKitBehaviorTests: XCTestCase {

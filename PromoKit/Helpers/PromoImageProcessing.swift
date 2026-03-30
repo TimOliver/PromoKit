@@ -35,7 +35,7 @@ public class PromoImageProcessing {
     ///   - fittingSize: Optionally, a smaller size for the image to be decoded to.
     ///   - scale: The screen scale that the image will be scaled to.
     /// - Returns: The decoded image
-    static func decodedImage(_ image: UIImage?, fittingSize: CGSize? = nil, scale: CGFloat = 1.0) -> UIImage? {
+    public static func decodedImage(_ image: UIImage?, fittingSize: CGSize? = nil, scale: CGFloat = 1.0) -> UIImage? {
         guard let image, let newImage = image.cgImage else { return nil }
 
         if #available(iOS 15.0, *) {
@@ -68,10 +68,10 @@ public class PromoImageProcessing {
     ///   - radius: The amount of blur
     ///   - fittingSize: The size the image is shrunk to
     /// - Returns: The blurred image
-    static func blurredImage(_ image: UIImage,
-                             radius: CGFloat = 50.0,
-                             brightness: CGFloat = -0.05,
-                             fittingSize: CGSize? = nil) -> UIImage? {
+    public static func blurredImage(_ image: UIImage,
+                                    radius: CGFloat = 50.0,
+                                    brightness: CGFloat = -0.05,
+                                    fittingSize: CGSize? = nil) -> UIImage? {
         guard var ciImage = CIImage(image: image) else { return nil }
         var extent = ciImage.extent
         ciImage = ciImage.clampedToExtent()

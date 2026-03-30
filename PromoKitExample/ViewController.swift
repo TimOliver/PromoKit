@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import PromoKit
+import PromoKitGoogleAds
 
 class ViewController: UIViewController {
 

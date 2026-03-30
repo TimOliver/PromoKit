@@ -21,6 +21,9 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import Foundation
+#if canImport(PromoKit)
+import PromoKit
+#endif
 import GoogleMobileAds
 
 /// A content view that can display a complete native Google AdMob view.
@@ -50,12 +53,12 @@ final public class PromoNativeAdContentView: PromoContentView {
     // The hosted native ad view
     private let adView = PromoNativeAdView()
 
-    required init(promoView: PromoView) {
+    public required init(promoView: PromoView) {
         super.init(promoView: promoView)
         addSubview(adView)
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -70,7 +73,7 @@ final public class PromoNativeAdContentView: PromoContentView {
         adView.bodyView?.backgroundColor = adView.backgroundColor
     }
 
-    override func prepareForReuse() {
+    public override func prepareForReuse() {
         self.nativeAd = nil
         adView.reset()
     }
@@ -571,4 +574,3 @@ final public class PromoNativeAdView: GADNativeAdView {
         return CGSize(width: width, height: height)
     }
 }
-
