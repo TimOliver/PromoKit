@@ -84,7 +84,10 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     private let maximumSize: CGSize = CGSize(width: 450, height: 75)
 
     // Retain the result handler until we've downloaded all the data
-    public var resultHandler: PromoProviderContentFetchHandler?
+    private var resultHandler: PromoProviderContentFetchHandler?
+
+    // A token used to invalidate callbacks from any previous in-flight fetch
+    private var fetchToken: UUID?
 
     // If found, the record to show
     private var record: CKRecord?
@@ -107,6 +110,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         self.resultHandler = resultHandler
         record = nil
         thumbnail = nil
+        fetchToken = UUID()
         fetchLatestEventRecordID()
     }
 
@@ -132,6 +136,9 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     // MARK: - Private
 
     private func fetchLatestEventRecordID() {
+        // Capture the token for this fetch so callbacks from a previous fetch are ignored
+        let token = fetchToken
+
         // Create the query, searching for the first item that hasn't expired yet.
         var format = "expirationDate > now()"
         if let eventType { format += " AND type == '\(eventType)'" }
@@ -143,10 +150,12 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         let queryOperation = CKQueryOperation(query: query)
         queryOperation.desiredKeys = desiredKeys()
         queryOperation.recordFetchedBlock = { [weak self] record in
+            guard self?.fetchToken == token else { return }
             self?.didFetchRecordForQuery(record)
         }
         queryOperation.queryCompletionBlock = { [weak self] _, error in
-            self?.recordQueryDidComplete(error: error)
+            guard self?.fetchToken == token else { return }
+            self?.recordQueryDidComplete(error: error, token: token)
         }
         publicDatabase.add(queryOperation)
     }
@@ -224,7 +233,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     /// Called when the record query completes.
     /// - Parameter error: An error, if any occurred
-    private func recordQueryDidComplete(error: Error?) {
+    private func recordQueryDidComplete(error: Error?, token: UUID?) {
         // Assume the query completed with zero results
         var result: PromoProviderFetchContentResult = .noContentAvailable
 
@@ -240,7 +249,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         // If the `recordFetchedBlock` was called and we were able to save a record,
         // lets do one final validation pass to verify the thumbnail.
         if let record = self.record {
-            prepareRecordForDisplay(record)
+            prepareRecordForDisplay(record, token: token)
             return
         }
 
@@ -251,7 +260,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     /// Before displaying the record, do a verification pass to determine the state of the thumbnail
     /// - Parameter record: The record to display
-    private func prepareRecordForDisplay(_ record: CKRecord) {
+    private func prepareRecordForDisplay(_ record: CKRecord, token: UUID?) {
         // Load the previously cached thumbnail if we have it
         if loadThumbnailFromCache(record: record) {
             handleResult(.contentAvailable)
@@ -260,6 +269,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
         // If we don't have the thumbnail, fetch the entire record from CloudKit
         publicDatabase.fetch(withRecordID: record.recordID) { [weak self] record, error in
+            guard self?.fetchToken == token else { return }
             guard let record, error == nil else {
                 self?.record = nil
                 self?.handleResult(.fetchRequestFailed)
@@ -295,8 +305,10 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// Calls the result handler on the main thread
     /// - Parameter result: The final content discovery result
     private func handleResult(_ result: PromoProviderFetchContentResult) {
-        DispatchQueue.main.async { [weak self] in
-            self?.resultHandler?(result)
+        guard let handler = resultHandler else { return }
+        resultHandler = nil
+        DispatchQueue.main.async {
+            handler(result)
         }
     }
 
