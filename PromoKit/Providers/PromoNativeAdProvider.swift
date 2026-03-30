@@ -71,6 +71,8 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
     // MARK: - PromoProvider Implementation
 
+    public var isInternetAccessRequired: Bool { true }
+
     public func didMoveToPromoView(_ promoView: PromoView) {
         // Capture a weak reference to our parent promo view since we'll be using
         // it to perform image generation and to force a reload if the Google ad changes

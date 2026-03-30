@@ -57,6 +57,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         self.adUnitID = adUnitID
     }
 
+    public var isInternetAccessRequired: Bool { true }
     public var needsReloadOnSizeChange: Bool { true }
 
     public func fetchNewContent(for promoView: PromoView,
