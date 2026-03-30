@@ -28,7 +28,7 @@ import Network
 internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
     /// The promo view managing this provider coordinator.
-    private(set) var promoView: PromoView?
+    private(set) weak var promoView: PromoView?
 
     /// The array of providers managed by this coordinator,
     /// in order of priority.
