@@ -15,10 +15,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
-        GADMobileAds.sharedInstance().start { status in
+        MobileAds.shared.start { status in
             print("STATUS \(status)")
         }
-        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = [ "a9f2a33593ee7736bd2aa820b18c70da" ]
+        MobileAds.shared.requestConfiguration.testDeviceIdentifiers = [ "a9f2a33593ee7736bd2aa820b18c70da" ]
         return true
     }
 

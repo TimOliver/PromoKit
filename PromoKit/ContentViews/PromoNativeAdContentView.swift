@@ -31,7 +31,7 @@ import GoogleMobileAds
 final public class PromoNativeAdContentView: PromoContentView {
 
     /// The ad model object that is being displayed
-    public var nativeAd: GADNativeAd? {
+    public var nativeAd: NativeAd? {
         didSet { adView.configureContentViews(with: nativeAd) }
     }
 
@@ -88,7 +88,7 @@ final public class PromoNativeAdContentView: PromoContentView {
 /// The inner ad view view that is managed by `PromoNativeAdContentView`.
 /// It is a subclass of `GADNativeAdView` and manages all of the UI configuration
 /// and events between PromoKit and Google AdMob.
-final public class PromoNativeAdView: GADNativeAdView {
+final public class PromoNativeAdView: NativeAdView {
 
     // A generated blurred image placed behind the ad when the aspect ratio
     // doesn't align
@@ -116,7 +116,7 @@ final public class PromoNativeAdView: GADNativeAdView {
     private let contentMediaContainerView = UIImageView()
 
     // If media, the content view used to show the media
-    private let contentMediaView = GADMediaView()
+    private let contentMediaView = MediaView()
 
     // For easier testing, remove the 'Test mode' string from the title
     private var headlineText: String {
@@ -211,7 +211,7 @@ final public class PromoNativeAdView: GADNativeAdView {
 
     }
 
-    public func configureContentViews(with nativeAd: GADNativeAd?) {
+    public func configureContentViews(with nativeAd: NativeAd?) {
         guard let nativeAd else {
             return
         }
@@ -243,7 +243,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         layoutSubviews(for: self.nativeAd)
     }
 
-    public func layoutSubviews(for nativeAd: GADNativeAd?) {
+    public func layoutSubviews(for nativeAd: NativeAd?) {
         super.layoutSubviews()
 
         // Skip layout if we don't have an ad yet
@@ -269,7 +269,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         self.callToActionView = actionButton
     }
 
-    private func layoutSubviewsInLandscapeFormat(size: CGSize, nativeAd: GADNativeAd) {
+    private func layoutSubviewsInLandscapeFormat(size: CGSize, nativeAd: NativeAd) {
         // Lay out the ad view on the right hand side
         let aspectRatio = nativeAd.mediaContent.aspectRatio
         let mediaHeight = size.height - (padding * 2.0)
@@ -355,7 +355,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         bodyLabel.frame.origin.y = headlineLabel.frame.maxY + titleVerticalSpacing
     }
 
-    private func layoutSubviewsInPortraitFormat(size: CGSize, nativeAd: GADNativeAd) {
+    private func layoutSubviewsInPortraitFormat(size: CGSize, nativeAd: NativeAd) {
         var origin = CGPoint(x: padding, y: padding)
 
         // Lay out the icon view
@@ -494,7 +494,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         sizeThatFits(size, nativeAd: self.nativeAd)
     }
 
-    private func sizeThatFits(_ size: CGSize, nativeAd: GADNativeAd?) -> CGSize {
+    private func sizeThatFits(_ size: CGSize, nativeAd: NativeAd?) -> CGSize {
         guard let nativeAd else { return .zero }
 
         // Aspect ratio of the ad view

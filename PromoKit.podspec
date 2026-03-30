@@ -6,6 +6,7 @@ Pod::Spec.new do |s|
   s.homepage = 'https://github.com/TimOliver/PromoKit'
   s.author   = 'Tim Oliver'
   s.source   = { :git => 'https://github.com/TimOliver/PromoKit.git', :tag => s.version }
+  s.static_framework = true
   s.requires_arc = true
   s.swift_version = '5.9'
   s.ios.deployment_target = '12.0'
@@ -34,7 +35,7 @@ Pod::Spec.new do |s|
       'PromoKit/Providers/PromoNativeAdProvider.swift',
     ]
     ads.dependency 'PromoKit/Core'
-    ads.dependency 'Google-Mobile-Ads-SDK'
+    ads.dependency 'Google-Mobile-Ads-SDK', '~> 13.1.0'
     ads.frameworks = ['UIKit']
   end
 end

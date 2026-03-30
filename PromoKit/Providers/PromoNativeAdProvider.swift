@@ -43,10 +43,10 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     private let adUnitID: String
 
     /// The loading object responsible for loading ads. Re-created on each fetch to discard stale callbacks.
-    private var adLoader: GADAdLoader?
+    private var adLoader: AdLoader?
 
     /// The most recently loaded native ad returned by the ad loader
-    private var nativeAd: GADNativeAd?
+    private var nativeAd: NativeAd?
 
     /// A blurred, darkened version of the ad's first image, used as the media background
     private var mediaBackgroundImage: UIImage?
@@ -90,7 +90,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
         // Kick off the ad request with a fresh loader
         makeAdLoaderIfNeeded(with: promoView)
-        adLoader?.load(GADRequest())
+        adLoader?.load(Request())
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
@@ -197,17 +197,17 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     private func makeAdLoaderIfNeeded(with promoView: PromoView) {
         guard adLoader == nil else { return }
 
-        let videoOptions = GADVideoOptions()
-        videoOptions.startMuted = true
-        videoOptions.clickToExpandRequested = true
+        let videoOptions = VideoOptions()
+        videoOptions.shouldStartMuted = true
+        videoOptions.isClickToExpandRequested = true
 
-        let mediaLoaderOptions = GADNativeAdMediaAdLoaderOptions()
+        let mediaLoaderOptions = NativeAdMediaAdLoaderOptions()
         mediaLoaderOptions.mediaAspectRatio = .any
 
-        let viewAdOptions = GADNativeAdViewAdOptions()
+        let viewAdOptions = NativeAdViewAdOptions()
         viewAdOptions.preferredAdChoicesPosition = .topRightCorner
 
-        self.adLoader = GADAdLoader(adUnitID: adUnitID,
+        self.adLoader = AdLoader(adUnitID: adUnitID,
                                     rootViewController: promoView.rootViewController,
                                     adTypes: [.native],
                                     options: [videoOptions, mediaLoaderOptions, viewAdOptions])
@@ -235,8 +235,8 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
 // MARK: - GADBannerViewDelegate
 
-extension PromoNativeAdProvider: GADNativeAdLoaderDelegate {
-    public func adLoader(_ adLoader: GADAdLoader, didReceive nativeAd: GADNativeAd) {
+extension PromoNativeAdProvider: NativeAdLoaderDelegate {
+    public func adLoader(_ adLoader: AdLoader, didReceive nativeAd: NativeAd) {
         // Skip if the same ad was sent down
         if nativeAd == self.nativeAd {
             didReceiveResult(.success(()))
@@ -251,7 +251,7 @@ extension PromoNativeAdProvider: GADNativeAdLoaderDelegate {
         }
     }
 
-    public func adLoader(_ adLoader: GADAdLoader, didFailToReceiveAdWithError error: Error) {
+    public func adLoader(_ adLoader: AdLoader, didFailToReceiveAdWithError error: Error) {
         didReceiveResult(.failure(error))
     }
 }

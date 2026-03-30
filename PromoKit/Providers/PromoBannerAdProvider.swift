@@ -46,7 +46,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     private let adUnitID: String
 
     /// The Google banner view, created once and reused across fetches
-    private let adView = GADBannerView()
+    private let adView = BannerView()
 
     // Store the result handler so we can call it when the ad has returned a value
     private var resultHandler: PromoProviderContentFetchHandler?
@@ -67,7 +67,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         adView.delegate = self
         adView.rootViewController = promoView.rootViewController
         adView.adSize = bannerSizeFor(promoSize: promoView.frame.size)
-        adView.load(GADRequest())
+        adView.load(Request())
         self.resultHandler = resultHandler
     }
 
@@ -103,23 +103,23 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     }
 
     /// Returns the appropriate `GADAdSize` based on the current promo view width and the supported sizes.
-    private func bannerSizeFor(promoSize: CGSize) -> GADAdSize {
+    private func bannerSizeFor(promoSize: CGSize) -> AdSize {
         if supportedBannerSizes.contains(.full), promoSize.width > 468 {
-            return GADAdSizeFullBanner
+            return AdSizeFullBanner
         }
-        return GADAdSizeBanner
+        return AdSizeBanner
     }
 }
 
 // MARK: - GADBannerViewDelegate
 
-extension PromoBannerAdProvider: GADBannerViewDelegate {
+extension PromoBannerAdProvider: BannerViewDelegate {
 
-    public func bannerViewDidReceiveAd(_ bannerView: GADBannerView) {
+    public func bannerViewDidReceiveAd(_ bannerView: BannerView) {
         didReceiveResult(.success(()))
     }
 
-    public func bannerView(_ bannerView: GADBannerView, didFailToReceiveAdWithError error: Error) {
+    public func bannerView(_ bannerView: BannerView, didFailToReceiveAdWithError error: Error) {
         didReceiveResult(.failure(error))
     }
 }
