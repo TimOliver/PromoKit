@@ -735,7 +735,7 @@ extension PromoView {
 
 extension PromoView {
 
-    /// If necessasry, providers can short-circuit and cancel any in-progress
+    /// If necessary, providers can short-circuit and cancel any in-progress
     /// tap/dragging interactions if they determine their content became non-interactive in the meantime.
     /// - Parameter animated: Whether the cancel event is animated or not.
     public func cancelTapInteraction(animated: Bool = false) {
