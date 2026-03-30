@@ -42,9 +42,7 @@ public protocol PromoViewDelegate: NSObjectProtocol {
 
     /// A fetch completely failed and there is no content to display.
     /// Use this method to hide the promo view if needed.
-    /// - Parameters:
-    ///   - promoView: The promo view in which the error occurred
-    ///   - error: The error that occurred
+    /// - Parameter promoView: The promo view in which the failure occurred
     @objc optional func promoViewProviderFetchFailed(_ promoView: PromoView)
 
     /// The user tapped the close button displayed next to the promo view
