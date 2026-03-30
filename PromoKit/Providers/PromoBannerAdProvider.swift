@@ -58,6 +58,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     }
 
     public var isInternetAccessRequired: Bool { true }
+    public var showsLoadingIndicatorDuringFetch: Bool { true }
     public var needsReloadOnSizeChange: Bool { true }
 
     public func fetchNewContent(for promoView: PromoView,
@@ -68,9 +69,6 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         adView.adSize = bannerSizeFor(promoSize: promoView.frame.size)
         adView.load(GADRequest())
         self.resultHandler = resultHandler
-
-        // When calling `adView.load`, the ad automatically hides, so we need to manually show the loading spinner here
-        promoView.setIsLoading(true, animated: true)
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {

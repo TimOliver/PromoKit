@@ -167,6 +167,11 @@ extension PromoProviderCoordinator {
             }
         }
 
+        // If the provider needs a loading indicator, show it now before the fetch starts.
+        if provider.showsLoadingIndicatorDuringFetch ?? false {
+            promoView?.setIsLoading(true, animated: true)
+        }
+
         // Start the fetch request on the new provider.
         // Defer to the next run loop, so we don't end up overloading the call stack if all of these providers
         // execute on the main run loop.
