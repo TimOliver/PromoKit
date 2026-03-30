@@ -35,7 +35,7 @@ Pod::Spec.new do |s|
       'PromoKit/Providers/PromoNativeAdProvider.swift',
     ]
     ads.dependency 'PromoKit/Core'
-    ads.dependency 'Google-Mobile-Ads-SDK', '~> 13.1.0'
+    ads.dependency 'Google-Mobile-Ads-SDK', '~> 12.9.0'
     ads.frameworks = ['UIKit']
   end
 end
