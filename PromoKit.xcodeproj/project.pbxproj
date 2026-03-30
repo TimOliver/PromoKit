@@ -18,6 +18,7 @@
 		229D21352B67CE2700105C9D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 229D21342B67CE2700105C9D /* Assets.xcassets */; };
 		229D21382B67CE2700105C9D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 229D21362B67CE2700105C9D /* LaunchScreen.storyboard */; };
 		229D21432B67CE2700105C9D /* PromoKitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D21422B67CE2700105C9D /* PromoKitTests.swift */; };
+		5A9C1E0A2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9C1E0B2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift */; };
 		229D214D2B67CE2700105C9D /* PromoKitUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D214C2B67CE2700105C9D /* PromoKitUITests.swift */; };
 		229D214F2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D214E2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift */; };
 		229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D215C2B67D5FA00105C9D /* PromoView.swift */; };
@@ -68,6 +69,7 @@
 		229D21392B67CE2700105C9D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		229D213E2B67CE2700105C9D /* PromoKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PromoKitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		229D21422B67CE2700105C9D /* PromoKitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitTests.swift; sourceTree = "<group>"; };
+		5A9C1E0B2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitBehaviorTests.swift; sourceTree = "<group>"; };
 		229D21482B67CE2700105C9D /* PromoKitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PromoKitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		229D214C2B67CE2700105C9D /* PromoKitUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitUITests.swift; sourceTree = "<group>"; };
 		229D214E2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitUITestsLaunchTests.swift; sourceTree = "<group>"; };
@@ -150,6 +152,7 @@
 		229D21412B67CE2700105C9D /* PromoKitTests */ = {
 			isa = PBXGroup;
 			children = (
+				5A9C1E0B2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift */,
 				229D21422B67CE2700105C9D /* PromoKitTests.swift */,
 			);
 			path = PromoKitTests;
@@ -382,6 +385,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5A9C1E0A2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift in Sources */,
 				229D21432B67CE2700105C9D /* PromoKitTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -635,7 +639,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromoKit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PromoKit";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromoKitExample.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PromoKitExample";
 			};
 			name = Debug;
 		};
@@ -655,7 +659,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromoKit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PromoKit";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromoKitExample.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PromoKitExample";
 			};
 			name = Release;
 		};
