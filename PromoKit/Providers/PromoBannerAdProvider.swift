@@ -93,14 +93,12 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     }
 
     private func didReceiveResult(_ result: Result<Void, Error>) {
-        // Inform the promo view of the results
+        guard let handler = resultHandler else { return }
+        resultHandler = nil
         switch result {
-        case .success:
-            self.resultHandler?(.contentAvailable)
-        case .failure:
-            self.resultHandler?(.fetchRequestFailed)
+        case .success: handler(.contentAvailable)
+        case .failure: handler(.fetchRequestFailed)
         }
-        self.resultHandler = nil
     }
 
     private func bannerSizeFor(promoSize: CGSize) -> GADAdSize {

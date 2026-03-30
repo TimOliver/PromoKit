@@ -82,7 +82,11 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         // Save a reference to the result handler so we can call it when the Google ad delegate returns
         self.resultHandler = resultHandler
 
-        // Kick off the ad request
+        // Discard any in-flight loader so its callbacks can't reach us
+        adLoader?.delegate = nil
+        adLoader = nil
+
+        // Kick off the ad request with a fresh loader
         makeAdLoaderIfNeeded(with: promoView)
         adLoader?.load(GADRequest())
     }
