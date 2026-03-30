@@ -1,5 +1,5 @@
 //
-//  PromoNativeAdView.swift
+//  PromoNativeAdContentView.swift
 //
 //  Copyright 2024-2025 Timothy Oliver. All rights reserved.
 //
@@ -444,7 +444,7 @@ final public class PromoNativeAdView: GADNativeAdView {
         let scale = min(mediaContainerSize.width / mediaSize.width,
                         mediaContainerSize.height / mediaSize.height)
         contentMediaView.frame.size = CGSize(width: isLandscape ? mediaContainerSize.width : mediaSize.width * scale,
-                                             height: !isLandscape ? mediaContainerSize.height :mediaSize.height * scale)
+                                             height: !isLandscape ? mediaContainerSize.height : mediaSize.height * scale)
         contentMediaView.frame.origin = CGPoint(x: (mediaContainerSize.width - contentMediaView.frame.width) * 0.5,
                                                 y: (mediaContainerSize.height - contentMediaView.frame.height) * 0.5)
 

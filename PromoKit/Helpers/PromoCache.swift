@@ -122,7 +122,7 @@ public class PromoCache {
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
     }
 
-    // MARK: - Cached Item Managemment
+    // MARK: - Cached Item Management
 
     /// Generates a unique identifier that will be used as the top level key for a single provider in user defaults
     /// - Parameters:
