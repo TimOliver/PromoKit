@@ -194,7 +194,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
         guard let firstAccessDate else { return true }
 
-        // Compare the current date to the adjust expiriy date
+        // Compare the current date to the adjusted expiry date
         let referenceDate = Date().timeIntervalSinceReferenceDate
         let localExpirationReferenceDate = firstAccessDate
             .addingTimeInterval(TimeInterval(localDuration * 60 * 60))
