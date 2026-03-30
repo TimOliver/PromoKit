@@ -97,7 +97,7 @@ final public class PromoTableListContentView: PromoContentView {
 
         // Detail text
         if let detailText {
-            var detailColor = UIColor.black // UIColor(white: 0.27, alpha: 1.0)
+            var detailColor = UIColor.black
             if #available(iOS 13.0, *) {
                 // Use a manual color here to make it darker on the background
                 detailColor = .label
