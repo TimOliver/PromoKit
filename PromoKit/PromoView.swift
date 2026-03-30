@@ -25,8 +25,8 @@ import UIKit
 /// The size of the close button displayed on the promo view
 @objc(PMKPromoViewCloseButtonSize)
 public enum PromoViewCloseButtonSize: Int {
-    case small
-    case large
+    case small  /// A small `xmark` icon (13pt)
+    case large  /// A large `xmark.circle.fill` icon (17pt)
 }
 
 /// A delegate object that external objects can use to receive updates from this promo view.
@@ -361,6 +361,7 @@ extension PromoView {
         performDeferredReloadIfNeeded()
     }
 
+    /// Returns the content padding to apply for the given provider, falling back to `defaultContentPadding`.
     private func contentPadding(for provider: PromoProvider? = nil) -> UIEdgeInsets {
         let provider = provider ?? currentProvider ?? nil
         var contentPadding = self.defaultContentPadding
@@ -370,6 +371,7 @@ extension PromoView {
         return contentPadding
     }
 
+    /// Applies the corner radius from the given provider, or the view's own `cornerRadius` if the provider doesn't override it.
     private func updateCornerRadius(for provider: PromoProvider? = nil) {
         let provider = provider ?? currentProvider ?? nil
         let contentPadding = contentPadding(for: provider)
@@ -414,7 +416,8 @@ extension PromoView {
         providerDidChange(currentProvider)
     }
 
-    // Callback used to update the promo view when the coordinator detects anew provider
+    /// Called by the coordinator when a new provider has been selected or cleared.
+    /// Reclaims the previous content view and displays the new one, if any.
     private func providerDidChange(_ provider: PromoProvider?) {
         // Display the new content
         if let provider {
@@ -460,7 +463,7 @@ extension PromoView {
         return contentViewClass.init(promoView: self)
     }
 
-    // Clean up the current content view if there is one
+    /// Fades out and removes the current content view, returning it to the recycling pool.
     private func reclaimCurrentContentView() {
         guard let contentView else { return }
 
@@ -491,7 +494,7 @@ extension PromoView {
         self.contentView = nil
     }
 
-    // Get the provider to generate and configure its view content, and then display it
+    /// Asks the provider to configure a content view, adds it to the hierarchy, and animates it in.
     private func displayNewProvider(_ provider: PromoProvider) {
         // If we were loading, hide the spinner view
         setIsLoading(false, animated: true)
@@ -582,8 +585,9 @@ extension PromoView {
         UIView.animate(withDuration: 0.2, delay: 0.0, options: [], animations: crossFadeAnimationBlock)
     }
 
-    /// Create a new spinner view instance based on the promo view's current state.
-    ///
+    /// Repositions and resizes the spinner view to match the current promo view state.
+    /// Updates the spinner color based on background brightness, and switches between
+    /// small and large spinner styles depending on the view height.
     private func refreshSpinnerView() {
         guard let spinnerView else { return }
 
@@ -796,6 +800,10 @@ extension PromoView {
         }
     }
 
+    /// Applies or removes the subtle scale-down transform used for the tap press animation.
+    /// - Parameters:
+    ///   - zoomed: Whether the view should appear pressed in.
+    ///   - animated: Whether the transition is animated.
     private func setZoomed(_ zoomed: Bool, animated: Bool = false) {
         guard isZoomed != zoomed else { return }
         isZoomed = zoomed

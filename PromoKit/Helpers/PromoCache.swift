@@ -34,7 +34,6 @@ public class PromoCache {
     /// - Parameters:
     ///   - key: The unique key identifying this file
     ///   - object: The hosting object (eg a provider) that is responsible for this data
-    ///   - objectType: An additional optional string to identify unique copies of the hosting object
     /// - Returns: The data if available or nil otherwise
     public func fileData(forKey key: String, fromObject object: AnyObject) -> Data? {
         try? Data(contentsOf: fileURL(forKey: key, fromObject: object), options: [.mappedIfSafe])
@@ -45,7 +44,6 @@ public class PromoCache {
     ///   - data: The data to persist to disk
     ///   - key: The unique key to identify this file
     ///   - object: The hosting object (eg a provider) that is responsible for this data
-    ///   - objectType: An additional optional string to identify unique copies of the hosting object
     public func setFileData(_ data: Data, forKey key: String, fromObject object: AnyObject) throws {
         try data.write(to: fileURL(forKey: key, fromObject: object))
     }

@@ -28,7 +28,7 @@ import CoreImage
 public class PromoImageProcessing {
 
     /// Takes a `UIImage` instance containing un-decoded image data, and forcefully decodes
-    /// that data to a new image copy. Oprtionally, the image can be downscaled at the same time.
+    /// that data to a new image copy. Optionally, the image can be downscaled at the same time.
     /// Sourced from http://www.lukeparham.com/blog/2018/3/14/decoding-jpegs-with-the-best
     /// - Parameters:
     ///   - image: The un-decoded image.
@@ -65,8 +65,9 @@ public class PromoImageProcessing {
     /// Generate a blurred version of the provided image
     /// - Parameters:
     ///   - image: The image to blur
-    ///   - radius: The amount of blur
-    ///   - fittingSize: The size the image is shrunk to
+    ///   - radius: The Gaussian blur radius (default 50)
+    ///   - brightness: A brightness adjustment applied after blurring, in the range -1.0 to 1.0 (default -0.05)
+    ///   - fittingSize: If provided, the image is scaled down to fit within this size before blurring
     /// - Returns: The blurred image
     public static func blurredImage(_ image: UIImage,
                                     radius: CGFloat = 50.0,

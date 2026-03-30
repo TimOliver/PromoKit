@@ -62,13 +62,13 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         static let thumbnail = "thumbnail"
     }
 
-    // The record type in CloudKit that stores this data
+    // The CloudKit record type name that this provider queries (eg "PromoEvent")
     private let recordType: String
 
-    // The container that will be queried. Default value is this app's default container
+    // The identifier of the CloudKit container to query, or nil to use the app's default container
     private let containerIdentifier: String?
 
-    // An optional event type to filter multiple streams of events in the same record type
+    // An optional string to narrow the query to a specific event category within the record type
     private let eventType: String?
 
     // Fetches the public database for the initial container
@@ -77,22 +77,22 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         return CKContainer.default().publicCloudDatabase
     }()
 
-    // A cache to store local state about the CloudKit records and
+    // A cache for persisting record access dates and thumbnail images between sessions
     private let cache = PromoCache()
 
-    // The maximum size this provider should be
+    // The maximum display size for this provider's content view
     private let maximumSize: CGSize = CGSize(width: 450, height: 75)
 
-    // Retain the result handler until we've downloaded all the data
+    // The result handler captured at the start of a fetch and called when the fetch resolves
     private var resultHandler: PromoProviderContentFetchHandler?
 
-    // A token used to invalidate callbacks from any previous in-flight fetch
+    // Incremented on each new fetch to invalidate callbacks from previous in-flight requests
     private var fetchToken: UUID?
 
-    // If found, the record to show
+    // The CloudKit record selected for display after a successful query
     private var record: CKRecord?
 
-    // If available, the thumbnail image associated with the queried record
+    // The decoded thumbnail image for the current record, loaded from cache or downloaded
     private var thumbnail: UIImage?
 
     // MARK: - Init
@@ -136,6 +136,8 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     // MARK: - Private
 
+    /// Performs a CloudKit query to find the most recently expiring valid event record.
+    /// Fetches only the lightweight metadata fields needed for eligibility checking.
     private func fetchLatestEventRecordID() {
         // Capture the token for this fetch so callbacks from a previous fetch are ignored
         let token = fetchToken
@@ -201,6 +203,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         return referenceDate < localExpirationReferenceDate
     }
 
+    /// Returns whether the current app version satisfies the min/max version constraints stored in the record.
     private func isCurrentAppVersionEligible(for record: CKRecord) -> Bool {
         let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
             ?? Bundle.main.object(forInfoDictionaryKey: kCFBundleVersionKey as String) as? String
@@ -232,8 +235,10 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         return true
     }
 
-    /// Called when the record query completes.
-    /// - Parameter error: An error, if any occurred
+    /// Called when the CloudKit record query operation completes.
+    /// - Parameters:
+    ///   - error: An error, if any occurred during the query.
+    ///   - token: The fetch token captured at query start, used to detect stale completions.
     private func recordQueryDidComplete(error: Error?, token: UUID?) {
         // Assume the query completed with zero results
         var result: PromoProviderFetchContentResult = .noContentAvailable
@@ -259,8 +264,11 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         handleResult(result)
     }
 
-    /// Before displaying the record, do a verification pass to determine the state of the thumbnail
-    /// - Parameter record: The record to display
+    /// Before displaying the record, do a verification pass to determine the state of the thumbnail.
+    /// If a cached thumbnail exists it is used immediately; otherwise the full record is re-fetched to obtain the asset.
+    /// - Parameters:
+    ///   - record: The record to display.
+    ///   - token: The fetch token captured at query start, used to detect stale completions.
     private func prepareRecordForDisplay(_ record: CKRecord, token: UUID?) {
         // Load the previously cached thumbnail if we have it
         if loadThumbnailFromCache(record: record) {
@@ -284,6 +292,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         }
     }
 
+    /// Moves the downloaded thumbnail asset from CloudKit's temporary location into the app's cache directory.
     private func saveThumbnailToCache(record: CKRecord) {
         guard let thumbnailAsset = record[Constants.thumbnail] as? CKAsset,
               let thumbnailURL = thumbnailAsset.fileURL  else { return }

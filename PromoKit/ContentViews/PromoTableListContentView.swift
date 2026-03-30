@@ -35,7 +35,7 @@ final public class PromoTableListContentView: PromoContentView {
     /// A label that displays a footnote at the top
     public let footnoteLabel = UILabel()
 
-    // An optional image displayed horizontally along the leading edge of the view
+    /// An optional image displayed horizontally along the leading edge of the view
     public let imageView = UIImageView()
 
     /// Spacing between headnote and text

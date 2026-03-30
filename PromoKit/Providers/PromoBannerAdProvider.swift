@@ -38,13 +38,14 @@ public enum PromoBannerAdSize: Int {
 @objc(PMKPromoBannerAdProvider)
 public class PromoBannerAdProvider: NSObject, PromoProvider {
 
-    /// The supported banner sizes that this promo can fit to
+    /// The banner sizes this provider is permitted to serve.
+    /// When both are present, the larger `.full` size is preferred on wider views (> 468pt).
     public var supportedBannerSizes: [PromoBannerAdSize] = [.standard, .full]
 
     /// The Google ad identifier for this banner
     private let adUnitID: String
 
-    /// The Google banner view
+    /// The Google banner view, created once and reused across fetches
     private let adView = GADBannerView()
 
     // Store the result handler so we can call it when the ad has returned a value
@@ -92,6 +93,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         return containerView
     }
 
+    /// Calls the pending result handler with the ad load outcome and then clears it.
     private func didReceiveResult(_ result: Result<Void, Error>) {
         guard let handler = resultHandler else { return }
         resultHandler = nil
@@ -101,6 +103,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         }
     }
 
+    /// Returns the appropriate `GADAdSize` based on the current promo view width and the supported sizes.
     private func bannerSizeFor(promoSize: CGSize) -> GADAdSize {
         if supportedBannerSizes.contains(.full), promoSize.width > 468 {
             return GADAdSizeFullBanner

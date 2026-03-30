@@ -24,13 +24,13 @@ import Foundation
 
 public class PromoFileManager {
 
-    /// Convenienice property for accessing this app's default file manager object
+    /// The file manager used for all file operations. Override in tests to provide a mock.
     public static var fileManager = FileManager.default
 
-    /// Convenience property for accessing this app's main bundle
+    /// The bundle used to locate app icons and resources. Override in tests to provide a different bundle.
     public static var mainBundle: Bundle = Bundle.main
 
-    /// The resource path, which is the root directory of the app package contents
+    /// The root URL of the app's resource directory, used as the base path when scanning for icons.
     public static var resourceURL: URL? { mainBundle.resourceURL }
 
     /// Locates the largest available version of an app icon, closest to the desired size.

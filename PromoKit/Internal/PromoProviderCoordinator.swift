@@ -88,7 +88,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
         cancelFetch()
     }
 
-    // Reset all of the state, including all timers
+    /// Clears all provider fetch history and cancels any in-progress fetch.
     public func reset() {
         cancelFetch()
         providerFetchResults.removeAllObjects()
@@ -99,6 +99,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 // MARK: - Provider Access
 
 extension PromoProviderCoordinator {
+    /// Returns the first provider in the list whose concrete type matches the given class.
+    /// - Parameter providerClass: The class to match against.
+    /// - Returns: The matching provider, or nil if none is found.
     internal func providerForClass(_ providerClass: AnyClass) -> PromoProvider? {
         return providers?.first(where: { provider in
             type(of: provider) == providerClass
@@ -270,23 +273,32 @@ extension PromoProviderCoordinator {
         return true
     }
 
+    /// Returns true only if the given provider and token match the currently active fetch,
+    /// allowing stale callbacks from cancelled or timed-out fetches to be discarded.
     private func isActiveFetch(for provider: PromoProvider, token: UUID) -> Bool {
         guard let currentQueryingProvider = queryingProvider,
               let currentQueryingProviderToken = queryingProviderToken else { return false }
         return currentQueryingProvider === provider && currentQueryingProviderToken == token
     }
 
+    /// Clears the active fetch state so any in-flight callbacks are treated as stale.
     private func invalidateActiveFetch() {
         queryingProvider = nil
         queryingProviderToken = nil
         invalidateFetchTimeout()
     }
 
+    /// Cancels any pending fetch timeout work item.
     private func invalidateFetchTimeout() {
         fetchTimeoutWorkItem?.cancel()
         fetchTimeoutWorkItem = nil
     }
 
+    /// Schedules a timeout that will treat the current fetch as failed if it doesn't
+    /// complete within `fetchTimeout` seconds.
+    /// - Parameters:
+    ///   - provider: The provider currently being fetched.
+    ///   - token: The unique token for this fetch, used to discard the timeout if the fetch completes first.
     private func scheduleFetchTimeout(for provider: PromoProvider, token: UUID) {
         guard fetchTimeout > 0 else { return }
 
@@ -302,7 +314,9 @@ extension PromoProviderCoordinator {
 // MARK: - PromoPathMonitorDelegate
 
 extension PromoProviderCoordinator {
-    
+
+    /// Called when network connectivity changes. If we're currently showing an offline provider
+    /// and the internet returns, triggers a fresh fetch to promote an online provider if one is available.
     func pathMonitor(_ pathMonitor: PromoPathMonitor, didUpdateToPath path: NWPath?) {
         guard let path, let provider = currentProvider else { return }
 
