@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		223EABF32C14E3E3006DBB84 /* PromoCloudEventProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223EABF22C14E3E3006DBB84 /* PromoCloudEventProvider.swift */; };
+		2243302E2F7A52AB00A5859F /* PromoNativeAdActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2243302C2F7A52A300A5859F /* PromoNativeAdActionButton.swift */; };
 		2257F6622BEB060D0058A2AE /* PromoNativeAdProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */; };
 		2257F6642BEB0C790058A2AE /* PromoNativeAdContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */; };
 		22642E932C85F81700F006F4 /* PromoFileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22642E922C85F80D00F006F4 /* PromoFileManager.swift */; };
@@ -33,6 +34,13 @@
 		22BF57E92BD80C340001A444 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 22BF57E82BD80C340001A444 /* GoogleMobileAds */; };
 		22BF57EB2BD9368D0001A444 /* PromoBannerAdProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BF57EA2BD9368D0001A444 /* PromoBannerAdProvider.swift */; };
 		22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */; };
+		5A9C1E0A2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9C1E0B2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift */; };
+		5A9C1E272CFE200100A1B2C3 /* PromoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */; };
+		5A9C1E282CFE200100A1B2C3 /* PromoKitGoogleAds.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E112CFE200100A1B2C3 /* PromoKitGoogleAds.framework */; };
+		5A9C1E292CFE200100A1B2C3 /* PromoKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		5A9C1E2A2CFE200100A1B2C3 /* PromoKitGoogleAds.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E112CFE200100A1B2C3 /* PromoKitGoogleAds.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		5A9C1E2B2CFE200100A1B2C3 /* PromoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */; };
+		5A9C1E2C2CFE200100A1B2C3 /* PromoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,10 +58,54 @@
 			remoteGlobalIDString = 229D21272B67CE2600105C9D;
 			remoteInfo = PromoKit;
 		};
+		5A9C1E1F2CFE200100A1B2C3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 229D21202B67CE2600105C9D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A9C1E122CFE200100A1B2C3;
+			remoteInfo = PromoKit;
+		};
+		5A9C1E212CFE200100A1B2C3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 229D21202B67CE2600105C9D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A9C1E132CFE200100A1B2C3;
+			remoteInfo = PromoKitGoogleAds;
+		};
+		5A9C1E232CFE200100A1B2C3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 229D21202B67CE2600105C9D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A9C1E122CFE200100A1B2C3;
+			remoteInfo = PromoKit;
+		};
+		5A9C1E252CFE200100A1B2C3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 229D21202B67CE2600105C9D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A9C1E122CFE200100A1B2C3;
+			remoteInfo = PromoKit;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5A9C1E1E2CFE200100A1B2C3 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				5A9C1E292CFE200100A1B2C3 /* PromoKit.framework in Embed Frameworks */,
+				5A9C1E2A2CFE200100A1B2C3 /* PromoKitGoogleAds.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		223EABF22C14E3E3006DBB84 /* PromoCloudEventProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoCloudEventProvider.swift; sourceTree = "<group>"; };
+		2243302C2F7A52A300A5859F /* PromoNativeAdActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNativeAdActionButton.swift; sourceTree = "<group>"; };
 		2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PromoNativeAdProvider.swift; sourceTree = "<group>"; };
 		2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNativeAdContentView.swift; sourceTree = "<group>"; };
 		22642E922C85F80D00F006F4 /* PromoFileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoFileManager.swift; sourceTree = "<group>"; };
@@ -83,6 +135,9 @@
 		22B8DD342BAE818B00C1F754 /* PromoContainerContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoContainerContentView.swift; sourceTree = "<group>"; };
 		22BF57EA2BD9368D0001A444 /* PromoBannerAdProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoBannerAdProvider.swift; sourceTree = "<group>"; };
 		22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoProviderCoordinator.swift; sourceTree = "<group>"; };
+		5A9C1E0B2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitBehaviorTests.swift; sourceTree = "<group>"; };
+		5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PromoKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A9C1E112CFE200100A1B2C3 /* PromoKitGoogleAds.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PromoKitGoogleAds.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,7 +145,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				22BF57E92BD80C340001A444 /* GoogleMobileAds in Frameworks */,
+				5A9C1E272CFE200100A1B2C3 /* PromoKit.framework in Frameworks */,
+				5A9C1E282CFE200100A1B2C3 /* PromoKitGoogleAds.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,6 +154,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5A9C1E2B2CFE200100A1B2C3 /* PromoKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -105,6 +162,22 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A9C1E172CFE200100A1B2C3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A9C1E1B2CFE200100A1B2C3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22BF57E92BD80C340001A444 /* GoogleMobileAds in Frameworks */,
+				5A9C1E2C2CFE200100A1B2C3 /* PromoKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -126,6 +199,8 @@
 		229D21292B67CE2600105C9D /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */,
+				5A9C1E112CFE200100A1B2C3 /* PromoKitGoogleAds.framework */,
 				229D21282B67CE2600105C9D /* PromoKitExample.app */,
 				229D213E2B67CE2700105C9D /* PromoKitTests.xctest */,
 				229D21482B67CE2700105C9D /* PromoKitUITests.xctest */,
@@ -150,6 +225,7 @@
 		229D21412B67CE2700105C9D /* PromoKitTests */ = {
 			isa = PBXGroup;
 			children = (
+				5A9C1E0B2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift */,
 				229D21422B67CE2700105C9D /* PromoKitTests.swift */,
 			);
 			path = PromoKitTests;
@@ -215,6 +291,7 @@
 			children = (
 				22A105AD2BBAC77900DB3A80 /* PromoPathMonitor.swift */,
 				22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */,
+				2243302C2F7A52A300A5859F /* PromoNativeAdActionButton.swift */,
 			);
 			path = Internal;
 			sourceTree = "<group>";
@@ -228,15 +305,17 @@
 			buildPhases = (
 				229D21242B67CE2600105C9D /* Sources */,
 				229D21252B67CE2600105C9D /* Frameworks */,
+				5A9C1E1E2CFE200100A1B2C3 /* Embed Frameworks */,
 				229D21262B67CE2600105C9D /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				5A9C1E202CFE200100A1B2C3 /* PBXTargetDependency */,
+				5A9C1E222CFE200100A1B2C3 /* PBXTargetDependency */,
 			);
 			name = PromoKitExample;
 			packageProductDependencies = (
-				22BF57E82BD80C340001A444 /* GoogleMobileAds */,
 			);
 			productName = PromoKit;
 			productReference = 229D21282B67CE2600105C9D /* PromoKitExample.app */;
@@ -254,6 +333,7 @@
 			);
 			dependencies = (
 				229D21402B67CE2700105C9D /* PBXTargetDependency */,
+				5A9C1E262CFE200100A1B2C3 /* PBXTargetDependency */,
 			);
 			name = PromoKitTests;
 			productName = PromoKitTests;
@@ -278,6 +358,46 @@
 			productReference = 229D21482B67CE2700105C9D /* PromoKitUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		5A9C1E122CFE200100A1B2C3 /* PromoKit */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A9C1E142CFE200100A1B2C3 /* Build configuration list for PBXNativeTarget "PromoKit" */;
+			buildPhases = (
+				5A9C1E162CFE200100A1B2C3 /* Sources */,
+				5A9C1E172CFE200100A1B2C3 /* Frameworks */,
+				5A9C1E192CFE200100A1B2C3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PromoKit;
+			packageProductDependencies = (
+			);
+			productName = PromoKit;
+			productReference = 5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		5A9C1E132CFE200100A1B2C3 /* PromoKitGoogleAds */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A9C1E152CFE200100A1B2C3 /* Build configuration list for PBXNativeTarget "PromoKitGoogleAds" */;
+			buildPhases = (
+				5A9C1E1A2CFE200100A1B2C3 /* Sources */,
+				5A9C1E1B2CFE200100A1B2C3 /* Frameworks */,
+				5A9C1E1D2CFE200100A1B2C3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5A9C1E242CFE200100A1B2C3 /* PBXTargetDependency */,
+			);
+			name = PromoKitGoogleAds;
+			packageProductDependencies = (
+				22BF57E82BD80C340001A444 /* GoogleMobileAds */,
+			);
+			productName = PromoKitGoogleAds;
+			productReference = 5A9C1E112CFE200100A1B2C3 /* PromoKitGoogleAds.framework */;
+			productType = "com.apple.product-type.framework";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -299,6 +419,12 @@
 						CreatedOnToolsVersion = 15.2;
 						TestTargetID = 229D21272B67CE2600105C9D;
 					};
+					5A9C1E122CFE200100A1B2C3 = {
+						CreatedOnToolsVersion = 15.2;
+					};
+					5A9C1E132CFE200100A1B2C3 = {
+						CreatedOnToolsVersion = 15.2;
+					};
 				};
 			};
 			buildConfigurationList = 229D21232B67CE2600105C9D /* Build configuration list for PBXProject "PromoKit" */;
@@ -317,6 +443,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				5A9C1E122CFE200100A1B2C3 /* PromoKit */,
+				5A9C1E132CFE200100A1B2C3 /* PromoKitGoogleAds */,
 				229D21272B67CE2600105C9D /* PromoKitExample */,
 				229D213D2B67CE2700105C9D /* PromoKitTests */,
 				229D21472B67CE2700105C9D /* PromoKitUITests */,
@@ -350,6 +478,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5A9C1E192CFE200100A1B2C3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A9C1E1D2CFE200100A1B2C3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -357,23 +499,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				22B8DD332BAAAA3700C1F754 /* PromoNetworkTestProvider.swift in Sources */,
-				22642E932C85F81700F006F4 /* PromoFileManager.swift in Sources */,
-				229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */,
-				229D21AE2B7A11DB00105C9D /* PromoTableListContentView.swift in Sources */,
-				22B8DD352BAE818B00C1F754 /* PromoContainerContentView.swift in Sources */,
-				2257F6642BEB0C790058A2AE /* PromoNativeAdContentView.swift in Sources */,
 				229D21302B67CE2600105C9D /* ViewController.swift in Sources */,
-				22A105B12BBAE54C00DB3A80 /* PromoImageProcessing.swift in Sources */,
-				226B902F2C720AC00072FD1C /* PromoCache.swift in Sources */,
-				22A105AE2BBAC77900DB3A80 /* PromoPathMonitor.swift in Sources */,
-				223EABF32C14E3E3006DBB84 /* PromoCloudEventProvider.swift in Sources */,
-				22BF57EB2BD9368D0001A444 /* PromoBannerAdProvider.swift in Sources */,
-				229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */,
-				229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */,
-				2257F6622BEB060D0058A2AE /* PromoNativeAdProvider.swift in Sources */,
-				22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */,
-				229D21A72B79E24000105C9D /* PromoContentView.swift in Sources */,
 				229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -382,6 +508,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5A9C1E0A2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift in Sources */,
 				229D21432B67CE2700105C9D /* PromoKitTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -392,6 +519,37 @@
 			files = (
 				229D214F2B67CE2700105C9D /* PromoKitUITestsLaunchTests.swift in Sources */,
 				229D214D2B67CE2700105C9D /* PromoKitUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A9C1E162CFE200100A1B2C3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22B8DD332BAAAA3700C1F754 /* PromoNetworkTestProvider.swift in Sources */,
+				22642E932C85F81700F006F4 /* PromoFileManager.swift in Sources */,
+				229D215D2B67D5FA00105C9D /* PromoView.swift in Sources */,
+				229D21AE2B7A11DB00105C9D /* PromoTableListContentView.swift in Sources */,
+				22B8DD352BAE818B00C1F754 /* PromoContainerContentView.swift in Sources */,
+				22A105B12BBAE54C00DB3A80 /* PromoImageProcessing.swift in Sources */,
+				226B902F2C720AC00072FD1C /* PromoCache.swift in Sources */,
+				22A105AE2BBAC77900DB3A80 /* PromoPathMonitor.swift in Sources */,
+				223EABF32C14E3E3006DBB84 /* PromoCloudEventProvider.swift in Sources */,
+				229D21A52B79E23500105C9D /* PromoProvider.swift in Sources */,
+				229D21AB2B7A0DCD00105C9D /* PromoAppRaterProvider.swift in Sources */,
+				22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */,
+				229D21A72B79E24000105C9D /* PromoContentView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A9C1E1A2CFE200100A1B2C3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2257F6642BEB0C790058A2AE /* PromoNativeAdContentView.swift in Sources */,
+				2243302E2F7A52AB00A5859F /* PromoNativeAdActionButton.swift in Sources */,
+				22BF57EB2BD9368D0001A444 /* PromoBannerAdProvider.swift in Sources */,
+				2257F6622BEB060D0058A2AE /* PromoNativeAdProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -407,6 +565,26 @@
 			isa = PBXTargetDependency;
 			target = 229D21272B67CE2600105C9D /* PromoKitExample */;
 			targetProxy = 229D21492B67CE2700105C9D /* PBXContainerItemProxy */;
+		};
+		5A9C1E202CFE200100A1B2C3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A9C1E122CFE200100A1B2C3 /* PromoKit */;
+			targetProxy = 5A9C1E1F2CFE200100A1B2C3 /* PBXContainerItemProxy */;
+		};
+		5A9C1E222CFE200100A1B2C3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A9C1E132CFE200100A1B2C3 /* PromoKitGoogleAds */;
+			targetProxy = 5A9C1E212CFE200100A1B2C3 /* PBXContainerItemProxy */;
+		};
+		5A9C1E242CFE200100A1B2C3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A9C1E122CFE200100A1B2C3 /* PromoKit */;
+			targetProxy = 5A9C1E232CFE200100A1B2C3 /* PBXContainerItemProxy */;
+		};
+		5A9C1E262CFE200100A1B2C3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A9C1E122CFE200100A1B2C3 /* PromoKit */;
+			targetProxy = 5A9C1E252CFE200100A1B2C3 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -635,7 +813,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromoKit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PromoKit";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromoKitExample.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PromoKitExample";
 			};
 			name = Debug;
 		};
@@ -655,7 +833,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromoKit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PromoKit";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromoKitExample.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PromoKitExample";
 			};
 			name = Release;
 		};
@@ -673,7 +851,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = PromoKit;
+				TEST_TARGET_NAME = PromoKitExample;
 			};
 			name = Debug;
 		};
@@ -691,7 +869,131 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = PromoKit;
+				TEST_TARGET_NAME = PromoKitExample;
+			};
+			name = Release;
+		};
+		5A9C1E2D2CFE200100A1B2C3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 6LF3GMKZAB;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.PromoKit.framework;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+			};
+			name = Debug;
+		};
+		5A9C1E2E2CFE200100A1B2C3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 6LF3GMKZAB;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.PromoKit.framework;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+			};
+			name = Release;
+		};
+		5A9C1E2F2CFE200100A1B2C3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 6LF3GMKZAB;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.PromoKitGoogleAds.framework;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+			};
+			name = Debug;
+		};
+		5A9C1E302CFE200100A1B2C3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 6LF3GMKZAB;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.tim.PromoKitGoogleAds.framework;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 			};
 			name = Release;
 		};
@@ -730,6 +1032,24 @@
 			buildConfigurations = (
 				229D21592B67CE2700105C9D /* Debug */,
 				229D215A2B67CE2700105C9D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A9C1E142CFE200100A1B2C3 /* Build configuration list for PBXNativeTarget "PromoKit" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A9C1E2D2CFE200100A1B2C3 /* Debug */,
+				5A9C1E2E2CFE200100A1B2C3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A9C1E152CFE200100A1B2C3 /* Build configuration list for PBXNativeTarget "PromoKitGoogleAds" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A9C1E2F2CFE200100A1B2C3 /* Debug */,
+				5A9C1E302CFE200100A1B2C3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

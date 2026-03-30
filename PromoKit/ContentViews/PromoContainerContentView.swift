@@ -26,15 +26,15 @@ import UIKit
 @objc(PMKPromoContainerContentView)
 final public class PromoContainerContentView: PromoContentView {
 
-    required init(promoView: PromoView) {
+    public required init(promoView: PromoView) {
         super.init(promoView: promoView)
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func prepareForReuse() {
+    public override func prepareForReuse() {
         for subview in subviews {
             subview.removeFromSuperview()
         }

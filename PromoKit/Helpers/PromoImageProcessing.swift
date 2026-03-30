@@ -28,14 +28,14 @@ import CoreImage
 public class PromoImageProcessing {
 
     /// Takes a `UIImage` instance containing un-decoded image data, and forcefully decodes
-    /// that data to a new image copy. Oprtionally, the image can be downscaled at the same time.
+    /// that data to a new image copy. Optionally, the image can be downscaled at the same time.
     /// Sourced from http://www.lukeparham.com/blog/2018/3/14/decoding-jpegs-with-the-best
     /// - Parameters:
     ///   - image: The un-decoded image.
     ///   - fittingSize: Optionally, a smaller size for the image to be decoded to.
     ///   - scale: The screen scale that the image will be scaled to.
     /// - Returns: The decoded image
-    static func decodedImage(_ image: UIImage?, fittingSize: CGSize? = nil, scale: CGFloat = 1.0) -> UIImage? {
+    public static func decodedImage(_ image: UIImage?, fittingSize: CGSize? = nil, scale: CGFloat = 1.0) -> UIImage? {
         guard let image, let newImage = image.cgImage else { return nil }
 
         if #available(iOS 15.0, *) {
@@ -65,13 +65,14 @@ public class PromoImageProcessing {
     /// Generate a blurred version of the provided image
     /// - Parameters:
     ///   - image: The image to blur
-    ///   - radius: The amount of blur
-    ///   - fittingSize: The size the image is shrunk to
+    ///   - radius: The Gaussian blur radius (default 50)
+    ///   - brightness: A brightness adjustment applied after blurring, in the range -1.0 to 1.0 (default -0.05)
+    ///   - fittingSize: If provided, the image is scaled down to fit within this size before blurring
     /// - Returns: The blurred image
-    static func blurredImage(_ image: UIImage,
-                             radius: CGFloat = 50.0,
-                             brightness: CGFloat = -0.05,
-                             fittingSize: CGSize? = nil) -> UIImage? {
+    public static func blurredImage(_ image: UIImage,
+                                    radius: CGFloat = 50.0,
+                                    brightness: CGFloat = -0.05,
+                                    fittingSize: CGSize? = nil) -> UIImage? {
         guard var ciImage = CIImage(image: image) else { return nil }
         var extent = ciImage.extent
         ciImage = ciImage.clampedToExtent()

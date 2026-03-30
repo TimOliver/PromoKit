@@ -50,6 +50,10 @@ public protocol PromoProvider: AnyObject {
     /// internet connection, these providers will still be called in order to be given a chance to display their cache instead.
     @objc optional var isOfflineCacheAvailable: Bool { get }
 
+    /// If true, the promo view will show a loading spinner while this provider is fetching content (Default is false).
+    /// Use this for providers that perform slow asynchronous work where the previous content will be hidden mid-fetch.
+    @objc optional var showsLoadingIndicatorDuringFetch: Bool { get }
+
     /// If true, when the frame size of the promo view changes, this provider will be given a chance to reload its content if it needs to.
     /// This is useful for banner ads who might need to load a larger or smaller variant to fit the new size.
     @objc optional var needsReloadOnSizeChange: Bool { get }

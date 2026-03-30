@@ -21,6 +21,9 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import Foundation
+#if canImport(PromoKit)
+import PromoKit
+#endif
 import GoogleMobileAds
 
 @objc(PMKPromoBannerAdSize)
@@ -35,13 +38,14 @@ public enum PromoBannerAdSize: Int {
 @objc(PMKPromoBannerAdProvider)
 public class PromoBannerAdProvider: NSObject, PromoProvider {
 
-    /// The supported banner sizes that this promo can fit to
+    /// The banner sizes this provider is permitted to serve.
+    /// When both are present, the larger `.full` size is preferred on wider views (> 468pt).
     public var supportedBannerSizes: [PromoBannerAdSize] = [.standard, .full]
 
     /// The Google ad identifier for this banner
     private let adUnitID: String
 
-    /// The Google banner view
+    /// The Google banner view, created once and reused across fetches
     private let adView = GADBannerView()
 
     // Store the result handler so we can call it when the ad has returned a value
@@ -49,10 +53,12 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
 
     /// Create new instance of a Google ad banner provider
     /// - Parameter adUnitID: The Google ad unit ID for this banner
-    init(adUnitID: String) {
+    public init(adUnitID: String) {
         self.adUnitID = adUnitID
     }
 
+    public var isInternetAccessRequired: Bool { true }
+    public var showsLoadingIndicatorDuringFetch: Bool { true }
     public var needsReloadOnSizeChange: Bool { true }
 
     public func fetchNewContent(for promoView: PromoView,
@@ -63,9 +69,6 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         adView.adSize = bannerSizeFor(promoSize: promoView.frame.size)
         adView.load(GADRequest())
         self.resultHandler = resultHandler
-
-        // When calling `adView.load`, the ad automatically hides, so we need to manually show the loading spinner here
-        promoView.setIsLoading(true, animated: true)
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
@@ -89,17 +92,17 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         return containerView
     }
 
+    /// Calls the pending result handler with the ad load outcome and then clears it.
     private func didReceiveResult(_ result: Result<Void, Error>) {
-        // Inform the promo view of the results
+        guard let handler = resultHandler else { return }
+        resultHandler = nil
         switch result {
-        case .success:
-            self.resultHandler?(.contentAvailable)
-        case .failure:
-            self.resultHandler?(.fetchRequestFailed)
+        case .success: handler(.contentAvailable)
+        case .failure: handler(.fetchRequestFailed)
         }
-        self.resultHandler = nil
     }
 
+    /// Returns the appropriate `GADAdSize` based on the current promo view width and the supported sizes.
     private func bannerSizeFor(promoSize: CGSize) -> GADAdSize {
         if supportedBannerSizes.contains(.full), promoSize.width > 468 {
             return GADAdSizeFullBanner

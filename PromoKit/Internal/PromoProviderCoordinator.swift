@@ -28,7 +28,7 @@ import Network
 internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
     /// The promo view managing this provider coordinator.
-    private(set) var promoView: PromoView?
+    private(set) weak var promoView: PromoView?
 
     /// The array of providers managed by this coordinator,
     /// in order of priority.
@@ -39,6 +39,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
     /// A retry interval for failed provider fetches.
     public var retryInterval: TimeInterval = 30
+
+    /// The maximum amount of time to wait for a provider fetch before treating it as a failure.
+    public var fetchTimeout: TimeInterval = 15
 
     /// A handler that is triggered whenever a new provider is chosen.
     public var providerUpdatedHandler: ((PromoProvider?) -> Void)?
@@ -57,13 +60,19 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     // The provider currently being fetched
     var queryingProvider: PromoProvider?
 
+    // The unique token for the currently active provider fetch.
+    var queryingProviderToken: UUID?
+
     // Tracking the last known response of each provider, so we know which retry policy to apply
     let providerFetchResults = NSMapTable<AnyObject, NSNumber>(keyOptions: .weakMemory,
                                                                valueOptions: .copyIn)
 
-    // Track the last time a fetch attempt was made
-    // so we can defer any new fetches until the retry intervals have passed.
-    var previousFetchTime: Date?
+    // Track the last time each provider returned a result so refresh intervals can be applied per-provider.
+    let providerFetchDates = NSMapTable<AnyObject, NSDate>(keyOptions: .weakMemory,
+                                                           valueOptions: .copyIn)
+
+    // The pending timeout work item for the currently active provider fetch.
+    private var fetchTimeoutWorkItem: DispatchWorkItem?
 
     // MARK: Init
 
@@ -79,17 +88,20 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
         cancelFetch()
     }
 
-    // Reset all of the state, including all timers
+    /// Clears all provider fetch history and cancels any in-progress fetch.
     public func reset() {
         cancelFetch()
         providerFetchResults.removeAllObjects()
-        previousFetchTime = nil
+        providerFetchDates.removeAllObjects()
     }
 }
 
 // MARK: - Provider Access
 
 extension PromoProviderCoordinator {
+    /// Returns the first provider in the list whose concrete type matches the given class.
+    /// - Parameter providerClass: The class to match against.
+    /// - Returns: The matching provider, or nil if none is found.
     internal func providerForClass(_ providerClass: AnyClass) -> PromoProvider? {
         return providers?.first(where: { provider in
             type(of: provider) == providerClass
@@ -103,9 +115,9 @@ extension PromoProviderCoordinator {
 
     /// Start the process of looping through each provider,
     /// and see which one is most appropriate at the moment.
-    internal func fetchBestProvider(from provider: PromoProvider? = nil) {
-        guard let provider = nextValidProvider(from: provider) else {
-            providerUpdatedHandler?(nil)
+    internal func fetchBestProvider(from startingProvider: PromoProvider? = nil) {
+        guard let provider = nextValidProvider(from: startingProvider) else {
+            finishWithoutAvailableProvider(clearCurrentProvider: startingProvider == nil || currentProvider == nil)
             return
         }
 
@@ -117,13 +129,10 @@ extension PromoProviderCoordinator {
     }
 
     /// Cancels an in-progress fetch.
-    /// It's possible the cancel request can happen right after a web request has been made.
-    /// In this case, that fetch is allowed to continue, and that provider may become the current one, but
-    /// subsequent fetches are then canceled. This is to ensure we don't cancel
-    /// partial requests without confirming the next time interval.
+    /// Any late callbacks from the canceled provider are ignored.
     internal func cancelFetch() {
-        previousFetchTime = Date()
         isFetching = false
+        invalidateActiveFetch()
     }
 
     /// When a potentially valid provider is found, instruct it to start loading
@@ -140,27 +149,35 @@ extension PromoProviderCoordinator {
         if let promoView { provider.didMoveToPromoView?(promoView) }
 
         // Store a class reference to this provider
+        invalidateFetchTimeout()
+        let queryingProviderToken = UUID()
         self.queryingProvider = provider
+        self.queryingProviderToken = queryingProviderToken
 
         // Capture a copy of this provider we can use to compare to the class one in the completion handler
         let queryingProvider: PromoProvider = provider
 
+        scheduleFetchTimeout(for: queryingProvider, token: queryingProviderToken)
+
         // Define the closure, and use address-comparison to ensure it's still valid at completion
         let handler: ((PromoProviderFetchContentResult) -> Void) = { [weak self] result in
-            // Check the current querying provider against the one we captured when we started
-            // the closure and make sure they match.
-            guard let currentQueryingProvider = self?.queryingProvider,
-                  currentQueryingProvider === queryingProvider else { return }
             DispatchQueue.main.async { [weak self] in
+                guard self?.isActiveFetch(for: queryingProvider, token: queryingProviderToken) ?? false else { return }
                 self?.didReceiveResult(result, from: queryingProvider)
             }
+        }
+
+        // If the provider needs a loading indicator, show it now before the fetch starts.
+        if provider.showsLoadingIndicatorDuringFetch ?? false {
+            promoView?.setIsLoading(true, animated: true)
         }
 
         // Start the fetch request on the new provider.
         // Defer to the next run loop, so we don't end up overloading the call stack if all of these providers
         // execute on the main run loop.
         DispatchQueue.main.async { [weak self] in
-            guard (self?.isFetching ?? false), let promoView = self?.promoView else { return }
+            guard self?.isActiveFetch(for: queryingProvider, token: queryingProviderToken) ?? false,
+                  let promoView = self?.promoView else { return }
             queryingProvider.fetchNewContent(for: promoView, with: handler)
         }
     }
@@ -171,8 +188,11 @@ extension PromoProviderCoordinator {
     ///   - result: The result of the content fetch reported by the provider
     ///   - provider: The provider performing the request
     private func didReceiveResult(_ result: PromoProviderFetchContentResult, from provider: PromoProvider) {
+        invalidateActiveFetch()
+
         // Save the result to our map table so we can consider it for future fetches
         providerFetchResults.setObject(result.rawValue as NSNumber, forKey: provider)
+        providerFetchDates.setObject(Date() as NSDate, forKey: provider)
 
         // If this provider reported it has valid content, lets make it the current provider and stop here
         if result == .contentAvailable {
@@ -227,8 +247,7 @@ extension PromoProviderCoordinator {
     /// - Parameter provider: The provider to check
     /// - Returns: A boolean on whether this provider should be skipped or not
     private func skipToNextProvider(_ provider: PromoProvider) -> Bool {
-        guard (provider.isInternetAccessRequired ?? false),
-              let previousFetchTime,
+        guard let previousFetchDate = providerFetchDates.object(forKey: provider),
               let value = providerFetchResults.object(forKey: provider) else { return false }
         let result = PromoProviderFetchContentResult(rawValue: value.intValue)
 
@@ -242,22 +261,78 @@ extension PromoProviderCoordinator {
             timeInterval = 0
         }
 
+        guard timeInterval > 0 else { return false }
+
         // If we're not past the time-out interval yet, skip to the next provider
-        if previousFetchTime.timeIntervalSinceNow < timeInterval,
-           let nextProvider = nextValidProvider(after: provider) {
+        let elapsedTime = Date().timeIntervalSince(previousFetchDate as Date)
+        guard elapsedTime < timeInterval else { return false }
+
+        if let nextProvider = nextValidProvider(after: provider) {
             DispatchQueue.main.async { [weak self] in
                 guard self?.isFetching ?? false else { return }
                 self?.startContentFetch(for: nextProvider)
             }
+        } else {
+            finishWithoutAvailableProvider(clearCurrentProvider: currentProvider == nil)
         }
         return true
+    }
+
+    /// Ends the current fetch because there are no eligible providers left to try.
+    /// - Parameter clearCurrentProvider: Set to true when there is no active provider content to preserve.
+    private func finishWithoutAvailableProvider(clearCurrentProvider: Bool) {
+        cancelFetch()
+
+        guard clearCurrentProvider else { return }
+        currentProvider = nil
+        providerUpdatedHandler?(nil)
+        providerFetchFailedHandler?()
+    }
+
+    /// Returns true only if the given provider and token match the currently active fetch,
+    /// allowing stale callbacks from cancelled or timed-out fetches to be discarded.
+    private func isActiveFetch(for provider: PromoProvider, token: UUID) -> Bool {
+        guard let currentQueryingProvider = queryingProvider,
+              let currentQueryingProviderToken = queryingProviderToken else { return false }
+        return currentQueryingProvider === provider && currentQueryingProviderToken == token
+    }
+
+    /// Clears the active fetch state so any in-flight callbacks are treated as stale.
+    private func invalidateActiveFetch() {
+        queryingProvider = nil
+        queryingProviderToken = nil
+        invalidateFetchTimeout()
+    }
+
+    /// Cancels any pending fetch timeout work item.
+    private func invalidateFetchTimeout() {
+        fetchTimeoutWorkItem?.cancel()
+        fetchTimeoutWorkItem = nil
+    }
+
+    /// Schedules a timeout that will treat the current fetch as failed if it doesn't
+    /// complete within `fetchTimeout` seconds.
+    /// - Parameters:
+    ///   - provider: The provider currently being fetched.
+    ///   - token: The unique token for this fetch, used to discard the timeout if the fetch completes first.
+    private func scheduleFetchTimeout(for provider: PromoProvider, token: UUID) {
+        guard fetchTimeout > 0 else { return }
+
+        let timeoutWorkItem = DispatchWorkItem { [weak self] in
+            guard self?.isActiveFetch(for: provider, token: token) ?? false else { return }
+            self?.didReceiveResult(.fetchRequestFailed, from: provider)
+        }
+        fetchTimeoutWorkItem = timeoutWorkItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + fetchTimeout, execute: timeoutWorkItem)
     }
 }
 
 // MARK: - PromoPathMonitorDelegate
 
 extension PromoProviderCoordinator {
-    
+
+    /// Called when network connectivity changes. If we're currently showing an offline provider
+    /// and the internet returns, triggers a fresh fetch to promote an online provider if one is available.
     func pathMonitor(_ pathMonitor: PromoPathMonitor, didUpdateToPath path: NWPath?) {
         guard let path, let provider = currentProvider else { return }
 

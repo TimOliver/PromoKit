@@ -26,13 +26,14 @@ import Foundation
 /// data in user defaults, and file data to the app's tmp directory.
 public class PromoCache {
 
+    public init() {}
+
     // MARK: - File Management
 
     /// If available, loads the data from disk for a previously cached file.
     /// - Parameters:
     ///   - key: The unique key identifying this file
     ///   - object: The hosting object (eg a provider) that is responsible for this data
-    ///   - objectType: An additional optional string to identify unique copies of the hosting object
     /// - Returns: The data if available or nil otherwise
     public func fileData(forKey key: String, fromObject object: AnyObject) -> Data? {
         try? Data(contentsOf: fileURL(forKey: key, fromObject: object), options: [.mappedIfSafe])
@@ -43,7 +44,6 @@ public class PromoCache {
     ///   - data: The data to persist to disk
     ///   - key: The unique key to identify this file
     ///   - object: The hosting object (eg a provider) that is responsible for this data
-    ///   - objectType: An additional optional string to identify unique copies of the hosting object
     public func setFileData(_ data: Data, forKey key: String, fromObject object: AnyObject) throws {
         try data.write(to: fileURL(forKey: key, fromObject: object))
     }
@@ -96,7 +96,7 @@ public class PromoCache {
     ///   - objectType: An additional optional string to identify unique copies of the hosting object
     public func setValue(_ value: Any?, forKey key: String, fromObject object: AnyObject, objectType: String? = nil) {
         let userDefaultsKey = userDefaultsKey(fromObject: object, objectType: objectType)
-        var settings = UserDefaults.standard.dictionary(forKey: userDefaultsKey) ?? [String: String]()
+        var settings = UserDefaults.standard.dictionary(forKey: userDefaultsKey) ?? [String: Any]()
         settings[key] = value
         UserDefaults.standard.set(settings, forKey: userDefaultsKey)
     }
@@ -122,7 +122,7 @@ public class PromoCache {
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
     }
 
-    // MARK: - Cached Item Managemment
+    // MARK: - Cached Item Management
 
     /// Generates a unique identifier that will be used as the top level key for a single provider in user defaults
     /// - Parameters:

@@ -35,7 +35,7 @@ final public class PromoTableListContentView: PromoContentView {
     /// A label that displays a footnote at the top
     public let footnoteLabel = UILabel()
 
-    // An optional image displayed horizontally along the leading edge of the view
+    /// An optional image displayed horizontally along the leading edge of the view
     public let imageView = UIImageView()
 
     /// Spacing between headnote and text
@@ -43,7 +43,7 @@ final public class PromoTableListContentView: PromoContentView {
 
     /// Creates a new instance of a list content view.
     /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
-    required init(promoView: PromoView) {
+    public required init(promoView: PromoView) {
         super.init(promoView: promoView)
 
         label.adjustsFontSizeToFitWidth = true
@@ -67,7 +67,7 @@ final public class PromoTableListContentView: PromoContentView {
         addSubview(imageView)
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -97,7 +97,7 @@ final public class PromoTableListContentView: PromoContentView {
 
         // Detail text
         if let detailText {
-            var detailColor = UIColor.black // UIColor(white: 0.27, alpha: 1.0)
+            var detailColor = UIColor.black
             if #available(iOS 13.0, *) {
                 // Use a manual color here to make it darker on the background
                 detailColor = .label

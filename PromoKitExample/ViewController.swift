@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import PromoKit
+import PromoKitGoogleAds
 
 class ViewController: UIViewController {
 
@@ -20,7 +22,8 @@ class ViewController: UIViewController {
 
         // Native ad layout
         promoView.providers = [PromoCloudEventProvider(containerIdentifier: "iCloud.dev.tim.promokit"),
-                               PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512")]
+                               PromoNativeAdProvider(adUnitID: "ca-app-pub-3940256099942544/5406332512"),
+                               PromoAppRaterProvider(appIconName: "AppIcon")];
 
         // Banner ad layout
 //        promoView.providers = [

@@ -64,6 +64,7 @@ internal class PromoPathMonitor {
         unfairLock.deallocate()
     }
 
+    /// Begins monitoring network path changes. Has no effect if already running.
     public func start() {
         guard !isRunning else { return }
 
@@ -76,12 +77,15 @@ internal class PromoPathMonitor {
         isRunning = true
     }
 
+    /// Stops monitoring network path changes. Has no effect if not running.
     public func cancel() {
         guard isRunning else { return }
         pathMonitor.cancel()
         isRunning = false
     }
 
+    /// Whether the device currently has a satisfied network path (i.e. internet access).
+    /// Thread-safe — may be read from any queue.
     public var hasInternetAccess: Bool {
         // In case it's being mutated on another thread,
         // use a lock to fetch the current path status
@@ -98,6 +102,8 @@ internal class PromoPathMonitor {
 
 extension PromoPathMonitor {
 
+    /// Handles a raw path update from `NWPathMonitor`. Discards events that don't
+    /// represent an actual status change, then notifies the delegate on the main thread.
     private func pathDidUpdate(to path: NWPath) {
         // Since NWPathMonitor constantly sends updates,
         // we'll use our background thread to detect and discard

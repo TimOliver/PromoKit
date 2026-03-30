@@ -43,7 +43,7 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
     /// - Parameters:
     ///   - appIconName: The name of the app icon in the asset bundle
     ///   - maxIconDimension: The maximum expected size the icon will be rendered at, in points
-    init(appIconName: String = "AppIcon", maxIconDimension: Int = 76) {
+    public init(appIconName: String = "AppIcon", maxIconDimension: Int = 76) {
         self.appIconName = appIconName
         self.iconDimension = maxIconDimension
     }

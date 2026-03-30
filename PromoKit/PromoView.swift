@@ -25,8 +25,8 @@ import UIKit
 /// The size of the close button displayed on the promo view
 @objc(PMKPromoViewCloseButtonSize)
 public enum PromoViewCloseButtonSize: Int {
-    case small
-    case large
+    case small  /// A small `xmark` icon (13pt)
+    case large  /// A large `xmark.circle.fill` icon (17pt)
 }
 
 /// A delegate object that external objects can use to receive updates from this promo view.
@@ -42,9 +42,7 @@ public protocol PromoViewDelegate: NSObjectProtocol {
 
     /// A fetch completely failed and there is no content to display.
     /// Use this method to hide the promo view if needed.
-    /// - Parameters:
-    ///   - promoView: The promo view in which the error occurred
-    ///   - error: The error that occurred
+    /// - Parameter promoView: The promo view in which the failure occurred
     @objc optional func promoViewProviderFetchFailed(_ promoView: PromoView)
 
     /// The user tapped the close button displayed next to the promo view
@@ -128,6 +126,13 @@ public class PromoView: UIControl {
         set { providerCoordinator.retryInterval = newValue }
     }
 
+    /// The maximum time to wait for a provider fetch before falling through to the next provider.
+    /// Set this to `0` to disable timeouts. Default is 15 seconds.
+    public var providerFetchTimeout: TimeInterval {
+        get { providerCoordinator.fetchTimeout }
+        set { providerCoordinator.fetchTimeout = newValue }
+    }
+
     /// A shared operation queue that providers may use to perform background processing (ie, data parsing or image decoding)
     public var backgroundQueue: OperationQueue {
         PromoView.sharedBackgroundQueue
@@ -202,6 +207,9 @@ public class PromoView: UIControl {
 
     /// The store for recycled content view objects
     private var queuedContentViews = [ObjectIdentifier: [PromoContentView]]()
+
+    /// When providers are configured before the view is attached and sized, defer the initial fetch until it is ready.
+    private var needsReloadWhenReady = false
 
     /// An operation queue shared between all promo views that allow background processing of its fetched results
     private static var sharedBackgroundQueue: OperationQueue = {
@@ -279,6 +287,7 @@ extension PromoView {
         super.didMoveToSuperview()
         guard superview != nil else { return }
         setIsLoading(true, animated: true)
+        performDeferredReloadIfNeeded()
     }
 
     /// Returns the most appropriate size this view should be when fitting into the provided container size.
@@ -345,8 +354,12 @@ extension PromoView {
 
         // Layout the close button
         layoutCloseButton()
+
+        // If providers were assigned before the view was attached or sized, start loading once we are ready.
+        performDeferredReloadIfNeeded()
     }
 
+    /// Returns the content padding to apply for the given provider, falling back to `defaultContentPadding`.
     private func contentPadding(for provider: PromoProvider? = nil) -> UIEdgeInsets {
         let provider = provider ?? currentProvider ?? nil
         var contentPadding = self.defaultContentPadding
@@ -356,6 +369,7 @@ extension PromoView {
         return contentPadding
     }
 
+    /// Applies the corner radius from the given provider, or the view's own `cornerRadius` if the provider doesn't override it.
     private func updateCornerRadius(for provider: PromoProvider? = nil) {
         let provider = provider ?? currentProvider ?? nil
         let contentPadding = contentPadding(for: provider)
@@ -373,7 +387,13 @@ extension PromoView {
 
     /// Clears all state and starts a new fetch of all providers from scratch.
     public func reload() {
-        guard superview != nil, !providerCoordinator.isFetching else { return }
+        guard !providerCoordinator.isFetching else { return }
+        guard superview != nil, !bounds.isEmpty else {
+            needsReloadWhenReady = true
+            return
+        }
+
+        needsReloadWhenReady = false
 
         // Clear the coordinator's previous state
         providerCoordinator.reset()
@@ -394,7 +414,8 @@ extension PromoView {
         providerDidChange(currentProvider)
     }
 
-    // Callback used to update the promo view when the coordinator detects anew provider
+    /// Called by the coordinator when a new provider has been selected or cleared.
+    /// Reclaims the previous content view and displays the new one, if any.
     private func providerDidChange(_ provider: PromoProvider?) {
         // Display the new content
         if let provider {
@@ -410,6 +431,14 @@ extension PromoView {
         guard currentProvider?.needsReloadOnSizeChange ?? false else { return }
         providerCoordinator.fetchBestProvider(from: currentProvider)
     }
+
+    private func performDeferredReloadIfNeeded() {
+        guard needsReloadWhenReady,
+              superview != nil,
+              !bounds.isEmpty,
+              !providerCoordinator.isFetching else { return }
+        reload()
+    }
 }
 
 // MARK: - Displaying Content
@@ -420,9 +449,11 @@ extension PromoView {
     /// if available.
     public func dequeueContentView<T: PromoContentView>(for contentViewClass: T.Type) -> T {
         // Fetch the first available content view from the store
-        if var views = queuedContentViews[ObjectIdentifier(contentViewClass.self)],
+        let contentViewIdentifier = ObjectIdentifier(contentViewClass)
+        if var views = queuedContentViews[contentViewIdentifier],
            let contentView = views.first as? T {
             views.removeFirst()
+            queuedContentViews[contentViewIdentifier] = views
             return contentView
         }
 
@@ -430,7 +461,7 @@ extension PromoView {
         return contentViewClass.init(promoView: self)
     }
 
-    // Clean up the current content view if there is one
+    /// Fades out and removes the current content view, returning it to the recycling pool.
     private func reclaimCurrentContentView() {
         guard let contentView else { return }
 
@@ -450,16 +481,18 @@ extension PromoView {
         contentView.prepareForReuse()
 
         // Add it back to the pool
-        if var views = self.queuedContentViews[ObjectIdentifier(contentView.self)] {
+        let contentViewIdentifier = ObjectIdentifier(type(of: contentView))
+        if var views = self.queuedContentViews[contentViewIdentifier] {
             views.append(contentView)
+            self.queuedContentViews[contentViewIdentifier] = views
         } else {
-            self.queuedContentViews[ObjectIdentifier(contentView.self)] = [contentView]
+            self.queuedContentViews[contentViewIdentifier] = [contentView]
         }
 
         self.contentView = nil
     }
 
-    // Get the provider to generate and configure its view content, and then display it
+    /// Asks the provider to configure a content view, adds it to the hierarchy, and animates it in.
     private func displayNewProvider(_ provider: PromoProvider) {
         // If we were loading, hide the spinner view
         setIsLoading(false, animated: true)
@@ -550,8 +583,9 @@ extension PromoView {
         UIView.animate(withDuration: 0.2, delay: 0.0, options: [], animations: crossFadeAnimationBlock)
     }
 
-    /// Create a new spinner view instance based on the promo view's current state.
-    ///
+    /// Repositions and resizes the spinner view to match the current promo view state.
+    /// Updates the spinner color based on background brightness, and switches between
+    /// small and large spinner styles depending on the view height.
     private func refreshSpinnerView() {
         guard let spinnerView else { return }
 
@@ -699,7 +733,7 @@ extension PromoView {
 
 extension PromoView {
 
-    /// If necessasry, providers can short-circuit and cancel any in-progress
+    /// If necessary, providers can short-circuit and cancel any in-progress
     /// tap/dragging interactions if they determine their content became non-interactive in the meantime.
     /// - Parameter animated: Whether the cancel event is animated or not.
     public func cancelTapInteraction(animated: Bool = false) {
@@ -764,6 +798,10 @@ extension PromoView {
         }
     }
 
+    /// Applies or removes the subtle scale-down transform used for the tap press animation.
+    /// - Parameters:
+    ///   - zoomed: Whether the view should appear pressed in.
+    ///   - animated: Whether the transition is animated.
     private func setZoomed(_ zoomed: Bool, animated: Bool = false) {
         guard isZoomed != zoomed else { return }
         isZoomed = zoomed
