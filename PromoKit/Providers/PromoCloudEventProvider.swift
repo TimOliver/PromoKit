@@ -41,7 +41,7 @@ import UIKit
 ///         thumbnail        (Asset)  - An image that may be shown alongside the heading and byline. (Optional)
 ///         url              (String) - A url that will open when the user taps the view. (Optional)
 ///         type             (String) - (Queryable) A generic field that can categorize types of events so they can be filtered (ie "app-update" vs "ad")
-///         expirationDate   (Date)   - (Sortable, Queryable) A date denoting when this event should stop being shown. (Optional)
+///         expirationDate   (Date)   - (Sortable, Queryable) A date denoting when this event should stop being shown. (Optional. If omitted, the event is treated as non-expiring and lower priority than expiring events.)
 ///         localDuration    (Int)    - Once downloaded, the number of hours this event should be cached and shown to users. (Optional)
 ///         maxVersion       (String) - The highest version that this app needs to be at to be shown. (Optional)
 ///         minVersion       (String) - Alternatively, the minimum version the app needs to be for this to be shown. (Optional)
@@ -60,6 +60,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         static let maxVersion = "maxVersion"
         static let localDuration = "localDuration"
         static let thumbnail = "thumbnail"
+        static let expirationDate = "expirationDate"
     }
 
     // The CloudKit record type name that this provider queries (eg "PromoEvent")
@@ -142,12 +143,10 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         // Capture the token for this fetch so callbacks from a previous fetch are ignored
         let token = fetchToken
 
-        // Create the query, searching for the first item that hasn't expired yet.
-        var format = "expirationDate > now()"
-        if let eventType { format += " AND type == '\(eventType)'" }
-        let predicate = NSPredicate(format: format)
+        // Create the query, searching for records that either haven't expired yet, or never expire.
+        let predicate = Self.eventQueryPredicate(eventType: eventType)
         let query = CKQuery(recordType: recordType, predicate: predicate)
-        query.sortDescriptors = [NSSortDescriptor(key: "expirationDate", ascending: true)]
+        query.sortDescriptors = [NSSortDescriptor(key: Constants.expirationDate, ascending: true)]
 
         // Create the query operation, fetching just the data we need to check its validity
         let queryOperation = CKQueryOperation(query: query)
@@ -166,8 +165,8 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// Called when the CloudKit query has successfully fetched a record
     /// - Parameter record: The record that was fetched
     private func didFetchRecordForQuery(_ record: CKRecord) {
-        guard self.record == nil else { return }
         guard isRecordEligibleForDisplay(record) else { return }
+        guard Self.isRecordPreferred(record, over: self.record) else { return }
         self.record = record
     }
 
@@ -264,41 +263,38 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         handleResult(result)
     }
 
-    /// Before displaying the record, do a verification pass to determine the state of the thumbnail.
-    /// If a cached thumbnail exists it is used immediately; otherwise the full record is re-fetched to obtain the asset.
+    /// Before displaying the record, fetch the full record so the latest thumbnail state is always reflected.
     /// - Parameters:
     ///   - record: The record to display.
     ///   - token: The fetch token captured at query start, used to detect stale completions.
     private func prepareRecordForDisplay(_ record: CKRecord, token: UUID?) {
-        // Load the previously cached thumbnail if we have it
-        if loadThumbnailFromCache(record: record) {
-            handleResult(.contentAvailable)
-            return
-        }
-
-        // If we don't have the thumbnail, fetch the entire record from CloudKit
+        // Re-fetch the selected record so thumbnail changes on the server are reflected locally.
         publicDatabase.fetch(withRecordID: record.recordID) { [weak self] record, error in
             guard self?.fetchToken == token else { return }
+            guard let self else { return }
+
             guard let record, error == nil else {
-                self?.record = nil
-                self?.handleResult(.fetchRequestFailed)
+                if let record = self.record {
+                    self.loadThumbnailFromCache(record: record)
+                }
+                self.handleResult(.contentAvailable)
                 return
             }
 
-            self?.record = record
-            self?.saveThumbnailToCache(record: record)
-            self?.loadThumbnailFromCache(record: record)
-            self?.handleResult(.contentAvailable)
+            self.record = record
+            self.saveThumbnailToCache(record: record)
+            self.loadThumbnailFromCache(record: record)
+            self.handleResult(.contentAvailable)
         }
     }
 
     /// Moves the downloaded thumbnail asset from CloudKit's temporary location into the app's cache directory.
+    /// Any existing cached asset for this record is replaced, and removed if the record no longer has a thumbnail.
     private func saveThumbnailToCache(record: CKRecord) {
-        guard let thumbnailAsset = record[Constants.thumbnail] as? CKAsset,
-              let thumbnailURL = thumbnailAsset.fileURL  else { return }
-
         let cacheURL = cache.fileURL(forKey: record.recordID.recordName, fromObject: self)
-        try? FileManager.default.moveItem(at: thumbnailURL, to: cacheURL)
+        let thumbnailAsset = record[Constants.thumbnail] as? CKAsset
+        let thumbnailURL = thumbnailAsset?.fileURL
+        Self.replaceCachedFile(at: cacheURL, with: thumbnailURL)
     }
 
     /// Loads the thumbnail from the cache.
@@ -329,8 +325,57 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
                 Constants.title,
                 Constants.subtitle,
                 Constants.url,
+                Constants.expirationDate,
                 Constants.localDuration,
                 Constants.minVersion,
                 Constants.maxVersion]
+    }
+}
+
+extension PromoCloudEventProvider {
+
+    static func eventQueryPredicate(eventType: String?) -> NSPredicate {
+        var predicates = [NSPredicate(format: "\(Constants.expirationDate) > now() OR \(Constants.expirationDate) == NULL")]
+        if let eventType, !eventType.isEmpty {
+            predicates.append(NSPredicate(format: "type == %@", eventType))
+        }
+        return NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+    }
+
+    static func isRecordPreferred(_ record: CKRecord, over currentRecord: CKRecord?) -> Bool {
+        guard let currentRecord else { return true }
+
+        let recordExpirationDate = record[Constants.expirationDate] as? Date
+        let currentExpirationDate = currentRecord[Constants.expirationDate] as? Date
+        switch (recordExpirationDate, currentExpirationDate) {
+        case let (recordExpirationDate?, currentExpirationDate?):
+            if recordExpirationDate != currentExpirationDate {
+                return recordExpirationDate < currentExpirationDate
+            }
+        case (.some, nil):
+            return true
+        case (nil, .some):
+            return false
+        case (nil, nil):
+            break
+        }
+
+        let recordCreationDate = record.creationDate ?? .distantPast
+        let currentCreationDate = currentRecord.creationDate ?? .distantPast
+        if recordCreationDate != currentCreationDate {
+            return recordCreationDate > currentCreationDate
+        }
+
+        return record.recordID.recordName < currentRecord.recordID.recordName
+    }
+
+    static func replaceCachedFile(at cacheURL: URL, with sourceURL: URL?) {
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: cacheURL.path) {
+            try? fileManager.removeItem(at: cacheURL)
+        }
+
+        guard let sourceURL else { return }
+        try? fileManager.moveItem(at: sourceURL, to: cacheURL)
     }
 }

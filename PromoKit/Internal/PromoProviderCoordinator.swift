@@ -115,9 +115,9 @@ extension PromoProviderCoordinator {
 
     /// Start the process of looping through each provider,
     /// and see which one is most appropriate at the moment.
-    internal func fetchBestProvider(from provider: PromoProvider? = nil) {
-        guard let provider = nextValidProvider(from: provider) else {
-            providerUpdatedHandler?(nil)
+    internal func fetchBestProvider(from startingProvider: PromoProvider? = nil) {
+        guard let provider = nextValidProvider(from: startingProvider) else {
+            finishWithoutAvailableProvider(clearCurrentProvider: startingProvider == nil || currentProvider == nil)
             return
         }
 
@@ -268,9 +268,20 @@ extension PromoProviderCoordinator {
                 self?.startContentFetch(for: nextProvider)
             }
         } else {
-            cancelFetch()
+            finishWithoutAvailableProvider(clearCurrentProvider: currentProvider == nil)
         }
         return true
+    }
+
+    /// Ends the current fetch because there are no eligible providers left to try.
+    /// - Parameter clearCurrentProvider: Set to true when there is no active provider content to preserve.
+    private func finishWithoutAvailableProvider(clearCurrentProvider: Bool) {
+        cancelFetch()
+
+        guard clearCurrentProvider else { return }
+        currentProvider = nil
+        providerUpdatedHandler?(nil)
+        providerFetchFailedHandler?()
     }
 
     /// Returns true only if the given provider and token match the currently active fetch,

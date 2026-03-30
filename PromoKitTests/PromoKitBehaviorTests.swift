@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import CloudKit
 @testable import PromoKit
 
 @MainActor
@@ -78,6 +79,93 @@ final class PromoKitBehaviorTests: XCTestCase {
                                                                 maxVersion: "3.0.0"))
         XCTAssertFalse(PromoCloudEventProvider.isVersionEligible("1.9.9", minVersion: "2.0.0"))
         XCTAssertFalse(PromoCloudEventProvider.isVersionEligible("3.0.1", maxVersion: "3.0.0"))
+    }
+
+    func testEmptyProviderListReportsFetchFailure() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        let delegate = PromoViewDelegateSpy()
+        promoView.delegate = delegate
+        hostView.addSubview(promoView)
+
+        promoView.providers = []
+
+        wait(for: [delegate.fetchFailedExpectation], timeout: 1.0)
+        XCTAssertNil(promoView.currentProvider)
+    }
+
+    func testRefreshIntervalSkipKeepsCurrentProviderVisible() {
+        let provider = TestPromoProvider(result: .contentAvailable,
+                                         needsReloadOnSizeChange: true,
+                                         fetchRefreshInterval: 60.0)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        let delegate = PromoViewDelegateSpy()
+        promoView.delegate = delegate
+        hostView.addSubview(promoView)
+
+        let initialFetchExpectation = expectation(description: "Initial provider loads")
+        provider.onFetch = {
+            if provider.fetchCount == 1 {
+                initialFetchExpectation.fulfill()
+            }
+        }
+
+        promoView.providers = [provider]
+        wait(for: [initialFetchExpectation], timeout: 1.0)
+
+        promoView.frame.size = CGSize(width: 260, height: 80)
+
+        let noOpExpectation = expectation(description: "Coordinator finishes without clearing current content")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            noOpExpectation.fulfill()
+        }
+
+        wait(for: [noOpExpectation], timeout: 1.0)
+        XCTAssertTrue(promoView.currentProvider === provider)
+        XCTAssertEqual(provider.fetchCount, 1)
+        XCTAssertEqual(delegate.fetchFailedCount, 0)
+    }
+
+    func testCloudEventQueryPredicateAllowsRecordsWithoutExpirationDate() {
+        let predicate = PromoCloudEventProvider.eventQueryPredicate(eventType: "app-update")
+        let format = predicate.predicateFormat
+
+        XCTAssertTrue(format.contains("expirationDate = NULL") || format.contains("expirationDate == NULL"))
+        XCTAssertTrue(format.contains("type == \"app-update\"") || format.contains("type = \"app-update\""))
+    }
+
+    func testCloudEventRecordPreferencePrefersExpiringRecords() {
+        let expiringRecord = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "expiring"))
+        expiringRecord["expirationDate"] = Date().addingTimeInterval(60) as NSDate
+
+        let nonExpiringRecord = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "non-expiring"))
+
+        XCTAssertTrue(PromoCloudEventProvider.isRecordPreferred(expiringRecord, over: nonExpiringRecord))
+        XCTAssertFalse(PromoCloudEventProvider.isRecordPreferred(nonExpiringRecord, over: expiringRecord))
+
+        let laterExpiringRecord = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "later"))
+        laterExpiringRecord["expirationDate"] = Date().addingTimeInterval(120) as NSDate
+
+        XCTAssertTrue(PromoCloudEventProvider.isRecordPreferred(expiringRecord, over: laterExpiringRecord))
+        XCTAssertFalse(PromoCloudEventProvider.isRecordPreferred(laterExpiringRecord, over: expiringRecord))
+    }
+
+    func testCloudEventReplaceCachedFileOverwritesAndRemovesOldData() throws {
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+
+        let cacheURL = temporaryDirectory.appendingPathComponent("thumbnail.cache")
+        let sourceURL = temporaryDirectory.appendingPathComponent("thumbnail.new")
+        try Data("old".utf8).write(to: cacheURL)
+        try Data("new".utf8).write(to: sourceURL)
+
+        PromoCloudEventProvider.replaceCachedFile(at: cacheURL, with: sourceURL)
+        XCTAssertEqual(try String(contentsOf: cacheURL), "new")
+
+        PromoCloudEventProvider.replaceCachedFile(at: cacheURL, with: nil)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cacheURL.path))
     }
 
     func testTimedOutProviderFallsThroughToNextProvider() {
@@ -195,6 +283,18 @@ private final class ReuseTrackingPromoProvider: NSObject, PromoProvider {
         let contentView = promoView.dequeueContentView(for: TestPromoContentView.self)
         contentViewIdentifiers.append(ObjectIdentifier(contentView))
         return contentView
+    }
+}
+
+private final class PromoViewDelegateSpy: NSObject, PromoViewDelegate {
+    let fetchFailedExpectation = XCTestExpectation(description: "Promo view reports fetch failure")
+    var fetchFailedCount = 0
+
+    func promoViewProviderFetchFailed(_ promoView: PromoView) {
+        fetchFailedCount += 1
+        if fetchFailedCount == 1 {
+            fetchFailedExpectation.fulfill()
+        }
     }
 }
 
