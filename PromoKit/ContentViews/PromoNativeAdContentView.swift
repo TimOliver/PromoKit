@@ -107,7 +107,7 @@ final public class PromoNativeAdView: GADNativeAdView {
     private let adLabel = UILabel()
 
     // A large call-to-action button shown at the bottom
-    private let actionButton = UIButton(type: .system)
+    private let actionButton = PromoNativeAdActionButton()
 
     // An icon image view optionally shown next to the headline
     private let iconImageView = UIImageView()
@@ -158,7 +158,7 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         headlineLabel.attributedText = nil
         bodyLabel.attributedText = nil
-        actionButton.setTitle(nil, for: .normal)
+        actionButton.title = nil
         contentMediaView.mediaContent = nil
         mediaBackgroundImage = nil
     }
@@ -209,18 +209,6 @@ final public class PromoNativeAdView: GADNativeAdView {
         contentMediaView.frame.size = CGSize(width: 120, height: 120)
         contentMediaContainerView.addSubview(contentMediaView)
 
-        actionButton.isUserInteractionEnabled = false
-        actionButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18.0)
-        actionButton.setTitleColor(.white, for: .normal)
-        actionButton.clipsToBounds = true
-        if #available(iOS 26.0, *) {
-            actionButton.configuration = .prominentGlass()
-            actionButton.cornerConfiguration = .capsule()
-        }
-        if #available(iOS 13.0, *) {
-            actionButton.layer.cornerCurve = .continuous
-        }
-        insertSubview(actionButton, at: 0)
     }
 
     public func configureContentViews(with nativeAd: GADNativeAd?) {
@@ -237,9 +225,9 @@ final public class PromoNativeAdView: GADNativeAdView {
         contentMediaContainerView.image = mediaBackgroundImage
         contentMediaView.mediaContent = nativeAd.mediaContent
 
-        actionButton.setTitle(nil, for: .normal)
+        actionButton.title = nil
         if let cta = nativeAd.callToAction {
-            actionButton.setTitle(cta.capitalized, for: .normal)
+            actionButton.title = cta.capitalized
         }
 
         // Force a layout to ensure the elements are appropriately sized
@@ -312,13 +300,12 @@ final public class PromoNativeAdView: GADNativeAdView {
         }
 
         // Layout the action button at the bottom
-        if !(actionButton.title(for: .normal)?.isEmpty ?? true) {
-            actionButton.backgroundColor = self.tintColor
+        if !(actionButton.title?.isEmpty ?? true) {
+            actionButton.tintColor = self.tintColor
             let buttonSize = CGSize(width: textContentSize.width, height: ctaButtonHeight)
             let buttonOrigin = CGPoint(x: padding, y: size.height - (ctaButtonHeight + padding))
             actionButton.frame = CGRect(origin: buttonOrigin, size: buttonSize)
-            actionButton.layer.cornerRadius = 15
-            if actionButton.superview == nil { addSubview(actionButton) }
+            if actionButton.superview == nil { insertSubview(actionButton, at: 0) }
         } else {
             actionButton.isHidden = true
             actionButton.removeFromSuperview()
@@ -423,22 +410,19 @@ final public class PromoNativeAdView: GADNativeAdView {
 
         origin.y = max(iconImageView.frame.maxY, max(headlineLabel.frame.maxY, bodyLabel.frame.maxY)) + innerMargin
 
-        if !(actionButton.title(for: .normal)?.isEmpty ?? true) {
-            if actionButton.superview == nil { addSubview(actionButton) }
-            actionButton.backgroundColor = self.tintColor
+        if !(actionButton.title?.isEmpty ?? true) {
+            if actionButton.superview == nil { insertSubview(actionButton, at: 0) }
+            actionButton.tintColor = self.tintColor
             if !needsCompactLayout {
                 let buttonSize = CGSize(width: size.width, height: ctaButtonHeight)
                 let buttonOrigin = CGPoint(x: padding, y: size.height - ctaButtonHeight)
                 actionButton.frame = CGRect(origin: buttonOrigin, size: buttonSize)
-                actionButton.layer.cornerRadius = 15
             } else {
                 actionButton.frame.size = compactActionSize
                 actionButton.frame.origin = CGPoint(x: size.width - (actionButton.frame.width + padding),
                                                     y: max(headlineLabel.frame.minY + ((totalTextHeight - compactActionSize.height) / 2.0),
                                                            padding + googleButtonWidth + titleVerticalSpacing))
-                actionButton.layer.cornerRadius = compactActionSize.height / 2.0
             }
-            actionButton.titleLabel?.sizeToFit()
             actionButton.setNeedsLayout()
         } else {
             actionButton.removeFromSuperview()
