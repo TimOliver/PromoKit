@@ -203,6 +203,9 @@ public class PromoView: UIControl {
     /// The store for recycled content view objects
     private var queuedContentViews = [ObjectIdentifier: [PromoContentView]]()
 
+    /// When providers are configured before the view is attached and sized, defer the initial fetch until it is ready.
+    private var needsReloadWhenReady = false
+
     /// An operation queue shared between all promo views that allow background processing of its fetched results
     private static var sharedBackgroundQueue: OperationQueue = {
         let operationQueue = OperationQueue()
@@ -279,6 +282,7 @@ extension PromoView {
         super.didMoveToSuperview()
         guard superview != nil else { return }
         setIsLoading(true, animated: true)
+        performDeferredReloadIfNeeded()
     }
 
     /// Returns the most appropriate size this view should be when fitting into the provided container size.
@@ -345,6 +349,9 @@ extension PromoView {
 
         // Layout the close button
         layoutCloseButton()
+
+        // If providers were assigned before the view was attached or sized, start loading once we are ready.
+        performDeferredReloadIfNeeded()
     }
 
     private func contentPadding(for provider: PromoProvider? = nil) -> UIEdgeInsets {
@@ -373,7 +380,13 @@ extension PromoView {
 
     /// Clears all state and starts a new fetch of all providers from scratch.
     public func reload() {
-        guard superview != nil, !providerCoordinator.isFetching else { return }
+        guard !providerCoordinator.isFetching else { return }
+        guard superview != nil, !bounds.isEmpty else {
+            needsReloadWhenReady = true
+            return
+        }
+
+        needsReloadWhenReady = false
 
         // Clear the coordinator's previous state
         providerCoordinator.reset()
@@ -410,6 +423,14 @@ extension PromoView {
         guard currentProvider?.needsReloadOnSizeChange ?? false else { return }
         providerCoordinator.fetchBestProvider(from: currentProvider)
     }
+
+    private func performDeferredReloadIfNeeded() {
+        guard needsReloadWhenReady,
+              superview != nil,
+              !bounds.isEmpty,
+              !providerCoordinator.isFetching else { return }
+        reload()
+    }
 }
 
 // MARK: - Displaying Content
@@ -420,9 +441,11 @@ extension PromoView {
     /// if available.
     public func dequeueContentView<T: PromoContentView>(for contentViewClass: T.Type) -> T {
         // Fetch the first available content view from the store
-        if var views = queuedContentViews[ObjectIdentifier(contentViewClass.self)],
+        let contentViewIdentifier = ObjectIdentifier(contentViewClass)
+        if var views = queuedContentViews[contentViewIdentifier],
            let contentView = views.first as? T {
             views.removeFirst()
+            queuedContentViews[contentViewIdentifier] = views
             return contentView
         }
 
@@ -450,10 +473,12 @@ extension PromoView {
         contentView.prepareForReuse()
 
         // Add it back to the pool
-        if var views = self.queuedContentViews[ObjectIdentifier(contentView.self)] {
+        let contentViewIdentifier = ObjectIdentifier(type(of: contentView))
+        if var views = self.queuedContentViews[contentViewIdentifier] {
             views.append(contentView)
+            self.queuedContentViews[contentViewIdentifier] = views
         } else {
-            self.queuedContentViews[ObjectIdentifier(contentView.self)] = [contentView]
+            self.queuedContentViews[contentViewIdentifier] = [contentView]
         }
 
         self.contentView = nil
