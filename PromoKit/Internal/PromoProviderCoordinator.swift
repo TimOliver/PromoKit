@@ -61,9 +61,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     let providerFetchResults = NSMapTable<AnyObject, NSNumber>(keyOptions: .weakMemory,
                                                                valueOptions: .copyIn)
 
-    // Track the last time a fetch attempt was made
-    // so we can defer any new fetches until the retry intervals have passed.
-    var previousFetchTime: Date?
+    // Track the last time each provider returned a result so refresh intervals can be applied per-provider.
+    let providerFetchDates = NSMapTable<AnyObject, NSDate>(keyOptions: .weakMemory,
+                                                           valueOptions: .copyIn)
 
     // MARK: Init
 
@@ -83,7 +83,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     public func reset() {
         cancelFetch()
         providerFetchResults.removeAllObjects()
-        previousFetchTime = nil
+        providerFetchDates.removeAllObjects()
     }
 }
 
@@ -122,7 +122,6 @@ extension PromoProviderCoordinator {
     /// subsequent fetches are then canceled. This is to ensure we don't cancel
     /// partial requests without confirming the next time interval.
     internal func cancelFetch() {
-        previousFetchTime = Date()
         isFetching = false
     }
 
@@ -173,6 +172,7 @@ extension PromoProviderCoordinator {
     private func didReceiveResult(_ result: PromoProviderFetchContentResult, from provider: PromoProvider) {
         // Save the result to our map table so we can consider it for future fetches
         providerFetchResults.setObject(result.rawValue as NSNumber, forKey: provider)
+        providerFetchDates.setObject(Date() as NSDate, forKey: provider)
 
         // If this provider reported it has valid content, lets make it the current provider and stop here
         if result == .contentAvailable {
@@ -227,8 +227,7 @@ extension PromoProviderCoordinator {
     /// - Parameter provider: The provider to check
     /// - Returns: A boolean on whether this provider should be skipped or not
     private func skipToNextProvider(_ provider: PromoProvider) -> Bool {
-        guard (provider.isInternetAccessRequired ?? false),
-              let previousFetchTime,
+        guard let previousFetchDate = providerFetchDates.object(forKey: provider),
               let value = providerFetchResults.object(forKey: provider) else { return false }
         let result = PromoProviderFetchContentResult(rawValue: value.intValue)
 
@@ -242,13 +241,19 @@ extension PromoProviderCoordinator {
             timeInterval = 0
         }
 
+        guard timeInterval > 0 else { return false }
+
         // If we're not past the time-out interval yet, skip to the next provider
-        if previousFetchTime.timeIntervalSinceNow < timeInterval,
-           let nextProvider = nextValidProvider(after: provider) {
+        let elapsedTime = Date().timeIntervalSince(previousFetchDate as Date)
+        guard elapsedTime < timeInterval else { return false }
+
+        if let nextProvider = nextValidProvider(after: provider) {
             DispatchQueue.main.async { [weak self] in
                 guard self?.isFetching ?? false else { return }
                 self?.startContentFetch(for: nextProvider)
             }
+        } else {
+            cancelFetch()
         }
         return true
     }
