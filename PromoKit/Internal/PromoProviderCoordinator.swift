@@ -40,6 +40,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     /// A retry interval for failed provider fetches.
     public var retryInterval: TimeInterval = 30
 
+    /// The maximum amount of time to wait for a provider fetch before treating it as a failure.
+    public var fetchTimeout: TimeInterval = 15
+
     /// A handler that is triggered whenever a new provider is chosen.
     public var providerUpdatedHandler: ((PromoProvider?) -> Void)?
 
@@ -57,6 +60,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     // The provider currently being fetched
     var queryingProvider: PromoProvider?
 
+    // The unique token for the currently active provider fetch.
+    var queryingProviderToken: UUID?
+
     // Tracking the last known response of each provider, so we know which retry policy to apply
     let providerFetchResults = NSMapTable<AnyObject, NSNumber>(keyOptions: .weakMemory,
                                                                valueOptions: .copyIn)
@@ -64,6 +70,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     // Track the last time each provider returned a result so refresh intervals can be applied per-provider.
     let providerFetchDates = NSMapTable<AnyObject, NSDate>(keyOptions: .weakMemory,
                                                            valueOptions: .copyIn)
+
+    // The pending timeout work item for the currently active provider fetch.
+    private var fetchTimeoutWorkItem: DispatchWorkItem?
 
     // MARK: Init
 
@@ -117,12 +126,10 @@ extension PromoProviderCoordinator {
     }
 
     /// Cancels an in-progress fetch.
-    /// It's possible the cancel request can happen right after a web request has been made.
-    /// In this case, that fetch is allowed to continue, and that provider may become the current one, but
-    /// subsequent fetches are then canceled. This is to ensure we don't cancel
-    /// partial requests without confirming the next time interval.
+    /// Any late callbacks from the canceled provider are ignored.
     internal func cancelFetch() {
         isFetching = false
+        invalidateActiveFetch()
     }
 
     /// When a potentially valid provider is found, instruct it to start loading
@@ -139,18 +146,20 @@ extension PromoProviderCoordinator {
         if let promoView { provider.didMoveToPromoView?(promoView) }
 
         // Store a class reference to this provider
+        invalidateFetchTimeout()
+        let queryingProviderToken = UUID()
         self.queryingProvider = provider
+        self.queryingProviderToken = queryingProviderToken
 
         // Capture a copy of this provider we can use to compare to the class one in the completion handler
         let queryingProvider: PromoProvider = provider
 
+        scheduleFetchTimeout(for: queryingProvider, token: queryingProviderToken)
+
         // Define the closure, and use address-comparison to ensure it's still valid at completion
         let handler: ((PromoProviderFetchContentResult) -> Void) = { [weak self] result in
-            // Check the current querying provider against the one we captured when we started
-            // the closure and make sure they match.
-            guard let currentQueryingProvider = self?.queryingProvider,
-                  currentQueryingProvider === queryingProvider else { return }
             DispatchQueue.main.async { [weak self] in
+                guard self?.isActiveFetch(for: queryingProvider, token: queryingProviderToken) ?? false else { return }
                 self?.didReceiveResult(result, from: queryingProvider)
             }
         }
@@ -159,7 +168,8 @@ extension PromoProviderCoordinator {
         // Defer to the next run loop, so we don't end up overloading the call stack if all of these providers
         // execute on the main run loop.
         DispatchQueue.main.async { [weak self] in
-            guard (self?.isFetching ?? false), let promoView = self?.promoView else { return }
+            guard self?.isActiveFetch(for: queryingProvider, token: queryingProviderToken) ?? false,
+                  let promoView = self?.promoView else { return }
             queryingProvider.fetchNewContent(for: promoView, with: handler)
         }
     }
@@ -170,6 +180,8 @@ extension PromoProviderCoordinator {
     ///   - result: The result of the content fetch reported by the provider
     ///   - provider: The provider performing the request
     private func didReceiveResult(_ result: PromoProviderFetchContentResult, from provider: PromoProvider) {
+        invalidateActiveFetch()
+
         // Save the result to our map table so we can consider it for future fetches
         providerFetchResults.setObject(result.rawValue as NSNumber, forKey: provider)
         providerFetchDates.setObject(Date() as NSDate, forKey: provider)
@@ -256,6 +268,34 @@ extension PromoProviderCoordinator {
             cancelFetch()
         }
         return true
+    }
+
+    private func isActiveFetch(for provider: PromoProvider, token: UUID) -> Bool {
+        guard let currentQueryingProvider = queryingProvider,
+              let currentQueryingProviderToken = queryingProviderToken else { return false }
+        return currentQueryingProvider === provider && currentQueryingProviderToken == token
+    }
+
+    private func invalidateActiveFetch() {
+        queryingProvider = nil
+        queryingProviderToken = nil
+        invalidateFetchTimeout()
+    }
+
+    private func invalidateFetchTimeout() {
+        fetchTimeoutWorkItem?.cancel()
+        fetchTimeoutWorkItem = nil
+    }
+
+    private func scheduleFetchTimeout(for provider: PromoProvider, token: UUID) {
+        guard fetchTimeout > 0 else { return }
+
+        let timeoutWorkItem = DispatchWorkItem { [weak self] in
+            guard self?.isActiveFetch(for: provider, token: token) ?? false else { return }
+            self?.didReceiveResult(.fetchRequestFailed, from: provider)
+        }
+        fetchTimeoutWorkItem = timeoutWorkItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + fetchTimeout, execute: timeoutWorkItem)
     }
 }
 

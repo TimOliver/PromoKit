@@ -128,6 +128,13 @@ public class PromoView: UIControl {
         set { providerCoordinator.retryInterval = newValue }
     }
 
+    /// The maximum time to wait for a provider fetch before falling through to the next provider.
+    /// Set this to `0` to disable timeouts. Default is 15 seconds.
+    public var providerFetchTimeout: TimeInterval {
+        get { providerCoordinator.fetchTimeout }
+        set { providerCoordinator.fetchTimeout = newValue }
+    }
+
     /// A shared operation queue that providers may use to perform background processing (ie, data parsing or image decoding)
     public var backgroundQueue: OperationQueue {
         PromoView.sharedBackgroundQueue
