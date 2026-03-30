@@ -105,6 +105,8 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping PromoProviderContentFetchHandler) {
         self.resultHandler = resultHandler
+        record = nil
+        thumbnail = nil
         fetchLatestEventRecordID()
     }
 
@@ -139,7 +141,6 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
         // Create the query operation, fetching just the data we need to check its validity
         let queryOperation = CKQueryOperation(query: query)
-        queryOperation.resultsLimit = 1
         queryOperation.desiredKeys = desiredKeys()
         queryOperation.recordFetchedBlock = { [weak self] record in
             self?.didFetchRecordForQuery(record)
@@ -153,6 +154,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// Called when the CloudKit query has successfully fetched a record
     /// - Parameter record: The record that was fetched
     private func didFetchRecordForQuery(_ record: CKRecord) {
+        guard self.record == nil else { return }
         guard isRecordEligibleForDisplay(record) else { return }
         self.record = record
     }
@@ -161,6 +163,8 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// - Parameter record: The record to display
     /// - Returns: Whether the object is eligible or not
     private func isRecordEligibleForDisplay(_ record: CKRecord) -> Bool {
+        guard isCurrentAppVersionEligible(for: record) else { return false }
+
         // If we don't have any local duration value, this record is always valid
         guard let localDuration = record[Constants.localDuration] as? Int, localDuration > 0 else {
             return true
@@ -185,6 +189,37 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
             .timeIntervalSinceReferenceDate
 
         return referenceDate < localExpirationReferenceDate
+    }
+
+    private func isCurrentAppVersionEligible(for record: CKRecord) -> Bool {
+        let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            ?? Bundle.main.object(forInfoDictionaryKey: kCFBundleVersionKey as String) as? String
+        guard let currentVersion else { return true }
+
+        let minVersion = record[Constants.minVersion] as? String
+        let maxVersion = record[Constants.maxVersion] as? String
+        return Self.isVersionEligible(currentVersion, minVersion: minVersion, maxVersion: maxVersion)
+    }
+
+    static func isVersionEligible(_ currentVersion: String,
+                                  minVersion: String? = nil,
+                                  maxVersion: String? = nil) -> Bool {
+        let currentVersion = currentVersion.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !currentVersion.isEmpty else { return true }
+
+        let minVersion = minVersion?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let minVersion, !minVersion.isEmpty,
+           currentVersion.compare(minVersion, options: .numeric) == .orderedAscending {
+            return false
+        }
+
+        let maxVersion = maxVersion?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let maxVersion, !maxVersion.isEmpty,
+           currentVersion.compare(maxVersion, options: .numeric) == .orderedDescending {
+            return false
+        }
+
+        return true
     }
 
     /// Called when the record query completes.
