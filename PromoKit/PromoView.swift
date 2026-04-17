@@ -562,10 +562,14 @@ extension PromoView {
             spinnerView.isHidden = !isLoading
         }
 
-        spinnerView.isHidden = false
-        spinnerView.layer.removeAllAnimations()
-        spinnerView.transform = .identity
-        refreshSpinnerView()
+        // Apply the pre-animation state outside of any ambient animation context (e.g. a device
+        // rotation wrapping this call in UIView.animate) so those writes aren't implicitly animated.
+        UIView.performWithoutAnimation {
+            spinnerView.isHidden = false
+            spinnerView.layer.removeAllAnimations()
+            spinnerView.transform = .identity
+            refreshSpinnerView()
+        }
 
         // If not animated, call these blocks right away
         if !animated {
@@ -576,8 +580,10 @@ extension PromoView {
         }
 
         // Call the animation blocks
-        spinnerView.transform = isLoading ? .identity.rotated(by: .pi).scaledBy(x: 0.01, y: 0.01) : .identity
-        spinnerView.alpha = isLoading ? 0.0 : 1.0
+        UIView.performWithoutAnimation {
+            spinnerView.transform = isLoading ? .identity.rotated(by: .pi).scaledBy(x: 0.01, y: 0.01) : .identity
+            spinnerView.alpha = isLoading ? 0.0 : 1.0
+        }
         UIView.animate(withDuration: 0.45, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0.0, options: [],
                        animations: scalingAnimationBlock, completion: completionBlock)
         UIView.animate(withDuration: 0.2, delay: 0.0, options: [], animations: crossFadeAnimationBlock)
@@ -608,16 +614,23 @@ extension PromoView {
                 isDarkMode = traitCollection.userInterfaceStyle == .dark
             }
         }
-        spinnerView.color = isDarkMode ? .white : .gray
 
-        // Update the style based on how large the promo view is
-        // Only do this when we're loading (ie, we're going *into* a fetch cycle)
-        // so the size doesn't randomly change as we're winding down
-        if isLoading {
-            let useLargeSize = frame.height > PromoView.largeSpinnerRequiredHeight
-            spinnerView.style = useLargeSize ? .whiteLarge : .gray
+        // Apply style/size changes outside any ambient animation context, so a layout pass
+        // triggered mid-rotation doesn't implicitly animate the spinner's bounds.
+        // The center update is deliberately left outside this block so that, during a device
+        // rotation, the spinner smoothly re-centers along with the rotation animation.
+        UIView.performWithoutAnimation {
+            spinnerView.color = isDarkMode ? .white : .gray
+
+            // Update the style based on how large the promo view is
+            // Only do this when we're loading (ie, we're going *into* a fetch cycle)
+            // so the size doesn't randomly change as we're winding down
+            if isLoading {
+                let useLargeSize = frame.height > PromoView.largeSpinnerRequiredHeight
+                spinnerView.style = useLargeSize ? .whiteLarge : .gray
+            }
+            spinnerView.sizeToFit()
         }
-        spinnerView.sizeToFit()
 
         // Position the spinner in the middle of the view
         spinnerView.center = CGPoint(x: bounds.midX, y: bounds.midY)
