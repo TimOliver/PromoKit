@@ -386,8 +386,13 @@ extension PromoView {
 extension PromoView {
 
     /// Clears all state and starts a new fetch of all providers from scratch.
+    /// If a fetch is already in progress it's cancelled first — callers (including the
+    /// `providers` setter) expect `reload()` to restart the pipeline, not silently no-op.
     public func reload() {
-        guard !providerCoordinator.isFetching else { return }
+        if providerCoordinator.isFetching {
+            providerCoordinator.cancelFetch()
+        }
+
         guard superview != nil, !bounds.isEmpty else {
             needsReloadWhenReady = true
             return
