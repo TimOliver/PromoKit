@@ -57,6 +57,13 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         self.adUnitID = adUnitID
     }
 
+    deinit {
+        // Drop any in-flight fetch handler so a late AdMob delegate callback doesn't
+        // keep the coordinator's closure chain (and whatever it retains) alive past
+        // this provider's lifetime.
+        resultHandler = nil
+    }
+
     public var isInternetAccessRequired: Bool { true }
     public var showsLoadingIndicatorDuringFetch: Bool { true }
     public var needsReloadOnSizeChange: Bool { true }

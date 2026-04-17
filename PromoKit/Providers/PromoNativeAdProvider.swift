@@ -69,6 +69,14 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         self.adUnitID = adUnitID
     }
 
+    deinit {
+        // The tap-cancellation timer schedules itself on the run loop and stays alive
+        // until it fires, even if the provider is released — invalidate it eagerly so
+        // we don't leave a no-op timer ticking on the main run loop.
+        tapDownTimer?.invalidate()
+        resultHandler = nil
+    }
+
     // MARK: - PromoProvider Implementation
 
     public var isInternetAccessRequired: Bool { true }
