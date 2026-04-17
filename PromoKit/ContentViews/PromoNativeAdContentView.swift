@@ -157,8 +157,11 @@ final public class PromoNativeAdView: NativeAdView {
         self.callToActionView = nil
 
         headlineLabel.attributedText = nil
+        headlineLabel.text = nil
         bodyLabel.attributedText = nil
+        bodyLabel.text = nil
         actionButton.title = nil
+        iconImageView.image = nil
         contentMediaView.mediaContent = nil
         mediaBackgroundImage = nil
     }
