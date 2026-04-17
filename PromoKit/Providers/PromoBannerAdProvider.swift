@@ -63,6 +63,13 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
 
     public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
+        // Hide the ad view during the fetch. AdMob updates the adView's rendering to the new
+        // ad synchronously just before firing its load-success callback, so if it were visible
+        // the user would see the new banner "snap in" inside the old content view before our
+        // fade-in animation gets a chance to run. Keeping it hidden until `contentView(for:)`
+        // re-adds it to a fresh (alpha-0) container ensures the fade-in is the first time the
+        // new creative becomes visible.
+        adView.isHidden = true
         adView.adUnitID = adUnitID
         adView.delegate = self
         adView.rootViewController = promoView.rootViewController
@@ -89,6 +96,9 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     public func contentView(for promoView: PromoView) -> PromoContentView {
         let containerView = promoView.dequeueContentView(for: PromoContainerContentView.self)
         containerView.addSubview(adView)
+        // Unhide — the container is given alpha 0 by PromoView and fades in, so the ad view
+        // becoming visible is already gated by the fade-in animation.
+        adView.isHidden = false
         return containerView
     }
 
