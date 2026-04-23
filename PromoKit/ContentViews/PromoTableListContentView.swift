@@ -124,8 +124,9 @@ extension PromoTableListContentView {
         super.layoutSubviews()
 
         var xOffset = promoView?.contentPadding.left ?? 0.0
-        if !imageView.isHidden {
-            let imageSize = imageView.image?.size ?? .zero
+        if !imageView.isHidden,
+           let imageSize = imageView.image?.size,
+           imageSize.width > 0, imageSize.height > 0 {
             let scale = min(bounds.width / imageSize.width, bounds.height / imageSize.height)
             imageView.frame.size = CGSize(width: imageSize.width * scale,
                                           height: imageSize.height * scale)
@@ -143,7 +144,8 @@ extension PromoTableListContentView {
         }
 
         let size = bounds.size
-        let fittingSize = CGSize(width: size.width - xOffset, height: size.height - footnoteHeight)
+        let fittingSize = CGSize(width: max(0, size.width - xOffset),
+                                 height: max(0, size.height - footnoteHeight))
         let labelHeight = label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize), limitedToNumberOfLines: 4).height
         let height = min(size.height, labelHeight + footnoteHeight)
 
