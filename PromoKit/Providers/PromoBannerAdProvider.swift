@@ -53,7 +53,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
 
     /// Create new instance of a Google ad banner provider
     /// - Parameter adUnitID: The Google ad unit ID for this banner
-    public init(adUnitID: String) {
+    @objc public init(adUnitID: String) {
         self.adUnitID = adUnitID
     }
 

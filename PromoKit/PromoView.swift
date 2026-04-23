@@ -65,7 +65,7 @@ public class PromoView: UIControl {
     public weak var delegate: PromoViewDelegate?
 
     /// The view controller hosting this promo view
-    public weak var rootViewController: UIViewController?
+    @objc public weak var rootViewController: UIViewController?
 
     /// The content view from the currently active promo provider
     public var contentView: PromoContentView?
@@ -95,7 +95,7 @@ public class PromoView: UIControl {
     }
 
     /// The background view displayed behind the content view
-    public let backgroundView: UIView = UIView()
+    @objc public let backgroundView: UIView = UIView()
 
     /// When providers don't specify their own insetting, the content insetting of the promo view is used instead
     /// The default value is the view's `layoutMargins`
@@ -109,7 +109,7 @@ public class PromoView: UIControl {
     }
 
     /// The promo providers currently assigned to this promo view, sorted in order of priority.
-    public var providers: [PromoProvider]? {
+    @objc public var providers: [PromoProvider]? {
         get { providerCoordinator.providers }
         set { providerCoordinator.providers = newValue; reload() }
     }
