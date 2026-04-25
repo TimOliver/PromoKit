@@ -78,7 +78,7 @@ public class PromoView: UIControl {
 
     /// Whether a close button is shown on the trailing side of the ad view (Default is false).
     /// Note: This property requires iOS 13.0 or later. On earlier versions, setting this has no effect.
-    public var showCloseButton: Bool = false {
+    @objc public var showCloseButton: Bool = false {
         didSet {
             guard #available(iOS 13.0, *) else { return }
             updateCloseButtonVisibility()
@@ -175,6 +175,20 @@ public class PromoView: UIControl {
         didSet {
             guard oldValue.size != frame.size else { return }
 
+            // If the client is adopting a size we ourselves just handed out
+            // via `sizeThatFits`, the size change isn't a container-driven
+            // resize — it's the provider's own preferred size being applied.
+            // Refetching in that case would be spurious work (common when a
+            // host view calls `sizeToFit` after layout changes, like
+            // rotation), so consume the stashed size and skip the refresh.
+            let adoptingVendedSize: Bool
+            if let lastVendedPreferredSize, lastVendedPreferredSize == frame.size {
+                adoptingVendedSize = true
+            } else {
+                adoptingVendedSize = false
+            }
+            lastVendedPreferredSize = nil
+
             // Because the 'transform' property influences view frames,
             // if a frame change happens mid animation, put the transform briefly back to handle it.
             // But don't touch the container view any other time.
@@ -184,8 +198,10 @@ public class PromoView: UIControl {
             backgroundView.frame = containerView.bounds
             containerView.transform = transform
 
+            guard !adoptingVendedSize else { return }
+
             // If the provider needs to refresh on a bounds change, do it now
-            refreshCurrentProviderIfNeeded()
+            refreshCurrentProviderIfNeeded(oldSize: oldValue.size)
         }
     }
 
@@ -199,6 +215,12 @@ public class PromoView: UIControl {
 
     /// Track if an in-progress gesture has been manually canceled
     private var isInteractionCancelled: Bool = false
+
+    /// The size most recently returned from `sizeThatFits`. If the client
+    /// applies this size to `frame` immediately afterwards, the resulting
+    /// `frame.didSet` treats it as an adoption of our own preference rather
+    /// than a container-driven resize, and skips the provider refetch.
+    private var lastVendedPreferredSize: CGSize?
 
     /// A coordinator for determining the current provider
     private lazy var providerCoordinator: PromoProviderCoordinator = {
@@ -295,11 +317,14 @@ extension PromoView {
     /// - Parameter size: The size of the outer container that this promo view should size itself to fit (Including inset padding).
     /// - Returns: The most appropriate size this view should be to fit the container view
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
-        var providerClass: AnyClass?
-        if let provider = currentProvider ?? providers?.first {
-            providerClass = type(of: provider)
+        // Prefer whatever the coordinator has settled on; before the first
+        // fetch completes, fall back to the first declared provider so
+        // callers get an accurate preferred size immediately rather than a
+        // placeholder that snaps to the real size on ad load.
+        guard let provider = currentProvider ?? providers?.first else {
+            return frame.size
         }
-        return sizeThatFits(size, providerClass: providerClass)
+        return sizeThatFits(size, for: provider)
     }
 
     /// For cases where a single provider is representing a statically sized UI element (ie a fixed ad banner),
@@ -309,12 +334,20 @@ extension PromoView {
     ///   - size: The size of the outer container in which this view needs to fit.
     ///   - providerClass: The class type of the provider in the list of active providers to use.
     public func sizeThatFits(_ size: CGSize, providerClass: AnyClass?) -> CGSize {
-        // Check we have a valid provider that implements the sizing protocol method, or skip otherwise
-        guard let providerClass,
-              let provider = providerCoordinator.providerForClass(providerClass) else {
-            return frame.size
+        // If a specific class is requested, resolve it through the coordinator.
+        // Fall back to the default path when the class isn't given so callers
+        // don't have to special-case a nil argument.
+        if let providerClass,
+           let provider = providerCoordinator.providerForClass(providerClass) {
+            return sizeThatFits(size, for: provider)
         }
+        return sizeThatFits(size)
+    }
 
+    /// Shared implementation backing both public `sizeThatFits` overloads.
+    /// Works with the provider directly (no class-based lookup) so it returns
+    /// the right preferred size even before a fetch has resolved `currentProvider`.
+    private func sizeThatFits(_ size: CGSize, for provider: PromoProvider) -> CGSize {
         // Remove the padding from fitting size to calculate the frame size
         var contentSize = size
         let padding = provider.contentPadding?(for: self) ?? defaultContentPadding
@@ -335,6 +368,10 @@ extension PromoView {
         // Add the padding back in
         preferredsize.width += padding.left + padding.right
         preferredsize.height += padding.top + padding.bottom
+
+        // Stash the result so `frame.didSet` can recognise when a subsequent
+        // frame assignment is just the client adopting this preference.
+        lastVendedPreferredSize = preferredsize
 
         return preferredsize
     }
@@ -432,8 +469,26 @@ extension PromoView {
     }
 
     /// Refresh the current provider if needed
-    private func refreshCurrentProviderIfNeeded() {
-        guard currentProvider?.needsReloadOnSizeChange ?? false else { return }
+    private func refreshCurrentProviderIfNeeded(oldSize: CGSize) {
+        guard let currentProvider, currentProvider.needsReloadOnSizeChange ?? false else { return }
+
+        // Defer to the provider when it implements `shouldReloadForSizeChange`.
+        // For example, a banner provider that picks the same AdSize for two
+        // different container widths returns false here, avoiding a needless
+        // refetch when only the surrounding layout changed.
+        if let shouldReload = currentProvider.shouldReloadForSizeChange?(from: oldSize, to: frame.size),
+           !shouldReload {
+            return
+        }
+
+        // Drop the stale content view immediately and surface the loading
+        // spinner. Without this, the previous ad continues to render inside
+        // the resized frame (often the wrong size for the new bounds) until
+        // the new fetch completes — fading it out wouldn't help here either,
+        // because it'd still be visible (just transparent) at the wrong size.
+        reclaimCurrentContentView(animated: false)
+        setIsLoading(true, animated: false)
+
         providerCoordinator.fetchBestProvider(from: currentProvider)
     }
 
@@ -467,11 +522,14 @@ extension PromoView {
     }
 
     /// Fades out and removes the current content view, returning it to the recycling pool.
-    private func reclaimCurrentContentView() {
+    private func reclaimCurrentContentView(animated: Bool = true) {
         guard let contentView else { return }
 
-        // Fade the current content view out
-        if let snapshot = contentView.snapshotView(afterScreenUpdates: false) {
+        // Fade the current content view out (when animated). For abrupt
+        // refreshes — e.g. a bounds change that invalidates the current ad
+        // size — callers can pass `animated: false` so the stale content
+        // disappears immediately rather than lingering during a 0.25s fade.
+        if animated, let snapshot = contentView.snapshotView(afterScreenUpdates: false) {
             snapshot.frame = contentView.frame
             containerView.addSubview(snapshot)
             UIView.animate(withDuration: 0.25) {

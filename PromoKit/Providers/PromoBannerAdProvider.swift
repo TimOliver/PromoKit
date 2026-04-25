@@ -42,6 +42,14 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     /// When both are present, the larger `.full` size is preferred on wider views (> 468pt).
     public var supportedBannerSizes: [PromoBannerAdSize] = [.standard, .full]
 
+    /// Convenience hook for Obj-C callers that want to lock the provider to
+    /// the smaller 320×50 banner, independent of the hosting view's width.
+    /// Swift arrays of `@objc` enums can't be bridged directly, so this
+    /// method configures @c supportedBannerSizes on the caller's behalf.
+    @objc public func restrictToStandardBannerSize() {
+        supportedBannerSizes = [.standard]
+    }
+
     /// The Google ad identifier for this banner
     private let adUnitID: String
 
@@ -68,6 +76,15 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     public var showsLoadingIndicatorDuringFetch: Bool { true }
     public var needsReloadOnSizeChange: Bool { true }
 
+    /// Only refetch when the size transition crosses a banner-size bucket.
+    /// Resizing the container within the same bucket (e.g. iPad split-view
+    /// between half and two-thirds while both stay above 468pt) shouldn't
+    /// invalidate the current ad. `AdSize` isn't `Equatable`, so compare
+    /// the underlying `size` (which uniquely identifies banner buckets).
+    public func shouldReloadForSizeChange(from oldSize: CGSize, to newSize: CGSize) -> Bool {
+        return bannerSizeFor(promoSize: oldSize).size != bannerSizeFor(promoSize: newSize).size
+    }
+
     public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
         // Hide the ad view during the fetch. AdMob updates the adView's rendering to the new
@@ -90,7 +107,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         guard let superview = promoView.superview else {
             return defaultSize
         }
-        if supportedBannerSizes.contains(.full) && superview.frame.width > 468 {
+        if supportedBannerSizes.contains(.full) && superview.frame.width >= 468 {
             return CGSize(width: 468, height: 60)
         }
         return defaultSize
@@ -121,7 +138,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
 
     /// Returns the appropriate `GADAdSize` based on the current promo view width and the supported sizes.
     private func bannerSizeFor(promoSize: CGSize) -> AdSize {
-        if supportedBannerSizes.contains(.full), promoSize.width > 468 {
+        if supportedBannerSizes.contains(.full), promoSize.width >= 468 {
             return AdSizeFullBanner
         }
         return AdSizeBanner

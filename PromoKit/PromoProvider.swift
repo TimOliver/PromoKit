@@ -58,6 +58,15 @@ public protocol PromoProvider: AnyObject {
     /// This is useful for banner ads who might need to load a larger or smaller variant to fit the new size.
     @objc optional var needsReloadOnSizeChange: Bool { get }
 
+    /// Optional fine-grained gate for size-driven reloads. When @c needsReloadOnSizeChange
+    /// is true, the promo view consults this method (if implemented) to decide whether
+    /// the specific size transition warrants a fresh fetch. Providers like a banner ad
+    /// that bucket multiple container widths into the same ad size can return false to
+    /// avoid spurious reloads as the host view resizes within the same bucket.
+    /// If the method isn't implemented, the promo view always reloads on size change
+    /// (preserving the legacy behaviour).
+    @objc optional func shouldReloadForSizeChange(from oldSize: CGSize, to newSize: CGSize) -> Bool
+
     /// For successful fetches, the amount of time that must pass before another fetch will be made.
     /// This is for providers who aren't real-time, so it isn't necessary to check them very often.
     @objc optional var fetchRefreshInterval: TimeInterval { get }
