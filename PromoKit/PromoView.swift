@@ -175,20 +175,6 @@ public class PromoView: UIControl {
         didSet {
             guard oldValue.size != frame.size else { return }
 
-            // If the client is adopting a size we ourselves just handed out
-            // via `sizeThatFits`, the size change isn't a container-driven
-            // resize — it's the provider's own preferred size being applied.
-            // Refetching in that case would be spurious work (common when a
-            // host view calls `sizeToFit` after layout changes, like
-            // rotation), so consume the stashed size and skip the refresh.
-            let adoptingVendedSize: Bool
-            if let lastVendedPreferredSize, lastVendedPreferredSize == frame.size {
-                adoptingVendedSize = true
-            } else {
-                adoptingVendedSize = false
-            }
-            lastVendedPreferredSize = nil
-
             // Because the 'transform' property influences view frames,
             // if a frame change happens mid animation, put the transform briefly back to handle it.
             // But don't touch the container view any other time.
@@ -197,8 +183,6 @@ public class PromoView: UIControl {
             containerView.frame = bounds
             backgroundView.frame = containerView.bounds
             containerView.transform = transform
-
-            guard !adoptingVendedSize else { return }
 
             // If the provider needs to refresh on a bounds change, do it now
             refreshCurrentProviderIfNeeded(oldSize: oldValue.size)
@@ -215,12 +199,6 @@ public class PromoView: UIControl {
 
     /// Track if an in-progress gesture has been manually canceled
     private var isInteractionCancelled: Bool = false
-
-    /// The size most recently returned from `sizeThatFits`. If the client
-    /// applies this size to `frame` immediately afterwards, the resulting
-    /// `frame.didSet` treats it as an adoption of our own preference rather
-    /// than a container-driven resize, and skips the provider refetch.
-    private var lastVendedPreferredSize: CGSize?
 
     /// A coordinator for determining the current provider
     private lazy var providerCoordinator: PromoProviderCoordinator = {
@@ -368,10 +346,6 @@ extension PromoView {
         // Add the padding back in
         preferredsize.width += padding.left + padding.right
         preferredsize.height += padding.top + padding.bottom
-
-        // Stash the result so `frame.didSet` can recognise when a subsequent
-        // frame assignment is just the client adopting this preference.
-        lastVendedPreferredSize = preferredsize
 
         return preferredsize
     }
