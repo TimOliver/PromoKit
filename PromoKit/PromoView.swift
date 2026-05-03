@@ -62,7 +62,7 @@ public class PromoView: UIControl {
     // MARK: - Public Properties -
 
     /// The delegate for this promo view
-    public weak var delegate: PromoViewDelegate?
+    @objc public weak var delegate: PromoViewDelegate?
 
     /// The view controller hosting this promo view
     @objc public weak var rootViewController: UIViewController?
@@ -208,9 +208,6 @@ public class PromoView: UIControl {
     /// The store for recycled content view objects
     private var queuedContentViews = [ObjectIdentifier: [PromoContentView]]()
 
-    /// When providers are configured before the view is attached and sized, defer the initial fetch until it is ready.
-    private var needsReloadWhenReady = false
-
     /// An operation queue shared between all promo views that allow background processing of its fetched results
     private static var sharedBackgroundQueue: OperationQueue = {
         let operationQueue = OperationQueue()
@@ -286,8 +283,14 @@ extension PromoView {
     public override func didMoveToSuperview() {
         super.didMoveToSuperview()
         guard superview != nil else { return }
-        setIsLoading(true, animated: true)
-        performDeferredReloadIfNeeded()
+
+        // Only flip into the loading-spinner state when there isn't already
+        // a fetched provider on screen. A view that was preloaded headlessly
+        // (no superview during fetch) and then attached to a real hierarchy
+        // shouldn't briefly cover its loaded content with a spinner.
+        if currentProvider == nil && !providerCoordinator.isFetching {
+            setIsLoading(true, animated: true)
+        }
     }
 
     /// Returns the most appropriate size this view should be when fitting into the provided container size.
@@ -365,9 +368,6 @@ extension PromoView {
 
         // Layout the close button
         layoutCloseButton()
-
-        // If providers were assigned before the view was attached or sized, start loading once we are ready.
-        performDeferredReloadIfNeeded()
     }
 
     /// Returns the content padding to apply for the given provider, falling back to `defaultContentPadding`.
@@ -399,17 +399,17 @@ extension PromoView {
     /// Clears all state and starts a new fetch of all providers from scratch.
     /// If a fetch is already in progress it's cancelled first — callers (including the
     /// `providers` setter) expect `reload()` to restart the pipeline, not silently no-op.
+    ///
+    /// The view does not need to be in a window or even attached to a superview
+    /// to start fetching — providers only require the view to have non-empty
+    /// bounds (so size-sensitive providers like banner ads can pick a variant)
+    /// and a `rootViewController` if they need to present click handlers.
+    /// Hosts that want to preload off-screen can simply set `frame` and a
+    /// `rootViewController` and call this directly.
     public func reload() {
         if providerCoordinator.isFetching {
             providerCoordinator.cancelFetch()
         }
-
-        guard superview != nil, !bounds.isEmpty else {
-            needsReloadWhenReady = true
-            return
-        }
-
-        needsReloadWhenReady = false
 
         // Clear the coordinator's previous state
         providerCoordinator.reset()
@@ -464,14 +464,6 @@ extension PromoView {
         setIsLoading(true, animated: false)
 
         providerCoordinator.fetchBestProvider(from: currentProvider)
-    }
-
-    private func performDeferredReloadIfNeeded() {
-        guard needsReloadWhenReady,
-              superview != nil,
-              !bounds.isEmpty,
-              !providerCoordinator.isFetching else { return }
-        reload()
     }
 }
 
