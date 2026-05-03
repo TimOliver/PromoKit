@@ -25,7 +25,7 @@ import UIKit
 /// A custom pill-shaped call-to-action button used in the native ad view.
 /// On iOS 26 and later, the background renders as a tinted glass effect.
 /// On earlier versions, it uses a solid tinted background.
-final class PromoNativeAdActionButton: UIView {
+final internal class PromoNativeAdActionButton: UIView {
 
     /// The text displayed in the button label
     var title: String? {
