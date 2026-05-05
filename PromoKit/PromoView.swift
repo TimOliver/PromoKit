@@ -123,10 +123,17 @@ public class PromoView: UIControl {
 
     /// The promo providers currently assigned to this promo view, sorted in order of priority.
     /// Assigning a new value triggers `reload()` automatically when `reloadsAutomatically` is `true`.
+    /// If the previously-resolved provider isn't in the new list, it is cleared immediately
+    /// (along with its on-screen content) rather than lingering as placeholder content.
     @objc public var providers: [PromoProvider]? {
         get { providerCoordinator.providers }
         set {
             providerCoordinator.providers = newValue
+            if let previous = providerCoordinator.currentProvider,
+               newValue?.contains(where: { $0 === previous }) != true {
+                providerCoordinator.currentProvider = nil
+                providerDidChange(nil)
+            }
             if reloadsAutomatically { reload() }
         }
     }
@@ -290,7 +297,11 @@ public class PromoView: UIControl {
             if let provider {
                 self.delegate?.promoView?(self, didResolveProvider: provider)
             } else {
+                // Empty/ineligible providers also count as a fetch failure for hosts that
+                // listen on the older callback — keep both failure paths emitting the same
+                // pair of signals so callers don't have to special-case the early-exit case.
                 self.delegate?.promoViewDidFailToResolveProvider?(self)
+                self.delegate?.promoViewProviderFetchFailed?(self)
             }
             self.providerDidChange(provider)
         }
