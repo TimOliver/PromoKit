@@ -81,6 +81,52 @@ final class PromoKitBehaviorTests: XCTestCase {
         XCTAssertFalse(PromoCloudEventProvider.isVersionEligible("3.0.1", maxVersion: "3.0.0"))
     }
 
+    func testManualReloadResolvesProviderBeforeDisplay() {
+        let provider = TestPromoProvider(result: .contentAvailable)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let delegate = PromoViewDelegateSpy()
+        promoView.delegate = delegate
+        promoView.reloadsAutomatically = false
+        promoView.providers = [provider]
+
+        // No superview, no auto-reload — the host explicitly drives the reload to inspect the result.
+        promoView.reload()
+
+        wait(for: [delegate.resolveExpectation, delegate.updateExpectation], timeout: 1.0, enforceOrder: true)
+        XCTAssertNil(promoView.superview)
+        XCTAssertTrue(delegate.resolvedProvider === provider)
+        XCTAssertTrue(delegate.updatedProvider === provider)
+    }
+
+    func testManualReloadFailsToResolveWhenNoContentAvailable() {
+        let provider = TestPromoProvider(result: .noContentAvailable)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let delegate = PromoViewDelegateSpy()
+        promoView.delegate = delegate
+        promoView.reloadsAutomatically = false
+        promoView.providers = [provider]
+
+        promoView.reload()
+
+        wait(for: [delegate.resolveFailedExpectation], timeout: 1.0)
+        XCTAssertNil(promoView.currentProvider)
+    }
+
+    func testAssigningProvidersDoesNotReloadWhenAutomaticReloadingDisabled() {
+        let provider = TestPromoProvider(result: .contentAvailable)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        promoView.reloadsAutomatically = false
+
+        promoView.providers = [provider]
+
+        // Give any stray async fetch dispatch a chance to run before asserting.
+        let settle = expectation(description: "Run loop spins without triggering a reload")
+        DispatchQueue.main.async { settle.fulfill() }
+        wait(for: [settle], timeout: 1.0)
+        XCTAssertEqual(provider.fetchCount, 0)
+        XCTAssertNil(promoView.currentProvider)
+    }
+
     func testEmptyProviderListReportsFetchFailure() {
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
         let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
@@ -288,13 +334,32 @@ private final class ReuseTrackingPromoProvider: NSObject, PromoProvider {
 
 private final class PromoViewDelegateSpy: NSObject, PromoViewDelegate {
     let fetchFailedExpectation = XCTestExpectation(description: "Promo view reports fetch failure")
+    let resolveExpectation = XCTestExpectation(description: "Promo view reports provider resolution")
+    let resolveFailedExpectation = XCTestExpectation(description: "Promo view reports provider resolution failure")
+    let updateExpectation = XCTestExpectation(description: "Promo view displays content")
     var fetchFailedCount = 0
+    var resolvedProvider: PromoProvider?
+    var updatedProvider: PromoProvider?
 
     func promoViewProviderFetchFailed(_ promoView: PromoView) {
         fetchFailedCount += 1
         if fetchFailedCount == 1 {
             fetchFailedExpectation.fulfill()
         }
+    }
+
+    func promoView(_ promoView: PromoView, didResolveProvider provider: PromoProvider) {
+        resolvedProvider = provider
+        resolveExpectation.fulfill()
+    }
+
+    func promoViewDidFailToResolveProvider(_ promoView: PromoView) {
+        resolveFailedExpectation.fulfill()
+    }
+
+    func promoView(_ promoView: PromoView, didUpdateProvider provider: PromoProvider) {
+        updatedProvider = provider
+        updateExpectation.fulfill()
     }
 }
 

@@ -33,6 +33,19 @@ public enum PromoViewCloseButtonSize: Int {
 @objc(PMKPromoViewDelegate)
 public protocol PromoViewDelegate: NSObjectProtocol {
 
+    /// Called when a reload has resolved to a provider with valid content available, before
+    /// that content has been added to the view. Use this to decide whether to add the promo
+    /// view to its parent hierarchy when you only want it visible if a real ad is available.
+    /// - Parameters:
+    ///   - promoView: The promo view that ran the reload
+    ///   - provider: The provider that was resolved
+    @objc optional func promoView(_ promoView: PromoView, didResolveProvider provider: PromoProvider)
+
+    /// Called when a reload finished without resolving a provider with content to display.
+    /// Hosts that conditionally attach the promo view should leave it detached on this callback.
+    /// - Parameter promoView: The promo view that ran the reload
+    @objc optional func promoViewDidFailToResolveProvider(_ promoView: PromoView)
+
     /// Called when a new provider has successfully been fetched and is now displaying
     /// its content. This can be used to trigger new layout passes if needed.
     /// - Parameters:
@@ -109,10 +122,20 @@ public class PromoView: UIControl {
     }
 
     /// The promo providers currently assigned to this promo view, sorted in order of priority.
+    /// Assigning a new value triggers `reload()` automatically when `reloadsAutomatically` is `true`.
     @objc public var providers: [PromoProvider]? {
         get { providerCoordinator.providers }
-        set { providerCoordinator.providers = newValue; reload() }
+        set {
+            providerCoordinator.providers = newValue
+            if reloadsAutomatically { reload() }
+        }
     }
+
+    /// When `true` (the default), assigning `providers` immediately starts a reload so the view
+    /// behaves as a drop-in fire-and-forget component. Set to `false` when you need to inspect
+    /// the reload result before attaching the view to a hierarchy — assign `providers`, then call
+    /// `reload()` yourself and react via the delegate's `didResolveProvider` / `didFailToResolveProvider`.
+    @objc public var reloadsAutomatically: Bool = true
 
     /// The current provider being displayed by this view
     public var currentProvider: PromoProvider? {
@@ -261,10 +284,19 @@ public class PromoView: UIControl {
 
         // Coordinator changes
         providerCoordinator.providerUpdatedHandler = { [weak self] provider in
-            self?.providerDidChange(provider)
+            guard let self else { return }
+            // Report the resolution outcome before content is composed so hosts can decide
+            // whether to attach the view (or keep it attached) before `didUpdateProvider`.
+            if let provider {
+                self.delegate?.promoView?(self, didResolveProvider: provider)
+            } else {
+                self.delegate?.promoViewDidFailToResolveProvider?(self)
+            }
+            self.providerDidChange(provider)
         }
         providerCoordinator.providerFetchFailedHandler = { [weak self] in
             guard let self else { return }
+            self.delegate?.promoViewDidFailToResolveProvider?(self)
             self.delegate?.promoViewProviderFetchFailed?(self)
         }
     }
@@ -396,16 +428,17 @@ extension PromoView {
 
 extension PromoView {
 
-    /// Clears all state and starts a new fetch of all providers from scratch.
-    /// If a fetch is already in progress it's cancelled first — callers (including the
-    /// `providers` setter) expect `reload()` to restart the pipeline, not silently no-op.
+    /// Clears all state and starts reloading the highest-priority provider from scratch.
+    /// If a reload is already in progress it's cancelled first — callers (including the
+    /// `providers` setter when `reloadsAutomatically` is `true`) expect `reload()` to restart
+    /// the pipeline, not silently no-op.
     ///
-    /// The view does not need to be in a window or even attached to a superview
-    /// to start fetching — providers only require the view to have non-empty
-    /// bounds (so size-sensitive providers like banner ads can pick a variant)
-    /// and a `rootViewController` if they need to present click handlers.
-    /// Hosts that want to preload off-screen can simply set `frame` and a
-    /// `rootViewController` and call this directly.
+    /// The view does not need to be in a window or even attached to a superview to start
+    /// reloading — providers only require the view to have non-empty bounds (so size-sensitive
+    /// providers like banner ads can pick a variant) and a `rootViewController` if they need
+    /// to present click handlers. Hosts that want to confirm a real provider was found before
+    /// attaching the view can set `reloadsAutomatically = false`, assign `providers`, call this
+    /// directly, and react via `promoView(_:didResolveProvider:)` / `promoViewDidFailToResolveProvider(_:)`.
     public func reload() {
         if providerCoordinator.isFetching {
             providerCoordinator.cancelFetch()
