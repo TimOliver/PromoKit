@@ -21,7 +21,6 @@
 //  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import Foundation
-import Network
 
 /// A model object that handles querying for, and choosing
 /// the highest priority provider to be displayed.
@@ -54,8 +53,8 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
     // MARK: Private
 
-    // The network connection observer
-    let networkMonitor = PromoPathMonitor()
+    // The network connection observer (injected for tests; defaults to a real path monitor)
+    let networkMonitor: PromoPathMonitoring
 
     // The provider currently being fetched
     var queryingProvider: PromoProvider?
@@ -76,8 +75,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
     // MARK: Init
 
-    init(promoView: PromoView) {
+    init(promoView: PromoView, networkMonitor: PromoPathMonitoring = PromoPathMonitor()) {
         self.promoView = promoView
+        self.networkMonitor = networkMonitor
         networkMonitor.delegate = self
         networkMonitor.start()
     }
@@ -324,12 +324,11 @@ extension PromoProviderCoordinator {
 
     /// Called when network connectivity changes. If we're currently showing an offline provider
     /// and the internet returns, triggers a fresh fetch to promote an online provider if one is available.
-    func pathMonitor(_ pathMonitor: PromoPathMonitor, didUpdateToPath path: NWPath?) {
-        guard let path, let provider = currentProvider else { return }
+    func pathMonitor(_ pathMonitor: PromoPathMonitoring, didUpdateConnectivity connected: Bool) {
+        guard let provider = currentProvider else { return }
 
         // If we're already showing an internet enabled provider, we can skip, assuming it may still render offline.
-        let internetConnected = path.status == .satisfied
-        if internetConnected, (provider.isInternetAccessRequired ?? false) { return }
+        if connected, (provider.isInternetAccessRequired ?? false) { return }
 
         // We're apparently showing an offline provider, let's take this as a chance to see if any new internet content has arrived.
         fetchBestProvider()

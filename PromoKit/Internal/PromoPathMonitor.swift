@@ -24,17 +24,33 @@ import Foundation
 import Network
 import os.lock
 
-protocol PromoPathMonitorDelegate: AnyObject {
-    /// The network monitor status changed
+/// Abstraction over the system network monitor so the coordinator can be exercised in tests
+/// without depending on real connectivity (or constructing an `NWPath`, which has no public init).
+internal protocol PromoPathMonitoring: AnyObject {
+    /// Whether the device currently has a satisfied network path.
+    var hasInternetAccess: Bool { get }
+
+    /// Delegate notified when connectivity transitions.
+    var delegate: PromoPathMonitorDelegate? { get set }
+
+    /// Begin observing connectivity changes.
+    func start()
+
+    /// Stop observing connectivity changes.
+    func cancel()
+}
+
+internal protocol PromoPathMonitorDelegate: AnyObject {
+    /// The network monitor's connectivity status transitioned.
     /// - Parameters:
-    ///   - pathMonitor: The path monitor tracking these changes
-    ///   - didUpdateToPath: The path that was updated
-    func pathMonitor(_ pathMonitor: PromoPathMonitor, didUpdateToPath path: NWPath?)
+    ///   - pathMonitor: The monitor reporting the change.
+    ///   - connected: Whether the device now has a satisfied network path.
+    func pathMonitor(_ pathMonitor: PromoPathMonitoring, didUpdateConnectivity connected: Bool)
 }
 
 /// Used to track the current connectivity state of the device and provide
 /// notifications when a valid internet connection appears or drops.
-internal class PromoPathMonitor {
+internal class PromoPathMonitor: PromoPathMonitoring {
 
     // Whether the monitor is running or not
     private(set) public var isRunning = false
@@ -119,9 +135,10 @@ extension PromoPathMonitor {
 
         // If we were showing offline content, and the internet came back up,
         // perform a new fetch to see if there's an online provider we should show
+        let connected = path.status == .satisfied
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.delegate?.pathMonitor(self, didUpdateToPath: path)
+            self.delegate?.pathMonitor(self, didUpdateConnectivity: connected)
         }
     }
 }
