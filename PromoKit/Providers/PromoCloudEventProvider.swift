@@ -24,6 +24,51 @@ import Foundation
 import CloudKit
 import UIKit
 
+/// Abstraction over the CloudKit operations used by `PromoCloudEventProvider`. Lets tests
+/// substitute a stub instead of going through `CKDatabase`, which can't be exercised offline.
+internal protocol PromoCloudEventDataSource: AnyObject {
+    /// Performs a record query, calling `recordHandler` for each fetched record and
+    /// `completion` once the query finishes.
+    func performQuery(_ query: CKQuery,
+                      desiredKeys: [String],
+                      recordHandler: @escaping (CKRecord) -> Void,
+                      completion: @escaping (Error?) -> Void)
+
+    /// Fetches the full record for the given record ID, including any large fields like
+    /// asset thumbnails that the initial query intentionally skipped.
+    func fetchRecord(withID recordID: CKRecord.ID,
+                     completion: @escaping (CKRecord?, Error?) -> Void)
+}
+
+/// Default `PromoCloudEventDataSource` backed by a real `CKDatabase`.
+internal final class PromoCloudKitDataSource: PromoCloudEventDataSource {
+    private let database: CKDatabase
+
+    init(containerIdentifier: String?) {
+        if let containerIdentifier {
+            self.database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
+        } else {
+            self.database = CKContainer.default().publicCloudDatabase
+        }
+    }
+
+    func performQuery(_ query: CKQuery,
+                      desiredKeys: [String],
+                      recordHandler: @escaping (CKRecord) -> Void,
+                      completion: @escaping (Error?) -> Void) {
+        let operation = CKQueryOperation(query: query)
+        operation.desiredKeys = desiredKeys
+        operation.recordFetchedBlock = { record in recordHandler(record) }
+        operation.queryCompletionBlock = { _, error in completion(error) }
+        database.add(operation)
+    }
+
+    func fetchRecord(withID recordID: CKRecord.ID,
+                     completion: @escaping (CKRecord?, Error?) -> Void) {
+        database.fetch(withRecordID: recordID, completionHandler: completion)
+    }
+}
+
 /// A provider that checks for certain records in this app's public CloudKit database,
 /// and displays the first valid entry found in a table list style content view.
 /// This is useful for broadcasting new time-limited announcements about the app to users.
@@ -66,17 +111,11 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     // The CloudKit record type name that this provider queries (eg "PromoEvent")
     private let recordType: String
 
-    // The identifier of the CloudKit container to query, or nil to use the app's default container
-    private let containerIdentifier: String?
-
     // An optional string to narrow the query to a specific event category within the record type
     private let eventType: String?
 
-    // Fetches the public database for the initial container
-    private lazy var publicDatabase: CKDatabase = {
-        if let containerIdentifier { return CKContainer(identifier: containerIdentifier).publicCloudDatabase }
-        return CKContainer.default().publicCloudDatabase
-    }()
+    // The CloudKit-facing data source. Production uses `PromoCloudKitDataSource`; tests inject a stub.
+    private let dataSource: PromoCloudEventDataSource
 
     // A cache for persisting record access dates and thumbnail images between sessions
     private let cache = PromoCache()
@@ -101,10 +140,22 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// Create a new instance of this provider with the specified CloudKit container name
     /// - Parameter containerIdentifier: The container name to use (eg iCloud.dev.tim.promokit). Specify nil for the app's default container
     /// - Parameter eventType: An optional type to filter for (eg, app-specific announcements vs global announcements)
-    public init(recordType: String = "PromoEvent", containerIdentifier: String? = nil, eventType: String? = nil) {
+    public convenience init(recordType: String = "PromoEvent",
+                            containerIdentifier: String? = nil,
+                            eventType: String? = nil) {
+        self.init(recordType: recordType,
+                  eventType: eventType,
+                  dataSource: PromoCloudKitDataSource(containerIdentifier: containerIdentifier))
+    }
+
+    /// Designated initializer that accepts an injected data source. Internal so tests can supply
+    /// a stub without exposing the abstraction publicly.
+    internal init(recordType: String,
+                  eventType: String?,
+                  dataSource: PromoCloudEventDataSource) {
         self.recordType = recordType
-        self.containerIdentifier = containerIdentifier
         self.eventType = eventType
+        self.dataSource = dataSource
     }
 
     public func fetchNewContent(for promoView: PromoView,
@@ -148,18 +199,15 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         let query = CKQuery(recordType: recordType, predicate: predicate)
         query.sortDescriptors = [NSSortDescriptor(key: Constants.expirationDate, ascending: true)]
 
-        // Create the query operation, fetching just the data we need to check its validity
-        let queryOperation = CKQueryOperation(query: query)
-        queryOperation.desiredKeys = desiredKeys()
-        queryOperation.recordFetchedBlock = { [weak self] record in
+        // Hand the query off to the data source so production code talks to CloudKit while
+        // tests can vend canned records without going through the network.
+        dataSource.performQuery(query, desiredKeys: desiredKeys()) { [weak self] record in
             guard self?.fetchToken == token else { return }
             self?.didFetchRecordForQuery(record)
-        }
-        queryOperation.queryCompletionBlock = { [weak self] _, error in
+        } completion: { [weak self] error in
             guard self?.fetchToken == token else { return }
             self?.recordQueryDidComplete(error: error, token: token)
         }
-        publicDatabase.add(queryOperation)
     }
 
     /// Called when the CloudKit query has successfully fetched a record
@@ -269,7 +317,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     ///   - token: The fetch token captured at query start, used to detect stale completions.
     private func prepareRecordForDisplay(_ record: CKRecord, token: UUID?) {
         // Re-fetch the selected record so thumbnail changes on the server are reflected locally.
-        publicDatabase.fetch(withRecordID: record.recordID) { [weak self] record, error in
+        dataSource.fetchRecord(withID: record.recordID) { [weak self] record, error in
             guard self?.fetchToken == token else { return }
             guard let self else { return }
 

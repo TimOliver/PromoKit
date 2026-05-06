@@ -502,6 +502,144 @@ final class PromoKitBehaviorTests: XCTestCase {
         XCTAssertEqual(promoView.backgroundView.layer.cornerRadius, 12)
     }
 
+    // MARK: - Network monitor wrapper
+
+    func testCoordinatorReFetchesWhenNetworkRecoversFromOffline() {
+        let stubMonitor = StubPathMonitor(connected: false)
+        let onlineProvider = TestPromoProvider(result: .contentAvailable, isInternetAccessRequired: true)
+        let offlineProvider = TestPromoProvider(result: .contentAvailable, isOfflineCacheAvailable: true)
+
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let coordinator = makeCoordinator(for: promoView, networkMonitor: stubMonitor)
+
+        let resolutions = ProviderResolutionRecorder()
+        coordinator.providerUpdatedHandler = { resolutions.record($0) }
+        coordinator.providers = [onlineProvider, offlineProvider]
+        coordinator.fetchBestProvider()
+
+        let initialResolved = expectation(description: "Offline provider resolves while disconnected")
+        resolutions.onUpdate = { provider in
+            if provider === offlineProvider { initialResolved.fulfill() }
+        }
+        wait(for: [initialResolved], timeout: 1.0)
+        XCTAssertEqual(onlineProvider.fetchCount, 0,
+                       "Online provider must be filtered out while disconnected")
+
+        let onlineResolved = expectation(description: "Online provider takes over after network recovers")
+        resolutions.onUpdate = { provider in
+            if provider === onlineProvider { onlineResolved.fulfill() }
+        }
+        stubMonitor.simulateConnectivityChange(true)
+
+        wait(for: [onlineResolved], timeout: 1.0)
+        XCTAssertTrue(coordinator.currentProvider === onlineProvider)
+        XCTAssertEqual(onlineProvider.fetchCount, 1)
+    }
+
+    func testCoordinatorIgnoresConnectivityChangesWithNoCurrentProvider() {
+        let stubMonitor = StubPathMonitor(connected: true)
+        let provider = TestPromoProvider(result: .contentAvailable)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let coordinator = makeCoordinator(for: promoView, networkMonitor: stubMonitor)
+        coordinator.providers = [provider]
+
+        // No fetchBestProvider call yet — currentProvider is nil. A connectivity change must
+        // not start a fetch on its own; only an existing provider triggers a re-evaluation.
+        stubMonitor.simulateConnectivityChange(false)
+        stubMonitor.simulateConnectivityChange(true)
+
+        let settle = expectation(description: "Run loop spins after connectivity changes")
+        DispatchQueue.main.async { settle.fulfill() }
+        wait(for: [settle], timeout: 1.0)
+        XCTAssertEqual(provider.fetchCount, 0)
+    }
+
+    // MARK: - CloudKit data source wrapper
+
+    func testCloudEventProviderResolvesContentWhenDataSourceVendsRecord() {
+        let dataSource = StubCloudEventDataSource()
+        let record = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "now"))
+        record["title"] = "Welcome"
+        dataSource.queryRecords = [record]
+        dataSource.fetchRecord = record
+
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: nil,
+                                               dataSource: dataSource)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        let result = waitForFetch(provider: provider, promoView: promoView)
+        XCTAssertEqual(result, .contentAvailable)
+        XCTAssertEqual(dataSource.queryCallCount, 1)
+        XCTAssertEqual(dataSource.fetchCallCount, 1)
+    }
+
+    func testCloudEventProviderReportsNoContentWhenDataSourceReturnsNoRecords() {
+        let dataSource = StubCloudEventDataSource()
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: nil,
+                                               dataSource: dataSource)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        let result = waitForFetch(provider: provider, promoView: promoView)
+        XCTAssertEqual(result, .noContentAvailable)
+        XCTAssertEqual(dataSource.queryCallCount, 1)
+        XCTAssertEqual(dataSource.fetchCallCount, 0,
+                       "Without a candidate record, the provider must not request the full fetch")
+    }
+
+    func testCloudEventProviderReportsFailureWhenQueryErrors() {
+        let dataSource = StubCloudEventDataSource()
+        dataSource.queryError = NSError(domain: CKErrorDomain, code: CKError.networkUnavailable.rawValue)
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: nil,
+                                               dataSource: dataSource)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        let result = waitForFetch(provider: provider, promoView: promoView)
+        XCTAssertEqual(result, .fetchRequestFailed)
+    }
+
+    func testCloudEventProviderForwardsRecordTypeAndEventTypeToQuery() {
+        let dataSource = StubCloudEventDataSource()
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: "app-update",
+                                               dataSource: dataSource)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        _ = waitForFetch(provider: provider, promoView: promoView)
+
+        // CKQuery disables local predicate evaluation, so we inspect the query's wiring
+        // (recordType + type-filter clause in the predicate format) rather than running it.
+        // Predicate evaluation correctness is covered by `testCloudEventQueryPredicate…`.
+        guard let query = dataSource.lastQuery else {
+            return XCTFail("Provider should have issued a query through the data source")
+        }
+        XCTAssertEqual(query.recordType, "PromoEvent")
+        XCTAssertTrue(query.predicate.predicateFormat.contains("\"app-update\""),
+                      "Predicate should constrain results to the configured eventType")
+    }
+
+    // MARK: - Helpers
+
+    private func makeCoordinator(for promoView: PromoView,
+                                 networkMonitor: PromoPathMonitoring) -> PromoProviderCoordinator {
+        PromoProviderCoordinator(promoView: promoView, networkMonitor: networkMonitor)
+    }
+
+    private func waitForFetch(provider: PromoProvider,
+                              promoView: PromoView,
+                              timeout: TimeInterval = 1.0) -> PromoProviderFetchContentResult {
+        let completed = expectation(description: "Provider fetch completes")
+        var captured: PromoProviderFetchContentResult?
+        provider.fetchNewContent(for: promoView) { result in
+            captured = result
+            completed.fulfill()
+        }
+        wait(for: [completed], timeout: timeout)
+        return captured ?? .fetchRequestFailed
+    }
+
     func testEmptyProviderListReportsFetchFailure() {
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
         let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
@@ -808,5 +946,64 @@ private final class TestPromoContentView: PromoContentView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+}
+
+private final class StubPathMonitor: PromoPathMonitoring {
+    var hasInternetAccess: Bool
+    weak var delegate: PromoPathMonitorDelegate?
+
+    init(connected: Bool) {
+        self.hasInternetAccess = connected
+    }
+
+    func start() {}
+    func cancel() {}
+
+    func simulateConnectivityChange(_ connected: Bool) {
+        hasInternetAccess = connected
+        delegate?.pathMonitor(self, didUpdateConnectivity: connected)
+    }
+}
+
+private final class StubCloudEventDataSource: PromoCloudEventDataSource {
+    var queryRecords: [CKRecord] = []
+    var queryError: Error?
+    var fetchRecord: CKRecord?
+    var fetchError: Error?
+    private(set) var queryCallCount = 0
+    private(set) var fetchCallCount = 0
+    private(set) var lastQuery: CKQuery?
+
+    func performQuery(_ query: CKQuery,
+                      desiredKeys: [String],
+                      recordHandler: @escaping (CKRecord) -> Void,
+                      completion: @escaping (Error?) -> Void) {
+        queryCallCount += 1
+        lastQuery = query
+        // Hop to the main queue to mirror the real CKDatabase behaviour where callbacks
+        // arrive asynchronously — provider code should remain correct under that ordering.
+        DispatchQueue.main.async {
+            for record in self.queryRecords { recordHandler(record) }
+            completion(self.queryError)
+        }
+    }
+
+    func fetchRecord(withID recordID: CKRecord.ID,
+                     completion: @escaping (CKRecord?, Error?) -> Void) {
+        fetchCallCount += 1
+        DispatchQueue.main.async {
+            completion(self.fetchRecord, self.fetchError)
+        }
+    }
+}
+
+private final class ProviderResolutionRecorder {
+    private(set) var resolvedProviders: [PromoProvider?] = []
+    var onUpdate: ((PromoProvider?) -> Void)?
+
+    func record(_ provider: PromoProvider?) {
+        resolvedProviders.append(provider)
+        onUpdate?(provider)
     }
 }
