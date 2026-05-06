@@ -344,6 +344,164 @@ final class PromoKitBehaviorTests: XCTestCase {
         XCTAssertTrue(promoView.currentProvider === fastProvider)
     }
 
+    // MARK: - Public API surface coverage
+
+    func testReloadIfNeededIsNoOpWhileFetching() {
+        let neverCompletingProvider = TestPromoProvider(result: .contentAvailable, completes: false)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        let fetchStarted = expectation(description: "Initial fetch begins")
+        neverCompletingProvider.onFetch = { fetchStarted.fulfill() }
+        promoView.providers = [neverCompletingProvider]
+        wait(for: [fetchStarted], timeout: 1.0)
+        XCTAssertEqual(neverCompletingProvider.fetchCount, 1)
+
+        // While the fetch is in flight, reloadIfNeeded must not restart the pipeline.
+        promoView.reloadIfNeeded()
+
+        let settle = expectation(description: "Run loop spins")
+        DispatchQueue.main.async { settle.fulfill() }
+        wait(for: [settle], timeout: 1.0)
+        XCTAssertEqual(neverCompletingProvider.fetchCount, 1)
+    }
+
+    func testSizeThatFitsWithProviderClassUsesNamedProviderForSizing() {
+        let firstProvider = TestPromoProvider(result: .contentAvailable)
+        let secondProvider = FixedSizePromoProvider(width: 120, height: 30)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        promoView.reloadsAutomatically = false
+        promoView.providers = [firstProvider, secondProvider]
+
+        let fittingSize = CGSize(width: 240, height: 80)
+        let sizedToFirst = promoView.sizeThatFits(fittingSize, providerClass: TestPromoProvider.self)
+        let sizedToSecond = promoView.sizeThatFits(fittingSize, providerClass: FixedSizePromoProvider.self)
+
+        // Falling back to nil class should defer to the default sizeThatFits path.
+        let fallbackSize = promoView.sizeThatFits(fittingSize, providerClass: nil)
+
+        // Sizing pipeline subtracts padding before asking the provider, then re-adds it
+        // to the returned size — so the fixed provider's 120x30 surfaces as 120+padding.
+        let padding = promoView.defaultContentPadding
+        let expectedSecondSize = CGSize(width: 120 + padding.left + padding.right,
+                                        height: 30 + padding.top + padding.bottom)
+        XCTAssertEqual(sizedToFirst.height, min(80, fittingSize.height))
+        XCTAssertEqual(sizedToSecond, expectedSecondSize)
+        XCTAssertEqual(fallbackSize.height, min(80, fittingSize.height))
+    }
+
+    func testRefreshIntervalSkipAdvancesToNextEligibleProvider() {
+        let firstProvider = TestPromoProvider(result: .contentAvailable,
+                                              needsReloadOnSizeChange: true,
+                                              fetchRefreshInterval: 60.0)
+        let secondProvider = TestPromoProvider(result: .contentAvailable)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        hostView.addSubview(promoView)
+        let delegate = PromoViewDelegateSpy()
+        promoView.delegate = delegate
+
+        let firstResolved = expectation(description: "First provider resolves")
+        delegate.onResolve = { provider in
+            if provider === firstProvider { firstResolved.fulfill() }
+        }
+        promoView.providers = [firstProvider, secondProvider]
+        wait(for: [firstResolved], timeout: 1.0)
+
+        // Size change triggers a re-fetch starting from the current provider; the refresh
+        // interval skip should advance to the second provider rather than re-querying the first.
+        let secondResolved = expectation(description: "Second provider resolves after first is skipped")
+        delegate.onResolve = { provider in
+            if provider === secondProvider { secondResolved.fulfill() }
+        }
+        promoView.frame.size = CGSize(width: 260, height: 80)
+
+        wait(for: [secondResolved], timeout: 1.0)
+        XCTAssertTrue(promoView.currentProvider === secondProvider)
+        XCTAssertEqual(firstProvider.fetchCount, 1)
+        XCTAssertEqual(secondProvider.fetchCount, 1)
+    }
+
+    func testCloseButtonTapFiresDelegateCallback() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let delegate = PromoViewDelegateSpy()
+        promoView.delegate = delegate
+        promoView.showCloseButton = true
+        promoView.layoutIfNeeded()
+
+        guard let closeButton = promoView.subviews.compactMap({ $0 as? UIButton }).first else {
+            return XCTFail("Close button should be present after enabling showCloseButton")
+        }
+
+        closeButton.sendActions(for: .touchUpInside)
+
+        XCTAssertEqual(delegate.closeTapCount, 1)
+    }
+
+    func testCloseButtonExpandsHitTestArea() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        promoView.showCloseButton = true
+        promoView.layoutIfNeeded()
+
+        guard let closeButton = promoView.subviews.compactMap({ $0 as? UIButton }).first else {
+            return XCTFail("Close button should be present after enabling showCloseButton")
+        }
+
+        // Hit-testing inside the visual frame returns the button itself…
+        let visualCenter = CGPoint(x: closeButton.frame.midX, y: closeButton.frame.midY)
+        XCTAssertTrue(promoView.hitTest(visualCenter, with: nil) === closeButton)
+
+        // …and the expanded touch target (insetBy -10) still routes hits to the button.
+        let nearMissPoint = CGPoint(x: closeButton.frame.minX - 6, y: closeButton.frame.minY - 6)
+        XCTAssertTrue(promoView.point(inside: nearMissPoint, with: nil),
+                      "Points just outside the button should still register as inside the promo view")
+        XCTAssertTrue(promoView.hitTest(nearMissPoint, with: nil) === closeButton)
+    }
+
+    func testTotalBoundsSizeIncludesCloseButtonWhenVisible() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(promoView.totalBoundsSize, CGSize(width: 240, height: 80))
+        XCTAssertEqual(promoView.closeButtonOffset, .zero)
+
+        promoView.showCloseButton = true
+        promoView.layoutIfNeeded()
+
+        XCTAssertGreaterThan(promoView.totalBoundsSize.width, 240)
+        XCTAssertGreaterThan(promoView.totalBoundsSize.height, 80)
+        XCTAssertGreaterThan(promoView.closeButtonOffset.width, 0)
+        XCTAssertGreaterThan(promoView.closeButtonOffset.height, 0)
+    }
+
+    func testCloseButtonSizeChangeReconfiguresButton() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        promoView.showCloseButton = true
+        promoView.layoutIfNeeded()
+
+        guard let closeButton = promoView.subviews.compactMap({ $0 as? UIButton }).first else {
+            return XCTFail("Close button should be present after enabling showCloseButton")
+        }
+        let smallSize = closeButton.bounds.size
+
+        promoView.closeButtonSize = .large
+        promoView.layoutIfNeeded()
+
+        XCTAssertGreaterThan(closeButton.bounds.width, smallSize.width,
+                             "Switching to .large should produce a wider button")
+    }
+
+    func testProviderConfigurationRoundTripsThroughCoordinator() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        promoView.providerRetryInterval = 17
+        promoView.providerFetchTimeout = 9
+        promoView.cornerRadius = 12
+
+        XCTAssertEqual(promoView.providerRetryInterval, 17)
+        XCTAssertEqual(promoView.providerFetchTimeout, 9)
+        XCTAssertEqual(promoView.cornerRadius, 12)
+        XCTAssertEqual(promoView.backgroundView.layer.cornerRadius, 12)
+    }
+
     func testEmptyProviderListReportsFetchFailure() {
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
         let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
@@ -550,6 +708,29 @@ private final class TestPromoProvider: NSObject, PromoProvider {
     }
 }
 
+private final class FixedSizePromoProvider: NSObject, PromoProvider {
+    let width: CGFloat
+    let height: CGFloat
+
+    init(width: CGFloat, height: CGFloat) {
+        self.width = width
+        self.height = height
+    }
+
+    func fetchNewContent(for promoView: PromoView,
+                         with resultHandler: @escaping PromoProviderContentFetchHandler) {
+        resultHandler(.contentAvailable)
+    }
+
+    func contentView(for promoView: PromoView) -> PromoContentView {
+        promoView.dequeueContentView(for: TestPromoContentView.self)
+    }
+
+    func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
+        CGSize(width: width, height: height)
+    }
+}
+
 private final class ReuseTrackingPromoProvider: NSObject, PromoProvider {
     var contentViewIdentifiers = [ObjectIdentifier]()
 
@@ -574,6 +755,7 @@ private final class PromoViewDelegateSpy: NSObject, PromoViewDelegate {
     var resolveCount = 0
     var resolveFailedCount = 0
     var updateCount = 0
+    var closeTapCount = 0
     var resolvedProvider: PromoProvider?
     var updatedProvider: PromoProvider?
     var onResolve: ((PromoProvider) -> Void)?
@@ -612,6 +794,10 @@ private final class PromoViewDelegateSpy: NSObject, PromoViewDelegate {
         updateCount += 1
         updatedProvider = provider
         updateExpectation.fulfill()
+    }
+
+    func promoViewProviderDidTapCloseButton(_ promoView: PromoView) {
+        closeTapCount += 1
     }
 }
 

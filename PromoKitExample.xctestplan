@@ -1,0 +1,64 @@
+{
+  "configurations" : [
+    {
+      "id" : "8C952142-C6BF-4006-A0B1-8D989B59CC02",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:PromoKit.xcodeproj",
+      "identifier" : "229D21272B67CE2600105C9D",
+      "name" : "PromoKitExample"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "selectedTests" : [
+        "PromoKitBehaviorTests\/testAssigningProvidersClearsCurrentWhenItIsNoLongerInTheList()",
+        "PromoKitBehaviorTests\/testAssigningProvidersDoesNotReloadWhenAutomaticReloadingDisabled()",
+        "PromoKitBehaviorTests\/testAssigningProvidersKeepsCurrentWhenItIsStillInTheList()",
+        "PromoKitBehaviorTests\/testCloudEventQueryPredicateAllowsRecordsWithoutExpirationDate()",
+        "PromoKitBehaviorTests\/testCloudEventRecordPreferencePrefersExpiringRecords()",
+        "PromoKitBehaviorTests\/testCloudEventReplaceCachedFileOverwritesAndRemovesOldData()",
+        "PromoKitBehaviorTests\/testCloudEventVersionEligibilityUsesInclusiveBounds()",
+        "PromoKitBehaviorTests\/testEmptyProviderListReportsFetchFailure()",
+        "PromoKitBehaviorTests\/testEmptyProvidersListFiresBothFailureCallbacks()",
+        "PromoKitBehaviorTests\/testExhaustedChainFiresFailureCallbacksExactlyOnceInOrder()",
+        "PromoKitBehaviorTests\/testFallbackResolutionPicksLaterProviderInMixedFailureChain()",
+        "PromoKitBehaviorTests\/testFallbackResolutionPicksSecondProviderWhenFirstHasNoContent()",
+        "PromoKitBehaviorTests\/testLateTimedOutProviderResultIsIgnored()",
+        "PromoKitBehaviorTests\/testManualReloadFailsToResolveWhenNoContentAvailable()",
+        "PromoKitBehaviorTests\/testManualReloadResolvesProviderBeforeDisplay()",
+        "PromoKitBehaviorTests\/testPromoViewStartsLoadingAfterBeingAttached()",
+        "PromoKitBehaviorTests\/testRefreshIntervalSkipKeepsCurrentProviderVisible()",
+        "PromoKitBehaviorTests\/testReloadAfterSuccessFiresFailureWhenReplacementHasNoContent()",
+        "PromoKitBehaviorTests\/testReloadAfterSuccessFiresResolveAgainForReplacementProvider()",
+        "PromoKitBehaviorTests\/testReloadContentViewReusesQueuedContentViews()",
+        "PromoKitBehaviorTests\/testSizeChangeRefetchesProviderAfterRefreshIntervalExpires()",
+        "PromoKitBehaviorTests\/testStaleResolutionFromCancelledReloadIsNotReported()",
+        "PromoKitBehaviorTests\/testTimedOutProviderFallsThroughToNextProvider()",
+        "PromoKitTests\/testExample()",
+        "PromoKitTests\/testPerformanceExample()"
+      ],
+      "target" : {
+        "containerPath" : "container:PromoKit.xcodeproj",
+        "identifier" : "229D213D2B67CE2700105C9D",
+        "name" : "PromoKitTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:PromoKit.xcodeproj",
+        "identifier" : "229D21472B67CE2700105C9D",
+        "name" : "PromoKitUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

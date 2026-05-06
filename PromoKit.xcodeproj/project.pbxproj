@@ -109,6 +109,7 @@
 		2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PromoNativeAdProvider.swift; sourceTree = "<group>"; };
 		2257F6632BEB0C790058A2AE /* PromoNativeAdContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNativeAdContentView.swift; sourceTree = "<group>"; };
 		22642E922C85F80D00F006F4 /* PromoFileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoFileManager.swift; sourceTree = "<group>"; };
+		2267431A2FAB2E38007CD98E /* PromoKitExample.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = PromoKitExample.xctestplan; sourceTree = "<group>"; };
 		226B902E2C720AC00072FD1C /* PromoCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoCache.swift; sourceTree = "<group>"; };
 		226EAA6F2C610B0C0039AE73 /* PromoKitExample.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PromoKitExample.entitlements; sourceTree = "<group>"; };
 		229D21282B67CE2600105C9D /* PromoKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PromoKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -192,6 +193,7 @@
 				229D212A2B67CE2600105C9D /* PromoKitExample */,
 				229D21412B67CE2700105C9D /* PromoKitTests */,
 				229D214B2B67CE2700105C9D /* PromoKitUITests */,
+				2267431A2FAB2E38007CD98E /* PromoKitExample.xctestplan */,
 				229D21292B67CE2600105C9D /* Products */,
 			);
 			sourceTree = "<group>";
