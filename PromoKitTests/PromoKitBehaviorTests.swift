@@ -10,15 +10,14 @@ final class PromoKitBehaviorTests: XCTestCase {
         let provider = TestPromoProvider(result: .contentAvailable)
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80), providers: [provider])
         let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
-
-        let fetchExpectation = expectation(description: "Fetch starts after attaching to a superview")
-        provider.onFetch = {
-            fetchExpectation.fulfill()
-        }
+        let delegate = PromoViewDelegateSpy()
+        promoView.delegate = delegate
 
         hostView.addSubview(promoView)
 
-        wait(for: [fetchExpectation], timeout: 1.0)
+        // Wait for the resolution to actually settle, not just for the fetch to begin —
+        // currentProvider is only assigned after the result handler runs.
+        wait(for: [delegate.resolveExpectation], timeout: 1.0)
         XCTAssertEqual(provider.fetchCount, 1)
         XCTAssertTrue(promoView.currentProvider === provider)
     }
@@ -392,11 +391,30 @@ final class PromoKitBehaviorTests: XCTestCase {
     }
 
     func testCloudEventQueryPredicateAllowsRecordsWithoutExpirationDate() {
+        // Asserting on the predicate's behavior rather than its `predicateFormat` string —
+        // NSPredicate normalizes the format differently across iOS versions (NULL → nil,
+        // for example), so format matching becomes brittle without adding any safety.
         let predicate = PromoCloudEventProvider.eventQueryPredicate(eventType: "app-update")
-        let format = predicate.predicateFormat
 
-        XCTAssertTrue(format.contains("expirationDate = NULL") || format.contains("expirationDate == NULL"))
-        XCTAssertTrue(format.contains("type == \"app-update\"") || format.contains("type = \"app-update\""))
+        let recordWithoutExpiry: NSDictionary = ["type": "app-update"]
+        let recordWithFutureExpiry: NSDictionary = [
+            "type": "app-update",
+            "expirationDate": Date().addingTimeInterval(60)
+        ]
+        let recordWithPastExpiry: NSDictionary = [
+            "type": "app-update",
+            "expirationDate": Date().addingTimeInterval(-60)
+        ]
+        let recordWithMismatchedType: NSDictionary = ["type": "other"]
+
+        XCTAssertTrue(predicate.evaluate(with: recordWithoutExpiry),
+                      "Records without an expirationDate should remain eligible")
+        XCTAssertTrue(predicate.evaluate(with: recordWithFutureExpiry),
+                      "Records with a future expirationDate should be eligible")
+        XCTAssertFalse(predicate.evaluate(with: recordWithPastExpiry),
+                       "Records past their expirationDate should be filtered out")
+        XCTAssertFalse(predicate.evaluate(with: recordWithMismatchedType),
+                       "Records of a different type should be filtered out")
     }
 
     func testCloudEventRecordPreferencePrefersExpiringRecords() {
@@ -437,23 +455,20 @@ final class PromoKitBehaviorTests: XCTestCase {
         let fallbackProvider = TestPromoProvider(result: .contentAvailable)
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
         let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        let delegate = PromoViewDelegateSpy()
+        promoView.delegate = delegate
         hostView.addSubview(promoView)
 
         promoView.providerFetchTimeout = 0.05
 
-        let fallbackExpectation = expectation(description: "Fallback provider loads after the first provider times out")
-        fallbackProvider.onFetch = {
-            if fallbackProvider.fetchCount == 1 {
-                fallbackExpectation.fulfill()
-            }
-        }
-
         promoView.providers = [slowProvider, fallbackProvider]
 
-        wait(for: [fallbackExpectation], timeout: 1.0)
+        // Wait for the fallback to fully resolve so currentProvider is settled.
+        wait(for: [delegate.resolveExpectation], timeout: 1.0)
         XCTAssertEqual(slowProvider.fetchCount, 1)
         XCTAssertEqual(fallbackProvider.fetchCount, 1)
         XCTAssertTrue(promoView.currentProvider === fallbackProvider)
+        XCTAssertTrue(delegate.resolvedProvider === fallbackProvider)
     }
 
     func testLateTimedOutProviderResultIsIgnored() {
