@@ -24,51 +24,6 @@ import Foundation
 import CloudKit
 import UIKit
 
-/// Abstraction over the CloudKit operations used by `PromoCloudEventProvider`. Lets tests
-/// substitute a stub instead of going through `CKDatabase`, which can't be exercised offline.
-internal protocol PromoCloudEventDataSource: AnyObject {
-    /// Performs a record query, calling `recordHandler` for each fetched record and
-    /// `completion` once the query finishes.
-    func performQuery(_ query: CKQuery,
-                      desiredKeys: [String],
-                      recordHandler: @escaping (CKRecord) -> Void,
-                      completion: @escaping (Error?) -> Void)
-
-    /// Fetches the full record for the given record ID, including any large fields like
-    /// asset thumbnails that the initial query intentionally skipped.
-    func fetchRecord(withID recordID: CKRecord.ID,
-                     completion: @escaping (CKRecord?, Error?) -> Void)
-}
-
-/// Default `PromoCloudEventDataSource` backed by a real `CKDatabase`.
-internal final class PromoCloudKitDataSource: PromoCloudEventDataSource {
-    private let database: CKDatabase
-
-    init(containerIdentifier: String?) {
-        if let containerIdentifier {
-            self.database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
-        } else {
-            self.database = CKContainer.default().publicCloudDatabase
-        }
-    }
-
-    func performQuery(_ query: CKQuery,
-                      desiredKeys: [String],
-                      recordHandler: @escaping (CKRecord) -> Void,
-                      completion: @escaping (Error?) -> Void) {
-        let operation = CKQueryOperation(query: query)
-        operation.desiredKeys = desiredKeys
-        operation.recordFetchedBlock = { record in recordHandler(record) }
-        operation.queryCompletionBlock = { _, error in completion(error) }
-        database.add(operation)
-    }
-
-    func fetchRecord(withID recordID: CKRecord.ID,
-                     completion: @escaping (CKRecord?, Error?) -> Void) {
-        database.fetch(withRecordID: recordID, completionHandler: completion)
-    }
-}
-
 /// A provider that checks for certain records in this app's public CloudKit database,
 /// and displays the first valid entry found in a table list style content view.
 /// This is useful for broadcasting new time-limited announcements about the app to users.

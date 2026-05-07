@@ -24,30 +24,6 @@ import Foundation
 import Network
 import os.lock
 
-/// Abstraction over the system network monitor so the coordinator can be exercised in tests
-/// without depending on real connectivity (or constructing an `NWPath`, which has no public init).
-internal protocol PromoPathMonitoring: AnyObject {
-    /// Whether the device currently has a satisfied network path.
-    var hasInternetAccess: Bool { get }
-
-    /// Delegate notified when connectivity transitions.
-    var delegate: PromoPathMonitorDelegate? { get set }
-
-    /// Begin observing connectivity changes.
-    func start()
-
-    /// Stop observing connectivity changes.
-    func cancel()
-}
-
-internal protocol PromoPathMonitorDelegate: AnyObject {
-    /// The network monitor's connectivity status transitioned.
-    /// - Parameters:
-    ///   - pathMonitor: The monitor reporting the change.
-    ///   - connected: Whether the device now has a satisfied network path.
-    func pathMonitor(_ pathMonitor: PromoPathMonitoring, didUpdateConnectivity connected: Bool)
-}
-
 /// Used to track the current connectivity state of the device and provide
 /// notifications when a valid internet connection appears or drops.
 internal class PromoPathMonitor: PromoPathMonitoring {
