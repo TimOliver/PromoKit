@@ -24,17 +24,9 @@ import Foundation
 import Network
 import os.lock
 
-protocol PromoPathMonitorDelegate: AnyObject {
-    /// The network monitor status changed
-    /// - Parameters:
-    ///   - pathMonitor: The path monitor tracking these changes
-    ///   - didUpdateToPath: The path that was updated
-    func pathMonitor(_ pathMonitor: PromoPathMonitor, didUpdateToPath path: NWPath?)
-}
-
 /// Used to track the current connectivity state of the device and provide
 /// notifications when a valid internet connection appears or drops.
-internal class PromoPathMonitor {
+internal class PromoPathMonitor: PromoPathMonitoring {
 
     // Whether the monitor is running or not
     private(set) public var isRunning = false
@@ -119,9 +111,10 @@ extension PromoPathMonitor {
 
         // If we were showing offline content, and the internet came back up,
         // perform a new fetch to see if there's an online provider we should show
+        let connected = path.status == .satisfied
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.delegate?.pathMonitor(self, didUpdateToPath: path)
+            self.delegate?.pathMonitor(self, didUpdateConnectivity: connected)
         }
     }
 }
