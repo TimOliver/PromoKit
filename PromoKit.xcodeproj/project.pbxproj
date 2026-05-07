@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		13385589F0494058EC262811 /* StubPathMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2779CB8A5A71F98B55AD76FD /* StubPathMonitor.swift */; };
+		1522FB69BEEC116F243DB297 /* PromoTableListContentViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69A95685BD9750B3B7C007A /* PromoTableListContentViewTests.swift */; };
+		1648DE4656C8E3007BB0FC78 /* PromoViewResolutionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60F4F63843A7557AC2047F0 /* PromoViewResolutionTests.swift */; };
+		19894E3359FCFCF37B172ADF /* PromoContainerContentViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9541747B88B29A9A099967F /* PromoContainerContentViewTests.swift */; };
 		223EABF32C14E3E3006DBB84 /* PromoCloudEventProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 223EABF22C14E3E3006DBB84 /* PromoCloudEventProvider.swift */; };
 		2243302E2F7A52AB00A5859F /* PromoNativeAdActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2243302C2F7A52A300A5859F /* PromoNativeAdActionButton.swift */; };
 		2257F6622BEB060D0058A2AE /* PromoNativeAdProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */; };
@@ -34,14 +38,32 @@
 		22BF57E92BD80C340001A444 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 22BF57E82BD80C340001A444 /* GoogleMobileAds */; };
 		22BF57EB2BD9368D0001A444 /* PromoBannerAdProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BF57EA2BD9368D0001A444 /* PromoBannerAdProvider.swift */; };
 		22FD36172BA9DA7C0058B32A /* PromoProviderCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */; };
+		2B4038523D1064B87F8F0F99 /* PromoCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5CE050344DD0BFC32B9FE1B /* PromoCacheTests.swift */; };
 		2EB5B09ED5A5F3EE9A87FC99 /* PromoCloudKitDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC9C9C6B49ACEF339F26B19D /* PromoCloudKitDataSource.swift */; };
-		5A9C1E0A2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A9C1E0B2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift */; };
+		3943D15CFDFE1A16563E0FD4 /* PromoProviderCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52A2D829B86877515CCBE510 /* PromoProviderCoordinatorTests.swift */; };
+		450689DC1387C1F0A2632646 /* PromoFileManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCBEC56C8888EE0EEA05CB4A /* PromoFileManagerTests.swift */; };
+		4DAF3FCCDB33D3D0DC0474F8 /* PromoViewReloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7353A6FBBF78EC463935D70 /* PromoViewReloadTests.swift */; };
+		530A7DD9456048AA4B620A64 /* PromoViewSizingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDCE863E508D4BB17B69C88 /* PromoViewSizingTests.swift */; };
 		5A9C1E272CFE200100A1B2C3 /* PromoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */; };
 		5A9C1E282CFE200100A1B2C3 /* PromoKitGoogleAds.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E112CFE200100A1B2C3 /* PromoKitGoogleAds.framework */; };
 		5A9C1E292CFE200100A1B2C3 /* PromoKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5A9C1E2A2CFE200100A1B2C3 /* PromoKitGoogleAds.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E112CFE200100A1B2C3 /* PromoKitGoogleAds.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5A9C1E2B2CFE200100A1B2C3 /* PromoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */; };
 		5A9C1E2C2CFE200100A1B2C3 /* PromoKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */; };
+		60461FC0953C00F5B4A62745 /* PromoNetworkTestProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1D25AA9FCD2EFE80B529A3 /* PromoNetworkTestProviderTests.swift */; };
+		6C35680277C3D9A0228D5FC5 /* PromoViewDelegateSpy.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB6EF5A11A8DA2C708E0060A /* PromoViewDelegateSpy.swift */; };
+		74B80AAFB1CEB4EDFC35C7D4 /* PromoTestHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5028479A013835A1697F9980 /* PromoTestHelpers.swift */; };
+		89DF6C43D73B9F030CE074CB /* ReuseTrackingPromoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94BBCB9D848D93E848ADB2A /* ReuseTrackingPromoProvider.swift */; };
+		940811DB5497E2880EE42C03 /* TestPromoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50252AA3D494630952EC166E /* TestPromoProvider.swift */; };
+		9538AAD46992BF27DC0A5611 /* PromoCloudEventProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667B9866F99F6D27D106B9CE /* PromoCloudEventProviderTests.swift */; };
+		99D2CC485BDD4273B7FE4B83 /* PromoContentViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F6F782BB2F5FFD92E5EF833 /* PromoContentViewTests.swift */; };
+		9AC18508E9AE29D8A8AA7C57 /* FixedSizePromoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2471804F51293DB04ADA3F91 /* FixedSizePromoProvider.swift */; };
+		A6583B06ED7EAC9C5B4B24E0 /* StubCloudEventDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D137570C001ECC68B75B94D /* StubCloudEventDataSource.swift */; };
+		B6EB4545C108CDFEA2494453 /* PromoImageProcessingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C19EB68D5CAF792DF7D96484 /* PromoImageProcessingTests.swift */; };
+		C563F65F1FC6916ECE612504 /* ProviderResolutionRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F084B9225DEE82FA1D31EE14 /* ProviderResolutionRecorder.swift */; };
+		CAA80F0365FBA1372F12589D /* PromoViewProvidersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC7F8BE10F4F4D4679E176B /* PromoViewProvidersTests.swift */; };
+		CB84B939676E1DD78D734C39 /* PromoViewDisplayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86AAB3BDEA4F7A09BADF21EC /* PromoViewDisplayTests.swift */; };
+		D9BBE0331AF703385224B1D2 /* TestPromoContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55D6B78B0B8B603ECFB5A851 /* TestPromoContentView.swift */; };
 		E104B04CAAD67B12A63C1BEB /* PromoPathMonitoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E89719327B3A359F08E5089 /* PromoPathMonitoring.swift */; };
 		FD6C13847EB29D839C93F4C6 /* PromoCloudEventDataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F2299D725BB4C2CF1F3F34 /* PromoCloudEventDataSource.swift */; };
 /* End PBXBuildFile section */
@@ -107,6 +129,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0D137570C001ECC68B75B94D /* StubCloudEventDataSource.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StubCloudEventDataSource.swift; sourceTree = "<group>"; };
 		223EABF22C14E3E3006DBB84 /* PromoCloudEventProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoCloudEventProvider.swift; sourceTree = "<group>"; };
 		2243302C2F7A52A300A5859F /* PromoNativeAdActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNativeAdActionButton.swift; sourceTree = "<group>"; };
 		2257F6612BEB060D0058A2AE /* PromoNativeAdProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PromoNativeAdProvider.swift; sourceTree = "<group>"; };
@@ -139,12 +162,33 @@
 		22B8DD342BAE818B00C1F754 /* PromoContainerContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoContainerContentView.swift; sourceTree = "<group>"; };
 		22BF57EA2BD9368D0001A444 /* PromoBannerAdProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoBannerAdProvider.swift; sourceTree = "<group>"; };
 		22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoProviderCoordinator.swift; sourceTree = "<group>"; };
+		2471804F51293DB04ADA3F91 /* FixedSizePromoProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FixedSizePromoProvider.swift; sourceTree = "<group>"; };
+		2779CB8A5A71F98B55AD76FD /* StubPathMonitor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StubPathMonitor.swift; sourceTree = "<group>"; };
+		2EC7F8BE10F4F4D4679E176B /* PromoViewProvidersTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoViewProvidersTests.swift; sourceTree = "<group>"; };
 		38F2299D725BB4C2CF1F3F34 /* PromoCloudEventDataSource.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoCloudEventDataSource.swift; sourceTree = "<group>"; };
-		5A9C1E0B2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoKitBehaviorTests.swift; sourceTree = "<group>"; };
+		3DDCE863E508D4BB17B69C88 /* PromoViewSizingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoViewSizingTests.swift; sourceTree = "<group>"; };
+		50252AA3D494630952EC166E /* TestPromoProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestPromoProvider.swift; sourceTree = "<group>"; };
+		5028479A013835A1697F9980 /* PromoTestHelpers.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoTestHelpers.swift; sourceTree = "<group>"; };
+		52A2D829B86877515CCBE510 /* PromoProviderCoordinatorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoProviderCoordinatorTests.swift; sourceTree = "<group>"; };
+		55D6B78B0B8B603ECFB5A851 /* TestPromoContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TestPromoContentView.swift; sourceTree = "<group>"; };
 		5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PromoKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A9C1E112CFE200100A1B2C3 /* PromoKitGoogleAds.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PromoKitGoogleAds.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		667B9866F99F6D27D106B9CE /* PromoCloudEventProviderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoCloudEventProviderTests.swift; sourceTree = "<group>"; };
+		6F6F782BB2F5FFD92E5EF833 /* PromoContentViewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoContentViewTests.swift; sourceTree = "<group>"; };
 		7E89719327B3A359F08E5089 /* PromoPathMonitoring.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoPathMonitoring.swift; sourceTree = "<group>"; };
+		86AAB3BDEA4F7A09BADF21EC /* PromoViewDisplayTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoViewDisplayTests.swift; sourceTree = "<group>"; };
+		AB6EF5A11A8DA2C708E0060A /* PromoViewDelegateSpy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoViewDelegateSpy.swift; sourceTree = "<group>"; };
 		BC9C9C6B49ACEF339F26B19D /* PromoCloudKitDataSource.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoCloudKitDataSource.swift; sourceTree = "<group>"; };
+		C19EB68D5CAF792DF7D96484 /* PromoImageProcessingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoImageProcessingTests.swift; sourceTree = "<group>"; };
+		C5CE050344DD0BFC32B9FE1B /* PromoCacheTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoCacheTests.swift; sourceTree = "<group>"; };
+		CF1D25AA9FCD2EFE80B529A3 /* PromoNetworkTestProviderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoNetworkTestProviderTests.swift; sourceTree = "<group>"; };
+		D69A95685BD9750B3B7C007A /* PromoTableListContentViewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoTableListContentViewTests.swift; sourceTree = "<group>"; };
+		D94BBCB9D848D93E848ADB2A /* ReuseTrackingPromoProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReuseTrackingPromoProvider.swift; sourceTree = "<group>"; };
+		E7353A6FBBF78EC463935D70 /* PromoViewReloadTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoViewReloadTests.swift; sourceTree = "<group>"; };
+		F084B9225DEE82FA1D31EE14 /* ProviderResolutionRecorder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProviderResolutionRecorder.swift; sourceTree = "<group>"; };
+		F60F4F63843A7557AC2047F0 /* PromoViewResolutionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoViewResolutionTests.swift; sourceTree = "<group>"; };
+		F9541747B88B29A9A099967F /* PromoContainerContentViewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoContainerContentViewTests.swift; sourceTree = "<group>"; };
+		FCBEC56C8888EE0EEA05CB4A /* PromoFileManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoFileManagerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -233,8 +277,13 @@
 		229D21412B67CE2700105C9D /* PromoKitTests */ = {
 			isa = PBXGroup;
 			children = (
-				5A9C1E0B2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift */,
 				229D21422B67CE2700105C9D /* PromoKitTests.swift */,
+				335083CC4120BE29B4CBB5C3 /* Support */,
+				3195EA80D8ACAA0DD603A964 /* PromoView */,
+				F5A2F82F5F0E79B96FE4D7B1 /* Providers */,
+				4DE2239232EBCD4927517092 /* ContentViews */,
+				F7BC0D1CB7B33CAD6BE06086 /* Internal */,
+				5B41BB4E5378BF13A1B62961 /* Helpers */,
 			);
 			path = PromoKitTests;
 			sourceTree = "<group>";
@@ -304,6 +353,77 @@
 				BC9C9C6B49ACEF339F26B19D /* PromoCloudKitDataSource.swift */,
 				7E89719327B3A359F08E5089 /* PromoPathMonitoring.swift */,
 			);
+			path = Internal;
+			sourceTree = "<group>";
+		};
+		3195EA80D8ACAA0DD603A964 /* PromoView */ = {
+			isa = PBXGroup;
+			children = (
+				E7353A6FBBF78EC463935D70 /* PromoViewReloadTests.swift */,
+				F60F4F63843A7557AC2047F0 /* PromoViewResolutionTests.swift */,
+				2EC7F8BE10F4F4D4679E176B /* PromoViewProvidersTests.swift */,
+				3DDCE863E508D4BB17B69C88 /* PromoViewSizingTests.swift */,
+				86AAB3BDEA4F7A09BADF21EC /* PromoViewDisplayTests.swift */,
+			);
+			name = PromoView;
+			path = PromoView;
+			sourceTree = "<group>";
+		};
+		335083CC4120BE29B4CBB5C3 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				50252AA3D494630952EC166E /* TestPromoProvider.swift */,
+				55D6B78B0B8B603ECFB5A851 /* TestPromoContentView.swift */,
+				2471804F51293DB04ADA3F91 /* FixedSizePromoProvider.swift */,
+				D94BBCB9D848D93E848ADB2A /* ReuseTrackingPromoProvider.swift */,
+				AB6EF5A11A8DA2C708E0060A /* PromoViewDelegateSpy.swift */,
+				2779CB8A5A71F98B55AD76FD /* StubPathMonitor.swift */,
+				0D137570C001ECC68B75B94D /* StubCloudEventDataSource.swift */,
+				F084B9225DEE82FA1D31EE14 /* ProviderResolutionRecorder.swift */,
+				5028479A013835A1697F9980 /* PromoTestHelpers.swift */,
+			);
+			name = Support;
+			path = Support;
+			sourceTree = "<group>";
+		};
+		4DE2239232EBCD4927517092 /* ContentViews */ = {
+			isa = PBXGroup;
+			children = (
+				6F6F782BB2F5FFD92E5EF833 /* PromoContentViewTests.swift */,
+				F9541747B88B29A9A099967F /* PromoContainerContentViewTests.swift */,
+				D69A95685BD9750B3B7C007A /* PromoTableListContentViewTests.swift */,
+			);
+			name = ContentViews;
+			path = ContentViews;
+			sourceTree = "<group>";
+		};
+		5B41BB4E5378BF13A1B62961 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				C5CE050344DD0BFC32B9FE1B /* PromoCacheTests.swift */,
+				FCBEC56C8888EE0EEA05CB4A /* PromoFileManagerTests.swift */,
+				C19EB68D5CAF792DF7D96484 /* PromoImageProcessingTests.swift */,
+			);
+			name = Helpers;
+			path = Helpers;
+			sourceTree = "<group>";
+		};
+		F5A2F82F5F0E79B96FE4D7B1 /* Providers */ = {
+			isa = PBXGroup;
+			children = (
+				667B9866F99F6D27D106B9CE /* PromoCloudEventProviderTests.swift */,
+				CF1D25AA9FCD2EFE80B529A3 /* PromoNetworkTestProviderTests.swift */,
+			);
+			name = Providers;
+			path = Providers;
+			sourceTree = "<group>";
+		};
+		F7BC0D1CB7B33CAD6BE06086 /* Internal */ = {
+			isa = PBXGroup;
+			children = (
+				52A2D829B86877515CCBE510 /* PromoProviderCoordinatorTests.swift */,
+			);
+			name = Internal;
 			path = Internal;
 			sourceTree = "<group>";
 		};
@@ -515,8 +635,30 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5A9C1E0A2CFE100100A1B2C3 /* PromoKitBehaviorTests.swift in Sources */,
 				229D21432B67CE2700105C9D /* PromoKitTests.swift in Sources */,
+				940811DB5497E2880EE42C03 /* TestPromoProvider.swift in Sources */,
+				D9BBE0331AF703385224B1D2 /* TestPromoContentView.swift in Sources */,
+				9AC18508E9AE29D8A8AA7C57 /* FixedSizePromoProvider.swift in Sources */,
+				89DF6C43D73B9F030CE074CB /* ReuseTrackingPromoProvider.swift in Sources */,
+				6C35680277C3D9A0228D5FC5 /* PromoViewDelegateSpy.swift in Sources */,
+				13385589F0494058EC262811 /* StubPathMonitor.swift in Sources */,
+				A6583B06ED7EAC9C5B4B24E0 /* StubCloudEventDataSource.swift in Sources */,
+				C563F65F1FC6916ECE612504 /* ProviderResolutionRecorder.swift in Sources */,
+				74B80AAFB1CEB4EDFC35C7D4 /* PromoTestHelpers.swift in Sources */,
+				4DAF3FCCDB33D3D0DC0474F8 /* PromoViewReloadTests.swift in Sources */,
+				1648DE4656C8E3007BB0FC78 /* PromoViewResolutionTests.swift in Sources */,
+				CAA80F0365FBA1372F12589D /* PromoViewProvidersTests.swift in Sources */,
+				530A7DD9456048AA4B620A64 /* PromoViewSizingTests.swift in Sources */,
+				CB84B939676E1DD78D734C39 /* PromoViewDisplayTests.swift in Sources */,
+				9538AAD46992BF27DC0A5611 /* PromoCloudEventProviderTests.swift in Sources */,
+				60461FC0953C00F5B4A62745 /* PromoNetworkTestProviderTests.swift in Sources */,
+				99D2CC485BDD4273B7FE4B83 /* PromoContentViewTests.swift in Sources */,
+				19894E3359FCFCF37B172ADF /* PromoContainerContentViewTests.swift in Sources */,
+				1522FB69BEEC116F243DB297 /* PromoTableListContentViewTests.swift in Sources */,
+				3943D15CFDFE1A16563E0FD4 /* PromoProviderCoordinatorTests.swift in Sources */,
+				2B4038523D1064B87F8F0F99 /* PromoCacheTests.swift in Sources */,
+				450689DC1387C1F0A2632646 /* PromoFileManagerTests.swift in Sources */,
+				B6EB4545C108CDFEA2494453 /* PromoImageProcessingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

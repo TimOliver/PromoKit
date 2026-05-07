@@ -27,11 +27,10 @@ public class PromoFileManager {
     /// The file manager used for all file operations. Override in tests to provide a mock.
     public static var fileManager = FileManager.default
 
-    /// The bundle used to locate app icons and resources. Override in tests to provide a different bundle.
-    public static var mainBundle: Bundle = Bundle.main
-
     /// The root URL of the app's resource directory, used as the base path when scanning for icons.
-    public static var resourceURL: URL? { mainBundle.resourceURL }
+    /// Defaults to `Bundle.main.resourceURL`. Tests can assign a temp directory to exercise the
+    /// icon lookup logic against a synthetic file set; restore the original value afterwards.
+    public static var resourceURL: URL? = Bundle.main.resourceURL
 
     /// Locates the largest available version of an app icon, closest to the desired size.
     /// - Parameter named: The name of the app icon to search for (eg "AppIcon" for matching "AppIcon76x76@2x.png")
@@ -71,6 +70,6 @@ public class PromoFileManager {
         }
 
         guard !appIcon.name.isEmpty else { return nil }
-        return mainBundle.resourceURL?.appendingPathComponent(appIcon.name)
+        return resourceURL?.appendingPathComponent(appIcon.name)
     }
 }
