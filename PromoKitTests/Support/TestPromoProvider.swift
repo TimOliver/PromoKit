@@ -10,6 +10,7 @@ final class TestPromoProvider: NSObject, PromoProvider {
     let result: PromoProviderFetchContentResult
     let isInternetAccessRequired: Bool
     let isOfflineCacheAvailable: Bool
+    let showsLoadingIndicatorDuringFetch: Bool
     let needsReloadOnSizeChange: Bool
     let fetchRefreshInterval: TimeInterval
     let completionDelay: TimeInterval
@@ -17,10 +18,13 @@ final class TestPromoProvider: NSObject, PromoProvider {
 
     var fetchCount = 0
     var onFetch: (() -> Void)?
+    private(set) weak var lastPromoView: PromoView?
+    private(set) var didMoveToPromoViewCount = 0
 
     init(result: PromoProviderFetchContentResult,
          isInternetAccessRequired: Bool = false,
          isOfflineCacheAvailable: Bool = false,
+         showsLoadingIndicatorDuringFetch: Bool = false,
          needsReloadOnSizeChange: Bool = false,
          fetchRefreshInterval: TimeInterval = 0,
          completionDelay: TimeInterval = 0,
@@ -28,10 +32,16 @@ final class TestPromoProvider: NSObject, PromoProvider {
         self.result = result
         self.isInternetAccessRequired = isInternetAccessRequired
         self.isOfflineCacheAvailable = isOfflineCacheAvailable
+        self.showsLoadingIndicatorDuringFetch = showsLoadingIndicatorDuringFetch
         self.needsReloadOnSizeChange = needsReloadOnSizeChange
         self.fetchRefreshInterval = fetchRefreshInterval
         self.completionDelay = completionDelay
         self.completes = completes
+    }
+
+    func didMoveToPromoView(_ promoView: PromoView) {
+        lastPromoView = promoView
+        didMoveToPromoViewCount += 1
     }
 
     func fetchNewContent(for promoView: PromoView,
