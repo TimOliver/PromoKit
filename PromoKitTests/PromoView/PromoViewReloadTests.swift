@@ -70,6 +70,21 @@ final class PromoViewReloadTests: XCTestCase {
         XCTAssertEqual(neverCompletingProvider.fetchCount, 1)
     }
 
+    func testReloadIfNeededStartsReloadWhenIdle() {
+        let provider = TestPromoProvider(result: .contentAvailable)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        promoView.reloadsAutomatically = false
+        promoView.providers = [provider]
+
+        let fetchStarted = expectation(description: "reloadIfNeeded starts a fetch")
+        provider.onFetch = { fetchStarted.fulfill() }
+
+        promoView.reloadIfNeeded()
+
+        wait(for: [fetchStarted], timeout: 1.0)
+        XCTAssertEqual(provider.fetchCount, 1)
+    }
+
     func testReloadContentViewReusesQueuedContentViews() {
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
         let provider = ReuseTrackingPromoProvider()

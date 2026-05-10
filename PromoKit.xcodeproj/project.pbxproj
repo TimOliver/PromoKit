@@ -39,6 +39,9 @@
 		226743512FACD854007CD98E /* PromoAppRaterProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743542FACD854007CD98E /* PromoAppRaterProviderTests.swift */; };
 		226743522FACD854007CD98E /* PromoCloudKitDataSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743552FACD854007CD98E /* PromoCloudKitDataSourceTests.swift */; };
 		226743532FACD854007CD98E /* PromoPathMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743562FACD854007CD98E /* PromoPathMonitorTests.swift */; };
+		226743592FACD854007CD98E /* PromoNativeAdContentViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743572FACD854007CD98E /* PromoNativeAdContentViewTests.swift */; };
+		2267435A2FACD854007CD98E /* PromoBannerAdProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743582FACD854007CD98E /* PromoBannerAdProviderTests.swift */; };
+		2267435B2FACD854007CD98E /* PromoKitGoogleAds.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A9C1E112CFE200100A1B2C3 /* PromoKitGoogleAds.framework */; };
 		226B902F2C720AC00072FD1C /* PromoCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226B902E2C720AC00072FD1C /* PromoCache.swift */; };
 		229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D212B2B67CE2600105C9D /* AppDelegate.swift */; };
 		229D21302B67CE2600105C9D /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D212F2B67CE2600105C9D /* ViewController.swift */; };
@@ -113,6 +116,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 5A9C1E122CFE200100A1B2C3;
 			remoteInfo = PromoKit;
+		};
+		2267435C2FACD854007CD98E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 229D21202B67CE2600105C9D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5A9C1E132CFE200100A1B2C3;
+			remoteInfo = PromoKitGoogleAds;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -189,6 +199,8 @@
 		22B8DD322BAAAA3700C1F754 /* PromoNetworkTestProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNetworkTestProvider.swift; sourceTree = "<group>"; };
 		22B8DD342BAE818B00C1F754 /* PromoContainerContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoContainerContentView.swift; sourceTree = "<group>"; };
 		22BF57EA2BD9368D0001A444 /* PromoBannerAdProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoBannerAdProvider.swift; sourceTree = "<group>"; };
+		226743572FACD854007CD98E /* PromoNativeAdContentViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoNativeAdContentViewTests.swift; sourceTree = "<group>"; };
+		226743582FACD854007CD98E /* PromoBannerAdProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoBannerAdProviderTests.swift; sourceTree = "<group>"; };
 		22FD36162BA9DA7C0058B32A /* PromoProviderCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoProviderCoordinator.swift; sourceTree = "<group>"; };
 		38F2299D725BB4C2CF1F3F34 /* PromoCloudEventDataSource.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PromoCloudEventDataSource.swift; sourceTree = "<group>"; };
 		5A9C1E102CFE200100A1B2C3 /* PromoKit.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PromoKit.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -212,6 +224,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5A9C1E2B2CFE200100A1B2C3 /* PromoKit.framework in Frameworks */,
+				2267435B2FACD854007CD98E /* PromoKitGoogleAds.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -246,6 +259,7 @@
 			children = (
 				2267431B2FACD854007CD98E /* PromoContainerContentViewTests.swift */,
 				2267431C2FACD854007CD98E /* PromoContentViewTests.swift */,
+				226743572FACD854007CD98E /* PromoNativeAdContentViewTests.swift */,
 				2267431D2FACD854007CD98E /* PromoTableListContentViewTests.swift */,
 			);
 			path = ContentViews;
@@ -287,6 +301,7 @@
 			isa = PBXGroup;
 			children = (
 				226743542FACD854007CD98E /* PromoAppRaterProviderTests.swift */,
+				226743582FACD854007CD98E /* PromoBannerAdProviderTests.swift */,
 				2267432C2FACD854007CD98E /* PromoCloudEventProviderTests.swift */,
 				2267432D2FACD854007CD98E /* PromoNetworkTestProviderTests.swift */,
 			);
@@ -466,6 +481,7 @@
 			dependencies = (
 				229D21402B67CE2700105C9D /* PBXTargetDependency */,
 				5A9C1E262CFE200100A1B2C3 /* PBXTargetDependency */,
+				2267435D2FACD854007CD98E /* PBXTargetDependency */,
 			);
 			name = PromoKitTests;
 			productName = PromoKitTests;
@@ -650,6 +666,7 @@
 				226743422FACD854007CD98E /* PromoContainerContentViewTests.swift in Sources */,
 				226743432FACD854007CD98E /* TestPromoProvider.swift in Sources */,
 				226743442FACD854007CD98E /* PromoCacheTests.swift in Sources */,
+				226743592FACD854007CD98E /* PromoNativeAdContentViewTests.swift in Sources */,
 				226743452FACD854007CD98E /* PromoTableListContentViewTests.swift in Sources */,
 				226743462FACD854007CD98E /* StubPathMonitor.swift in Sources */,
 				226743472FACD854007CD98E /* PromoContentViewTests.swift in Sources */,
@@ -663,6 +680,7 @@
 				2267434F2FACD854007CD98E /* TestPromoContentView.swift in Sources */,
 				226743502FACD854007CD98E /* ProviderResolutionRecorder.swift in Sources */,
 				226743512FACD854007CD98E /* PromoAppRaterProviderTests.swift in Sources */,
+				2267435A2FACD854007CD98E /* PromoBannerAdProviderTests.swift in Sources */,
 				226743522FACD854007CD98E /* PromoCloudKitDataSourceTests.swift in Sources */,
 				226743532FACD854007CD98E /* PromoPathMonitorTests.swift in Sources */,
 			);
@@ -743,6 +761,11 @@
 			isa = PBXTargetDependency;
 			target = 5A9C1E122CFE200100A1B2C3 /* PromoKit */;
 			targetProxy = 5A9C1E252CFE200100A1B2C3 /* PBXContainerItemProxy */;
+		};
+		2267435D2FACD854007CD98E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5A9C1E132CFE200100A1B2C3 /* PromoKitGoogleAds */;
+			targetProxy = 2267435C2FACD854007CD98E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 

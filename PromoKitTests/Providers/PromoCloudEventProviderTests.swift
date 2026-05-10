@@ -15,6 +15,11 @@ final class PromoCloudEventProviderTests: XCTestCase {
                                                                 maxVersion: "3.0.0"))
         XCTAssertFalse(PromoCloudEventProvider.isVersionEligible("1.9.9", minVersion: "2.0.0"))
         XCTAssertFalse(PromoCloudEventProvider.isVersionEligible("3.0.1", maxVersion: "3.0.0"))
+        XCTAssertTrue(PromoCloudEventProvider.isVersionEligible(" 2.10 ",
+                                                                minVersion: " 2.9 ",
+                                                                maxVersion: "\n2.10\n"))
+        XCTAssertTrue(PromoCloudEventProvider.isVersionEligible("", minVersion: "9.9.9", maxVersion: "0.0.1"))
+        XCTAssertTrue(PromoCloudEventProvider.isVersionEligible("2.0.0", minVersion: " ", maxVersion: "\n"))
     }
 
     func testCloudEventQueryPredicateAllowsRecordsWithoutExpirationDate() {
@@ -58,6 +63,12 @@ final class PromoCloudEventProviderTests: XCTestCase {
 
         XCTAssertTrue(PromoCloudEventProvider.isRecordPreferred(expiringRecord, over: laterExpiringRecord))
         XCTAssertFalse(PromoCloudEventProvider.isRecordPreferred(laterExpiringRecord, over: expiringRecord))
+
+        let alphabeticallyFirst = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "a"))
+        let alphabeticallySecond = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "b"))
+
+        XCTAssertTrue(PromoCloudEventProvider.isRecordPreferred(alphabeticallyFirst, over: alphabeticallySecond))
+        XCTAssertFalse(PromoCloudEventProvider.isRecordPreferred(alphabeticallySecond, over: alphabeticallyFirst))
     }
 
     func testCloudEventReplaceCachedFileOverwritesAndRemovesOldData() throws {
@@ -93,6 +104,126 @@ final class PromoCloudEventProviderTests: XCTestCase {
         XCTAssertEqual(result, .contentAvailable)
         XCTAssertEqual(dataSource.queryCallCount, 1)
         XCTAssertEqual(dataSource.fetchCallCount, 1)
+    }
+
+    func testCloudEventContentViewConfiguresTableListContent() throws {
+        let dataSource = StubCloudEventDataSource()
+        let recordID = CKRecord.ID(recordName: UUID().uuidString)
+        let queryRecord = CKRecord(recordType: "PromoEvent", recordID: recordID)
+        queryRecord["title"] = "Launch"
+        let fullRecord = CKRecord(recordType: "PromoEvent", recordID: recordID)
+        fullRecord["title"] = "Launch"
+        fullRecord["subtitle"] = "New features are ready"
+        fullRecord["url"] = "https://example.com/news"
+        fullRecord["thumbnail"] = CKAsset(fileURL: try temporaryPNGURL(color: .orange))
+        dataSource.queryRecords = [queryRecord]
+        dataSource.fetchRecord = fullRecord
+
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: nil,
+                                               dataSource: dataSource)
+        defer { removeCachedFile(for: recordID.recordName, provider: provider) }
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .contentAvailable)
+
+        let contentView = provider.contentView(for: promoView)
+        guard let tableListContentView = contentView as? PromoTableListContentView else {
+            return XCTFail("Cloud events should render through PromoTableListContentView")
+        }
+
+        XCTAssertEqual(tableListContentView.label.attributedText?.string,
+                       "Launch\nNew features are ready")
+        XCTAssertEqual(tableListContentView.footnoteLabel.text, "example.com")
+        XCTAssertFalse(tableListContentView.imageView.isHidden)
+        XCTAssertNotNil(tableListContentView.imageView.image)
+    }
+
+    func testCloudEventContentViewStaysEmptyWithoutTitle() {
+        let dataSource = StubCloudEventDataSource()
+        let record = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: UUID().uuidString))
+        dataSource.queryRecords = [record]
+        dataSource.fetchRecord = record
+
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: nil,
+                                               dataSource: dataSource)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .contentAvailable)
+
+        let contentView = provider.contentView(for: promoView)
+        guard let tableListContentView = contentView as? PromoTableListContentView else {
+            return XCTFail("Cloud events should render through PromoTableListContentView")
+        }
+
+        XCTAssertNil(tableListContentView.label.attributedText)
+        XCTAssertNil(tableListContentView.footnoteLabel.text)
+        XCTAssertTrue(tableListContentView.imageView.isHidden)
+    }
+
+    func testCloudEventProviderUsesQueriedRecordWhenFullFetchFails() {
+        let dataSource = StubCloudEventDataSource()
+        let record = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: UUID().uuidString))
+        record["title"] = "Cached announcement"
+        dataSource.queryRecords = [record]
+        dataSource.fetchError = NSError(domain: CKErrorDomain, code: CKError.networkFailure.rawValue)
+
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: nil,
+                                               dataSource: dataSource)
+        defer { removeCachedFile(for: record.recordID.recordName, provider: provider) }
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .contentAvailable)
+        XCTAssertEqual(dataSource.fetchCallCount, 1)
+
+        let contentView = provider.contentView(for: promoView)
+        let tableListContentView = try? XCTUnwrap(contentView as? PromoTableListContentView)
+        XCTAssertEqual(tableListContentView?.label.attributedText?.string, "Cached announcement")
+    }
+
+    func testCloudEventLocalDurationCachesFirstAccessDate() {
+        let dataSource = StubCloudEventDataSource()
+        let recordName = UUID().uuidString
+        let record = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: recordName))
+        record["title"] = "Short lived"
+        record["localDuration"] = NSNumber(value: 1)
+        dataSource.queryRecords = [record]
+        dataSource.fetchRecord = record
+
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: nil,
+                                               dataSource: dataSource)
+        let cache = PromoCache()
+        cache.clearValues(forObject: provider)
+        defer { cache.clearValues(forObject: provider) }
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .contentAvailable)
+        XCTAssertNotNil(cache.date(forKey: recordName, fromObject: provider))
+        XCTAssertEqual(dataSource.fetchCallCount, 1)
+    }
+
+    func testCloudEventLocalDurationRejectsExpiredCachedRecord() {
+        let dataSource = StubCloudEventDataSource()
+        let recordName = UUID().uuidString
+        let record = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: recordName))
+        record["title"] = "Expired locally"
+        record["localDuration"] = NSNumber(value: 1)
+        dataSource.queryRecords = [record]
+
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: nil,
+                                               dataSource: dataSource)
+        let cache = PromoCache()
+        cache.clearValues(forObject: provider)
+        cache.setDate(Date().addingTimeInterval(-2 * 60 * 60), forKey: recordName, fromObject: provider)
+        defer { cache.clearValues(forObject: provider) }
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .noContentAvailable)
+        XCTAssertEqual(dataSource.fetchCallCount, 0)
     }
 
     func testCloudEventProviderReportsNoContentWhenDataSourceReturnsNoRecords() {
@@ -154,5 +285,20 @@ final class PromoCloudEventProviderTests: XCTestCase {
         }
         wait(for: [completed], timeout: timeout)
         return captured ?? .fetchRequestFailed
+    }
+
+    private func temporaryPNGURL(color: UIColor) throws -> URL {
+        let image = makePromoTestImage(size: CGSize(width: 8, height: 8), color: color)
+        let data = try XCTUnwrap(image.pngData())
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("png")
+        try data.write(to: url)
+        return url
+    }
+
+    private func removeCachedFile(for recordName: String, provider: PromoCloudEventProvider) {
+        let cacheURL = PromoCache().fileURL(forKey: recordName, fromObject: provider)
+        try? FileManager.default.removeItem(at: cacheURL)
     }
 }

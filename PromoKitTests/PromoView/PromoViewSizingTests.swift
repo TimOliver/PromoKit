@@ -64,6 +64,21 @@ final class PromoViewSizingTests: XCTestCase {
         XCTAssertEqual(fallbackSize.height, min(80, fittingSize.height))
     }
 
+    func testSizeThatFitsFallsBackToFrameAndContentSizeWhenNoPreferredSize() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 111, height: 44))
+
+        XCTAssertEqual(promoView.sizeThatFits(CGSize(width: 240, height: 80)),
+                       CGSize(width: 111, height: 44))
+
+        let provider = ContentSizeOnlyPromoProvider()
+        promoView.reloadsAutomatically = false
+        promoView.defaultContentPadding = UIEdgeInsets(top: 4, left: 6, bottom: 8, right: 10)
+        promoView.providers = [provider]
+
+        XCTAssertEqual(promoView.sizeThatFits(CGSize(width: 240, height: 80)),
+                       CGSize(width: 240, height: 80))
+    }
+
     func testRefreshIntervalSkipAdvancesToNextEligibleProvider() {
         let firstProvider = TestPromoProvider(result: .contentAvailable,
                                               needsReloadOnSizeChange: true,
@@ -127,5 +142,16 @@ final class PromoViewSizingTests: XCTestCase {
         XCTAssertTrue(promoView.currentProvider === provider)
         XCTAssertEqual(provider.fetchCount, 1)
         XCTAssertEqual(delegate.fetchFailedCount, 0)
+    }
+}
+
+private final class ContentSizeOnlyPromoProvider: NSObject, PromoProvider {
+    func fetchNewContent(for promoView: PromoView,
+                         with resultHandler: @escaping PromoProviderContentFetchHandler) {
+        resultHandler(.contentAvailable)
+    }
+
+    func contentView(for promoView: PromoView) -> PromoContentView {
+        promoView.dequeueContentView(for: TestPromoContentView.self)
     }
 }

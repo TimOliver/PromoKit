@@ -32,6 +32,10 @@ final class PromoImageProcessingTests: XCTestCase {
         XCTAssertNotNil(blurred)
     }
 
+    func testImageProcessingBlurredImageReturnsNilForEmptyImage() {
+        XCTAssertNil(PromoImageProcessing.blurredImage(UIImage(), radius: 5))
+    }
+
     func testImageProcessingDecodedImageWithoutFittingSizeProducesACGImage() {
         // Exercises the default-fittingSize branch of decodedImage where the helper falls
         // back to the source image's intrinsic size.
