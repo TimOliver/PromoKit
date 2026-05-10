@@ -34,6 +34,10 @@ internal class PromoPathMonitor: PromoPathMonitoring {
     // The last captured path value from the path monitor
     private(set) public var currentPath: NWPath?
 
+    // The last captured connectivity status. Stored separately so tests can
+    // exercise status transitions without needing to manufacture an NWPath.
+    private var currentStatus: NWPath.Status?
+
     // Delegate that broadcasts when the status changes
     public weak var delegate: PromoPathMonitorDelegate?
 
@@ -84,8 +88,8 @@ internal class PromoPathMonitor: PromoPathMonitoring {
         // and check if we're online.
         var value = false
         os_unfair_lock_lock(unfairLock)
-        if let currentPath {
-            value = currentPath.status == .satisfied
+        if let currentStatus {
+            value = currentStatus == .satisfied
         }
         os_unfair_lock_unlock(unfairLock)
         return value
@@ -96,22 +100,29 @@ extension PromoPathMonitor {
 
     /// Handles a raw path update from `NWPathMonitor`. Discards events that don't
     /// represent an actual status change, then notifies the delegate on the main thread.
-    private func pathDidUpdate(to path: NWPath) {
+    func pathDidUpdate(to path: NWPath) {
+        pathDidUpdate(to: path.status, currentPath: path)
+    }
+
+    func pathDidUpdate(to status: NWPath.Status, currentPath path: NWPath? = nil) {
         // Since NWPathMonitor constantly sends updates,
         // we'll use our background thread to detect and discard
         // events that don't actually change the status.
         var statusDidChange = false
         os_unfair_lock_lock(unfairLock)
-        if let currentPath {
-            statusDidChange = currentPath.status != path.status
+        if let currentStatus {
+            statusDidChange = currentStatus != status
         }
-        currentPath = path
+        currentStatus = status
+        if let path {
+            currentPath = path
+        }
         os_unfair_lock_unlock(unfairLock)
         if !statusDidChange { return }
 
         // If we were showing offline content, and the internet came back up,
         // perform a new fetch to see if there's an online provider we should show
-        let connected = path.status == .satisfied
+        let connected = status == .satisfied
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.delegate?.pathMonitor(self, didUpdateConnectivity: connected)

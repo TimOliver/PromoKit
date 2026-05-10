@@ -96,6 +96,7 @@
         "PromoNetworkTestProviderTests\/testNetworkTestProviderConfiguresContentAndSizing()",
         "PromoNetworkTestProviderTests\/testNetworkTestProviderFetchReportsContentAvailableAfterDelay()",
         "PromoPathMonitorTests\/testPathMonitorHasInternetAccessIsFalseBeforeAnyPathArrives()",
+        "PromoPathMonitorTests\/testPathMonitorNotifiesDelegateOnlyWhenConnectivityChanges()",
         "PromoPathMonitorTests\/testPathMonitorReceivesAtLeastOnePathUpdateAfterStart()",
         "PromoPathMonitorTests\/testPathMonitorStartIsIdempotentAndCancelStops()",
         "PromoProviderCoordinatorTests\/testCancelFetchIgnoresLateProviderCompletion()",

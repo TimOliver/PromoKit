@@ -53,4 +53,48 @@ final class PromoPathMonitorTests: XCTestCase {
         XCTAssertNotNil(monitor.currentPath,
                         "NWPathMonitor should deliver at least one event after start()")
     }
+
+    func testPathMonitorNotifiesDelegateOnlyWhenConnectivityChanges() {
+        let monitor = PromoPathMonitor()
+        let delegate = PathMonitorDelegateSpy()
+        monitor.delegate = delegate
+
+        monitor.pathDidUpdate(to: .unsatisfied)
+        XCTAssertFalse(monitor.hasInternetAccess)
+        XCTAssertEqual(delegate.connectivityUpdates, [])
+
+        let online = expectation(description: "Delegate receives online transition")
+        delegate.onUpdate = {
+            if $0 == true { online.fulfill() }
+        }
+        monitor.pathDidUpdate(to: .satisfied)
+        wait(for: [online], timeout: 1.0)
+
+        XCTAssertTrue(monitor.hasInternetAccess)
+        XCTAssertEqual(delegate.connectivityUpdates, [true])
+
+        monitor.pathDidUpdate(to: .satisfied)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        XCTAssertEqual(delegate.connectivityUpdates, [true])
+
+        let offline = expectation(description: "Delegate receives offline transition")
+        delegate.onUpdate = {
+            if $0 == false { offline.fulfill() }
+        }
+        monitor.pathDidUpdate(to: .unsatisfied)
+        wait(for: [offline], timeout: 1.0)
+
+        XCTAssertFalse(monitor.hasInternetAccess)
+        XCTAssertEqual(delegate.connectivityUpdates, [true, false])
+    }
+}
+
+private final class PathMonitorDelegateSpy: PromoPathMonitorDelegate {
+    var connectivityUpdates = [Bool]()
+    var onUpdate: ((Bool) -> Void)?
+
+    func pathMonitor(_ pathMonitor: PromoPathMonitoring, didUpdateConnectivity connected: Bool) {
+        connectivityUpdates.append(connected)
+        onUpdate?(connected)
+    }
 }
