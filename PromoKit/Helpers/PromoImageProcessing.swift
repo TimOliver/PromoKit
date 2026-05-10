@@ -115,7 +115,7 @@ extension PromoImageProcessing {
     ///   - size: The source size to be adjusted
     ///   - fittingSize: The bounds that size should be adjusted to fit
     /// - Returns: The adjusted size
-    fileprivate static func size(_ size: CGSize, fitting fittingSize: CGSize?) -> CGSize {
+    static func size(_ size: CGSize, fitting fittingSize: CGSize?) -> CGSize {
         var newSize = CGSize(width: size.width, height: size.height)
         if let fittingSize {
             let scale = min(fittingSize.width / newSize.width,

@@ -57,6 +57,26 @@ final class PromoProviderCoordinatorTests: XCTestCase {
         XCTAssertTrue(coordinator.currentProvider === secondProvider)
     }
 
+    func testFetchBestProviderFallsBackToFirstProviderWhenRequestedStartIsMissing() {
+        let missingProvider = MinimalPromoProvider(result: .contentAvailable)
+        let firstProvider = MinimalPromoProvider(result: .contentAvailable)
+        let fixture = makeCoordinator()
+        let coordinator = fixture.coordinator
+        let resolutions = ProviderResolutionRecorder()
+        coordinator.providerUpdatedHandler = { resolutions.record($0) }
+        coordinator.providers = [firstProvider]
+
+        let firstResolved = expectResolution(in: resolutions,
+                                             description: "Coordinator falls back to first provider") {
+            $0 === firstProvider
+        }
+        coordinator.fetchBestProvider(from: missingProvider)
+
+        wait(for: [firstResolved], timeout: 1.0)
+        XCTAssertEqual(missingProvider.fetchCount, 0)
+        XCTAssertEqual(firstProvider.fetchCount, 1)
+    }
+
     func testProviderReceivesPromoViewAndShowsLoadingIndicatorBeforeFetch() {
         let provider = TestPromoProvider(result: .contentAvailable,
                                          showsLoadingIndicatorDuringFetch: true,
@@ -136,6 +156,26 @@ final class PromoProviderCoordinatorTests: XCTestCase {
         wait(for: [cachedProviderResolved], timeout: 1.0)
         XCTAssertEqual(cachedOnlineProvider.fetchCount, 1)
         XCTAssertTrue(coordinator.currentProvider === cachedOnlineProvider)
+    }
+
+    func testOfflineInternetProviderWithoutCacheIsSkipped() {
+        let onlineProvider = InternetOnlyPromoProvider(result: .contentAvailable)
+        let fallbackProvider = MinimalPromoProvider(result: .contentAvailable)
+        let fixture = makeCoordinator(connected: false)
+        let coordinator = fixture.coordinator
+        let resolutions = ProviderResolutionRecorder()
+        coordinator.providerUpdatedHandler = { resolutions.record($0) }
+        coordinator.providers = [onlineProvider, fallbackProvider]
+
+        let fallbackResolved = expectResolution(in: resolutions,
+                                                description: "Offline coordinator skips uncached online provider") {
+            $0 === fallbackProvider
+        }
+        coordinator.fetchBestProvider()
+
+        wait(for: [fallbackResolved], timeout: 1.0)
+        XCTAssertEqual(onlineProvider.fetchCount, 0)
+        XCTAssertEqual(fallbackProvider.fetchCount, 1)
     }
 
     func testCoordinatorReFetchesWhenNetworkRecoversFromOffline() {
@@ -247,6 +287,35 @@ final class PromoProviderCoordinatorTests: XCTestCase {
         DispatchQueue.main.async { settle.fulfill() }
         wait(for: [settle], timeout: 1.0)
         XCTAssertEqual(provider.fetchCount, 0)
+    }
+
+    func testConnectivityRecoveryRefetchesProviderWithoutInternetRequirementOverride() {
+        let stubMonitor = StubPathMonitor(connected: true)
+        let provider = MinimalPromoProvider(result: .contentAvailable)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let coordinator = PromoProviderCoordinator(promoView: promoView, networkMonitor: stubMonitor)
+        let resolutions = ProviderResolutionRecorder()
+        coordinator.providerUpdatedHandler = { resolutions.record($0) }
+        coordinator.providers = [provider]
+
+        let firstResolved = expectResolution(in: resolutions,
+                                             description: "Provider resolves initially") {
+            $0 === provider
+        }
+        coordinator.fetchBestProvider()
+        wait(for: [firstResolved], timeout: 1.0)
+
+        let refetched = expectation(description: "Provider without internet override is rechecked")
+        provider.onFetch = {
+            if provider.fetchCount == 2 {
+                refetched.fulfill()
+            }
+        }
+
+        stubMonitor.simulateConnectivityChange(true)
+
+        wait(for: [refetched], timeout: 1.0)
+        XCTAssertEqual(provider.fetchCount, 2)
     }
 
     func testFailedProviderIsSkippedUntilRetryIntervalElapses() {
@@ -379,6 +448,57 @@ final class PromoProviderCoordinatorTests: XCTestCase {
         XCTAssertTrue(coordinator.currentProvider === cachedProvider)
     }
 
+    func testProviderWithoutRefreshIntervalIsFetchedAgainImmediately() {
+        let provider = MinimalPromoProvider(result: .contentAvailable)
+        let fixture = makeCoordinator()
+        let coordinator = fixture.coordinator
+        let resolutions = ProviderResolutionRecorder()
+        coordinator.providerUpdatedHandler = { resolutions.record($0) }
+        coordinator.providers = [provider]
+
+        let firstResolved = expectResolution(in: resolutions,
+                                             description: "Provider resolves first fetch") {
+            $0 === provider
+        }
+        coordinator.fetchBestProvider()
+        wait(for: [firstResolved], timeout: 1.0)
+
+        let fetchedAgain = expectation(description: "Provider without refresh interval fetches again immediately")
+        provider.onFetch = {
+            if provider.fetchCount == 2 {
+                fetchedAgain.fulfill()
+            }
+        }
+        coordinator.fetchBestProvider()
+
+        wait(for: [fetchedAgain], timeout: 1.0)
+        XCTAssertEqual(provider.fetchCount, 2)
+    }
+
+    func testSkippedProviderDoesNotAdvanceAfterFetchIsCancelled() {
+        let cachedProvider = RefreshingMinimalPromoProvider(result: .contentAvailable, refreshInterval: 100)
+        let fallbackProvider = MinimalPromoProvider(result: .contentAvailable)
+        let fixture = makeCoordinator()
+        let coordinator = fixture.coordinator
+        let resolutions = ProviderResolutionRecorder()
+        coordinator.providerUpdatedHandler = { resolutions.record($0) }
+        coordinator.providers = [cachedProvider, fallbackProvider]
+
+        let cachedResolved = expectResolution(in: resolutions,
+                                              description: "Cached provider resolves") {
+            $0 === cachedProvider
+        }
+        coordinator.fetchBestProvider()
+        wait(for: [cachedResolved], timeout: 1.0)
+
+        coordinator.fetchBestProvider()
+        coordinator.cancelFetch()
+
+        waitForDelay(0.05, description: "Deferred fallback fetch has a chance to run")
+        XCTAssertEqual(cachedProvider.fetchCount, 1)
+        XCTAssertEqual(fallbackProvider.fetchCount, 0)
+    }
+
     func testResetClearsFetchHistoryAndAllowsImmediateRefetch() {
         let cachedProvider = TestPromoProvider(result: .contentAvailable, fetchRefreshInterval: 100)
         let fixture = makeCoordinator()
@@ -437,12 +557,12 @@ final class PromoProviderCoordinatorTests: XCTestCase {
     }
 
     func testTimeoutTreatsProviderAsFailedAndContinuesToNextProvider() {
-        let slowProvider = TestPromoProvider(result: .contentAvailable, completionDelay: 0.08)
+        let slowProvider = TestPromoProvider(result: .contentAvailable, completionDelay: 0.2)
         let fallbackProvider = TestPromoProvider(result: .contentAvailable)
         let fixture = makeCoordinator()
         let coordinator = fixture.coordinator
         let resolutions = ProviderResolutionRecorder()
-        coordinator.fetchTimeout = 0.01
+        coordinator.fetchTimeout = 0.05
         coordinator.providerUpdatedHandler = { resolutions.record($0) }
         coordinator.providers = [slowProvider, fallbackProvider]
 
@@ -452,11 +572,11 @@ final class PromoProviderCoordinatorTests: XCTestCase {
         }
         coordinator.fetchBestProvider()
 
-        wait(for: [fallbackResolved], timeout: 1.0)
+        wait(for: [fallbackResolved], timeout: 2.0)
         XCTAssertEqual(result(for: slowProvider, in: coordinator), .fetchRequestFailed)
         XCTAssertTrue(coordinator.currentProvider === fallbackProvider)
 
-        waitForDelay(0.12, description: "Late slow-provider completion has time to arrive")
+        waitForDelay(0.25, description: "Late slow-provider completion has time to arrive")
         XCTAssertEqual(result(for: slowProvider, in: coordinator), .fetchRequestFailed)
         XCTAssertTrue(coordinator.currentProvider === fallbackProvider)
     }
@@ -480,6 +600,25 @@ final class PromoProviderCoordinatorTests: XCTestCase {
         XCTAssertEqual(fallbackProvider.fetchCount, 0)
         XCTAssertNil(coordinator.currentProvider)
         coordinator.cancelFetch()
+    }
+
+    func testCancelledFetchIgnoresPendingTimeout() {
+        let neverCompletingProvider = MinimalPromoProvider(result: .contentAvailable, completes: false)
+        let fixture = makeCoordinator()
+        let coordinator = fixture.coordinator
+        coordinator.fetchTimeout = 0.02
+        coordinator.providers = [neverCompletingProvider]
+
+        let fetchStarted = expectation(description: "Never-completing provider fetch starts")
+        neverCompletingProvider.onFetch = { fetchStarted.fulfill() }
+        coordinator.fetchBestProvider()
+        wait(for: [fetchStarted], timeout: 1.0)
+
+        coordinator.cancelFetch()
+
+        waitForDelay(0.05, description: "Canceled timeout has a chance to fire")
+        XCTAssertFalse(coordinator.isFetching)
+        XCTAssertNil(result(for: neverCompletingProvider, in: coordinator))
     }
 
     private func makeCoordinator(connected: Bool = true) -> CoordinatorFixture {
@@ -528,4 +667,44 @@ final class PromoProviderCoordinatorTests: XCTestCase {
         }
         wait(for: [settled], timeout: delay + 1.0)
     }
+}
+
+private class MinimalPromoProvider: NSObject, PromoProvider {
+    let result: PromoProviderFetchContentResult
+    let completes: Bool
+    var fetchCount = 0
+    var onFetch: (() -> Void)?
+
+    init(result: PromoProviderFetchContentResult, completes: Bool = true) {
+        self.result = result
+        self.completes = completes
+    }
+
+    func fetchNewContent(for promoView: PromoView,
+                         with resultHandler: @escaping PromoProviderContentFetchHandler) {
+        fetchCount += 1
+        onFetch?()
+        if completes {
+            resultHandler(result)
+        }
+    }
+
+    func contentView(for promoView: PromoView) -> PromoContentView {
+        promoView.dequeueContentView(for: TestPromoContentView.self)
+    }
+}
+
+private final class InternetOnlyPromoProvider: MinimalPromoProvider {
+    var isInternetAccessRequired: Bool { true }
+}
+
+private final class RefreshingMinimalPromoProvider: MinimalPromoProvider {
+    let refreshInterval: TimeInterval
+
+    init(result: PromoProviderFetchContentResult, refreshInterval: TimeInterval) {
+        self.refreshInterval = refreshInterval
+        super.init(result: result)
+    }
+
+    var fetchRefreshInterval: TimeInterval { refreshInterval }
 }

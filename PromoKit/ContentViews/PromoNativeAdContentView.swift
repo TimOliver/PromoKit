@@ -119,7 +119,7 @@ final public class PromoNativeAdView: NativeAdView {
     private let contentMediaView = MediaView()
 
     // For easier testing, remove the 'Test mode' string from the title
-    private var headlineText: String {
+    private func headlineText(for nativeAd: NativeAd?) -> String {
 #if DEBUG
         nativeAd?.headline?.replacingOccurrences(of: "Test mode: ", with: "") ?? ""
 #else
@@ -129,7 +129,7 @@ final public class PromoNativeAdView: NativeAdView {
 
     // If a body string was supplied, show that. If not, show the name of the store,
     // and the price as a string instead
-    private var bodyText: String? {
+    private func bodyText(for nativeAd: NativeAd?) -> String? {
         if let body = nativeAd?.body {
             return body
         } else if let store = nativeAd?.store {
@@ -221,7 +221,7 @@ final public class PromoNativeAdView: NativeAdView {
 
         iconImageView.image = nativeAd.icon?.image
 
-        if let body = bodyText {
+        if let body = bodyText(for: nativeAd) {
             bodyLabel.attributedText = NSAttributedString(string: body)
         }
 
@@ -323,7 +323,7 @@ final public class PromoNativeAdView: NativeAdView {
         // Lay out the title
         let headlineStyle = NSMutableParagraphStyle()
         headlineStyle.firstLineHeadIndent = 0
-        headlineLabel.attributedText = NSAttributedString(string: headlineText,
+        headlineLabel.attributedText = NSAttributedString(string: headlineText(for: nativeAd),
                                                           attributes: [.paragraphStyle: headlineStyle ])
         headlineLabel.textAlignment = .center
         headlineLabel.frame.size = headlineLabel.sizeThatFits(remainingTextSize)
@@ -336,7 +336,7 @@ final public class PromoNativeAdView: NativeAdView {
         adLabel.textColor = backgroundColor
 
         // We're done if the label is hidden
-        bodyLabel.text = bodyText
+        bodyLabel.text = bodyText(for: nativeAd)
         bodyLabel.isHidden = bodyLabel.text?.isEmpty ?? true
         if bodyLabel.isHidden { return }
 
@@ -375,6 +375,7 @@ final public class PromoNativeAdView: NativeAdView {
         }
 
         // Hide the body if we don't have any text
+        bodyLabel.text = bodyText(for: nativeAd)
         bodyLabel.isHidden = bodyLabel.text?.isEmpty ?? true
 
         // Position the title text
@@ -384,7 +385,7 @@ final public class PromoNativeAdView: NativeAdView {
 
         let headlineStyle = NSMutableParagraphStyle()
         headlineStyle.firstLineHeadIndent = headlineIndent
-        headlineLabel.attributedText = NSAttributedString(string: headlineText,
+        headlineLabel.attributedText = NSAttributedString(string: headlineText(for: nativeAd),
                                                           attributes: [.paragraphStyle: headlineStyle ])
 
         headlineLabel.textAlignment = .left
@@ -537,11 +538,11 @@ final public class PromoNativeAdView: NativeAdView {
         var textHeight = 0.0
 
         // Add the size of the title text
-        headlineLabel.text = headlineText
+        headlineLabel.text = headlineText(for: nativeAd)
         textHeight += headlineLabel.sizeThatFits(textSize).height
 
         // Add the subtitle text
-        if let body = bodyText {
+        if let body = bodyText(for: nativeAd) {
             textHeight += titleVerticalSpacing
             bodyLabel.numberOfLines = needsCompactLayout ? 2 : 3
             bodyLabel.text = body

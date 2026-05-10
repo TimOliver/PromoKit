@@ -53,4 +53,15 @@ final class PromoImageProcessingTests: XCTestCase {
                                                                                     height: 4)))
         XCTAssertNil(PromoImageProcessing.decodedImage(ciOnlyImage))
     }
+
+    func testImageProcessingFittingSizePreservesAspectRatio() {
+        XCTAssertEqual(PromoImageProcessing.size(CGSize(width: 120, height: 60), fitting: nil),
+                       CGSize(width: 120, height: 60))
+        XCTAssertEqual(PromoImageProcessing.size(CGSize(width: 120, height: 60),
+                                                 fitting: CGSize(width: 30, height: 100)),
+                       CGSize(width: 30, height: 15))
+        XCTAssertEqual(PromoImageProcessing.size(CGSize(width: 60, height: 120),
+                                                 fitting: CGSize(width: 100, height: 30)),
+                       CGSize(width: 15, height: 30))
+    }
 }

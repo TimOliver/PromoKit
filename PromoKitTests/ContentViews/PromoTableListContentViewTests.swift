@@ -43,4 +43,26 @@ final class PromoTableListContentViewTests: XCTestCase {
         XCTAssertGreaterThan(contentView.footnoteLabel.frame.height, 0,
                              "Footnote should be measured when text is present")
     }
+
+    func testTableListContentViewLayoutsAfterPromoViewIsReleased() {
+        var contentView: PromoTableListContentView!
+        weak var releasedPromoView: PromoView?
+
+        do {
+            let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 80))
+            releasedPromoView = promoView
+            contentView = PromoTableListContentView(promoView: promoView)
+        }
+
+        XCTAssertNil(releasedPromoView)
+        XCTAssertNil(contentView.promoView)
+
+        let image = makePromoTestImage(size: CGSize(width: 40, height: 40), color: .orange)
+        contentView.frame = CGRect(x: 0, y: 0, width: 320, height: 80)
+        contentView.configure(title: "Detached", detailText: "Still lays out", image: image)
+        contentView.layoutIfNeeded()
+
+        XCTAssertGreaterThan(contentView.imageView.frame.width, 0)
+        XCTAssertGreaterThan(contentView.label.frame.width, 0)
+    }
 }

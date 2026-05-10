@@ -79,6 +79,21 @@ final class PromoViewDisplayTests: XCTestCase {
                              "Switching to .large should produce a wider button")
     }
 
+    func testCloseButtonCanBeHiddenAfterCreation() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        promoView.showCloseButton = true
+        promoView.layoutIfNeeded()
+
+        guard let closeButton = promoView.subviews.compactMap({ $0 as? UIButton }).first else {
+            return XCTFail("Close button should be present after enabling showCloseButton")
+        }
+
+        promoView.showCloseButton = false
+
+        XCTAssertTrue(closeButton.isHidden)
+        XCTAssertEqual(promoView.closeButtonOffset, .zero)
+    }
+
     func testProviderConfigurationRoundTripsThroughCoordinator() {
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
 
@@ -148,5 +163,102 @@ final class PromoViewDisplayTests: XCTestCase {
         promoView.touchesEnded([], with: nil)
 
         XCTAssertFalse(promoView.isLoading)
+    }
+
+    func testTapInteractionForwardsTouchLifecycleToProvider() {
+        let animationsEnabled = UIView.areAnimationsEnabled
+        UIView.setAnimationsEnabled(false)
+        defer { UIView.setAnimationsEnabled(animationsEnabled) }
+
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let provider = TouchTrackingPromoProvider()
+        let touch = FakeTouch(location: CGPoint(x: 20, y: 20))
+        promoView.currentProvider = provider
+
+        promoView.touchesBegan([touch], with: nil)
+        touch.location = CGPoint(x: 40, y: 40)
+        promoView.touchesMoved([touch], with: nil)
+        promoView.touchesEnded([touch], with: nil)
+
+        promoView.touchesBegan([touch], with: nil)
+        promoView.touchesCancelled([touch], with: nil)
+
+        XCTAssertEqual(provider.tapDownCount, 2)
+        XCTAssertEqual(provider.dragInsideCount, 1)
+        XCTAssertEqual(provider.tapUpCount, 1)
+        XCTAssertEqual(provider.cancelTapCount, 1)
+    }
+
+    func testProviderCanDisableTapInteractionAnimation() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let provider = AnimationBlockingPromoProvider()
+        promoView.currentProvider = provider
+
+        promoView.touchesBegan([FakeTouch(location: CGPoint(x: 10, y: 10))], with: nil)
+
+        XCTAssertEqual(provider.animationDecisionCount, 1)
+    }
+}
+
+private final class FakeTouch: UITouch {
+    var location: CGPoint
+
+    init(location: CGPoint) {
+        self.location = location
+        super.init()
+    }
+
+    override func location(in view: UIView?) -> CGPoint {
+        location
+    }
+}
+
+private final class TouchTrackingPromoProvider: NSObject, PromoProvider {
+    private(set) var tapDownCount = 0
+    private(set) var dragInsideCount = 0
+    private(set) var tapUpCount = 0
+    private(set) var cancelTapCount = 0
+
+    func fetchNewContent(for promoView: PromoView,
+                         with resultHandler: @escaping PromoProviderContentFetchHandler) {
+        resultHandler(.contentAvailable)
+    }
+
+    func contentView(for promoView: PromoView) -> PromoContentView {
+        promoView.dequeueContentView(for: TestPromoContentView.self)
+    }
+
+    func didTapDownInside(promoView: PromoView, with touch: UITouch) {
+        tapDownCount += 1
+    }
+
+    func didDragInside(promoView: PromoView, with touch: UITouch) {
+        dragInsideCount += 1
+    }
+
+    func didTapUpInside(promoView: PromoView, with touch: UITouch) {
+        tapUpCount += 1
+    }
+
+    func didCancelTap(promoView: PromoView, with touch: UITouch) {
+        cancelTapCount += 1
+    }
+}
+
+private final class AnimationBlockingPromoProvider: NSObject, PromoProvider {
+    private(set) var animationDecisionCount = 0
+
+    func fetchNewContent(for promoView: PromoView,
+                         with resultHandler: @escaping PromoProviderContentFetchHandler) {
+        resultHandler(.contentAvailable)
+    }
+
+    func contentView(for promoView: PromoView) -> PromoContentView {
+        promoView.dequeueContentView(for: TestPromoContentView.self)
+    }
+
+    func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool {
+        animationDecisionCount += 1
+        return false
     }
 }
