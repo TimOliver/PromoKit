@@ -23,4 +23,30 @@ final class PromoImageProcessingTests: XCTestCase {
                                                         fittingSize: CGSize(width: 40, height: 40))
         XCTAssertNotNil(blurred)
     }
+
+    func testImageProcessingBlurredImageWithoutFittingSizeReturnsImage() {
+        // Exercises the branch in blurredImage that skips the scale-down transform when no
+        // fittingSize is provided.
+        let source = makePromoTestImage(size: CGSize(width: 40, height: 40), color: .systemTeal)
+        let blurred = PromoImageProcessing.blurredImage(source, radius: 5)
+        XCTAssertNotNil(blurred)
+    }
+
+    func testImageProcessingDecodedImageWithoutFittingSizeProducesACGImage() {
+        // Exercises the default-fittingSize branch of decodedImage where the helper falls
+        // back to the source image's intrinsic size.
+        let source = makePromoTestImage(size: CGSize(width: 64, height: 32), color: .magenta)
+        let decoded = PromoImageProcessing.decodedImage(source, scale: 1.0)
+        XCTAssertNotNil(decoded)
+        XCTAssertNotNil(decoded?.cgImage)
+    }
+
+    func testImageProcessingDecodedImageReturnsNilForCGImagelessInput() {
+        // CIImage-only UIImages have no backing cgImage — decodedImage should bail early
+        // via its guard rather than try to feed the image through the thumbnail/CGContext path.
+        let ciOnlyImage = UIImage(ciImage: CIImage(color: .red).cropped(to: CGRect(x: 0, y: 0,
+                                                                                    width: 4,
+                                                                                    height: 4)))
+        XCTAssertNil(PromoImageProcessing.decodedImage(ciOnlyImage))
+    }
 }

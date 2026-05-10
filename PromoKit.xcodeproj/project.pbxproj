@@ -36,6 +36,9 @@
 		2267434E2FACD854007CD98E /* PromoNetworkTestProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2267432D2FACD854007CD98E /* PromoNetworkTestProviderTests.swift */; };
 		2267434F2FACD854007CD98E /* TestPromoContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743362FACD854007CD98E /* TestPromoContentView.swift */; };
 		226743502FACD854007CD98E /* ProviderResolutionRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743322FACD854007CD98E /* ProviderResolutionRecorder.swift */; };
+		226743512FACD854007CD98E /* PromoAppRaterProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743542FACD854007CD98E /* PromoAppRaterProviderTests.swift */; };
+		226743522FACD854007CD98E /* PromoCloudKitDataSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743552FACD854007CD98E /* PromoCloudKitDataSourceTests.swift */; };
+		226743532FACD854007CD98E /* PromoPathMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226743562FACD854007CD98E /* PromoPathMonitorTests.swift */; };
 		226B902F2C720AC00072FD1C /* PromoCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 226B902E2C720AC00072FD1C /* PromoCache.swift */; };
 		229D212C2B67CE2600105C9D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D212B2B67CE2600105C9D /* AppDelegate.swift */; };
 		229D21302B67CE2600105C9D /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D212F2B67CE2600105C9D /* ViewController.swift */; };
@@ -159,6 +162,9 @@
 		226743352FACD854007CD98E /* StubPathMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StubPathMonitor.swift; sourceTree = "<group>"; };
 		226743362FACD854007CD98E /* TestPromoContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestPromoContentView.swift; sourceTree = "<group>"; };
 		226743372FACD854007CD98E /* TestPromoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestPromoProvider.swift; sourceTree = "<group>"; };
+		226743542FACD854007CD98E /* PromoAppRaterProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoAppRaterProviderTests.swift; sourceTree = "<group>"; };
+		226743552FACD854007CD98E /* PromoCloudKitDataSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoCloudKitDataSourceTests.swift; sourceTree = "<group>"; };
+		226743562FACD854007CD98E /* PromoPathMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoPathMonitorTests.swift; sourceTree = "<group>"; };
 		226B902E2C720AC00072FD1C /* PromoCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromoCache.swift; sourceTree = "<group>"; };
 		226EAA6F2C610B0C0039AE73 /* PromoKitExample.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PromoKitExample.entitlements; sourceTree = "<group>"; };
 		229D21282B67CE2600105C9D /* PromoKitExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PromoKitExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -258,6 +264,8 @@
 		226743242FACD854007CD98E /* Internal */ = {
 			isa = PBXGroup;
 			children = (
+				226743552FACD854007CD98E /* PromoCloudKitDataSourceTests.swift */,
+				226743562FACD854007CD98E /* PromoPathMonitorTests.swift */,
 				226743232FACD854007CD98E /* PromoProviderCoordinatorTests.swift */,
 			);
 			path = Internal;
@@ -278,6 +286,7 @@
 		2267432E2FACD854007CD98E /* Providers */ = {
 			isa = PBXGroup;
 			children = (
+				226743542FACD854007CD98E /* PromoAppRaterProviderTests.swift */,
 				2267432C2FACD854007CD98E /* PromoCloudEventProviderTests.swift */,
 				2267432D2FACD854007CD98E /* PromoNetworkTestProviderTests.swift */,
 			);
@@ -653,6 +662,9 @@
 				2267434E2FACD854007CD98E /* PromoNetworkTestProviderTests.swift in Sources */,
 				2267434F2FACD854007CD98E /* TestPromoContentView.swift in Sources */,
 				226743502FACD854007CD98E /* ProviderResolutionRecorder.swift in Sources */,
+				226743512FACD854007CD98E /* PromoAppRaterProviderTests.swift in Sources */,
+				226743522FACD854007CD98E /* PromoCloudKitDataSourceTests.swift in Sources */,
+				226743532FACD854007CD98E /* PromoPathMonitorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
