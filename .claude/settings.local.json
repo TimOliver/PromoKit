@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild -scheme PromoKit -project PromoKit.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 16' -quiet build)",
+      "Bash(xcodebuild -scheme PromoKit -project PromoKit.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -quiet build)",
+      "Bash(xcodebuild test *)",
+      "Bash(xcodebuild -list -project PromoKit.xcodeproj)",
+      "Bash(xcrun simctl *)",
+      "Read(//tmp/**)",
+      "Bash(xcrun xcresulttool *)",
+      "Bash(git stash *)",
+      "Bash(xcodebuild -scheme PromoKit -project PromoKit.xcodeproj -destination 'platform=iOS Simulator,id=9C751E13-0724-40E3-903D-5F7E9276C01E' -quiet build)",
+      "Bash(grep *)",
+      "Bash(xargs -I{} xcrun xcresulttool get test-results tests --path /Users/TiM/Library/Developer/Xcode/DerivedData/PromoKit-fnnediqefatlzlannjxxjwbmrtjm/Logs/Test/{})",
+      "Bash(xcodebuild -scheme PromoKitExample -project PromoKit.xcodeproj -destination 'platform=iOS Simulator,id=9C751E13-0724-40E3-903D-5F7E9276C01E' -quiet build)",
+      "Bash(xcodebuild -scheme PromoKitExample -project PromoKit.xcodeproj -destination 'platform=iOS Simulator,id=9C751E13-0724-40E3-903D-5F7E9276C01E' build)",
+      "Bash(cat)",
+      "Bash(swift /tmp/testpred.swift)",
+      "Bash(swift /tmp/testpred2.swift)",
+      "Bash(xcrun xccov *)",
+      "Bash(xargs -I{} xcrun xcresulttool get test-results tests --path {})",
+      "Bash(xcodebuild -scheme PromoKit -project PromoKit.xcodeproj -destination 'platform=iOS Simulator,id=9C751E13-0724-40E3-903D-5F7E9276C01E' build)",
+      "Bash(gem list *)"
+    ]
+  }
+}

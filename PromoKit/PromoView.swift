@@ -452,7 +452,7 @@ extension PromoView {
     /// to present click handlers. Hosts that want to confirm a real provider was found before
     /// attaching the view can set `reloadsAutomatically = false`, assign `providers`, call this
     /// directly, and react via `promoView(_:didResolveProvider:)` / `promoViewDidFailToResolveProvider(_:)`.
-    public func reload() {
+    @objc public func reload() {
         if providerCoordinator.isFetching {
             providerCoordinator.cancelFetch()
         }

@@ -68,6 +68,8 @@
         "PromoImageProcessingTests\/testImageProcessingDecodedImageReturnsNilForCGImagelessInput()",
         "PromoImageProcessingTests\/testImageProcessingDecodedImageWithoutFittingSizeProducesACGImage()",
         "PromoImageProcessingTests\/testImageProcessingFittingSizePreservesAspectRatio()",
+        "PromoImageProcessingTests\/testImageProcessingLegacyDecodedImageDownscalesAndPreservesScale()",
+        "PromoImageProcessingTests\/testImageProcessingLegacyDecodedImageReturnsNilForInvalidFittingSize()",
         "PromoKitBehaviorTests\/testAssigningProvidersClearsCurrentWhenItIsNoLongerInTheList()",
         "PromoKitBehaviorTests\/testAssigningProvidersDoesNotReloadWhenAutomaticReloadingDisabled()",
         "PromoKitBehaviorTests\/testAssigningProvidersKeepsCurrentWhenItIsStillInTheList()",

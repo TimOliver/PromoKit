@@ -54,6 +54,34 @@ final class PromoImageProcessingTests: XCTestCase {
         XCTAssertNil(PromoImageProcessing.decodedImage(ciOnlyImage))
     }
 
+    func testImageProcessingLegacyDecodedImageDownscalesAndPreservesScale() throws {
+        let source = makePromoTestImage(size: CGSize(width: 120, height: 60), color: .orange)
+        let cgImage = try XCTUnwrap(source.cgImage)
+        let fittingSize = CGSize(width: 30, height: 100)
+        let outputScale: CGFloat = 2.0
+
+        let decoded = try XCTUnwrap(PromoImageProcessing.decodedImage(source,
+                                                                      fittingSize: fittingSize,
+                                                                      scale: outputScale,
+                                                                      useSystemThumbnailPreparation: false))
+        let expectedSize = PromoImageProcessing.size(CGSize(width: cgImage.width, height: cgImage.height),
+                                                     fitting: fittingSize)
+
+        XCTAssertEqual(decoded.scale, outputScale)
+        XCTAssertEqual(decoded.imageOrientation, .up)
+        XCTAssertEqual(decoded.cgImage?.width, Int(expectedSize.width * outputScale))
+        XCTAssertEqual(decoded.cgImage?.height, Int(expectedSize.height * outputScale))
+    }
+
+    func testImageProcessingLegacyDecodedImageReturnsNilForInvalidFittingSize() throws {
+        let source = makePromoTestImage(size: CGSize(width: 20, height: 20), color: .purple)
+
+        XCTAssertNil(PromoImageProcessing.decodedImage(source,
+                                                       fittingSize: .zero,
+                                                       scale: 1.0,
+                                                       useSystemThumbnailPreparation: false))
+    }
+
     func testImageProcessingFittingSizePreservesAspectRatio() {
         XCTAssertEqual(PromoImageProcessing.size(CGSize(width: 120, height: 60), fitting: nil),
                        CGSize(width: 120, height: 60))
@@ -63,5 +91,8 @@ final class PromoImageProcessingTests: XCTestCase {
         XCTAssertEqual(PromoImageProcessing.size(CGSize(width: 60, height: 120),
                                                  fitting: CGSize(width: 100, height: 30)),
                        CGSize(width: 15, height: 30))
+        XCTAssertEqual(PromoImageProcessing.size(CGSize(width: 20, height: 10),
+                                                 fitting: CGSize(width: 100, height: 100)),
+                       CGSize(width: 100, height: 50))
     }
 }

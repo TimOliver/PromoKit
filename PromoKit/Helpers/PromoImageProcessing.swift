@@ -36,14 +36,27 @@ public class PromoImageProcessing {
     ///   - scale: The screen scale that the image will be scaled to.
     /// - Returns: The decoded image
     public static func decodedImage(_ image: UIImage?, fittingSize: CGSize? = nil, scale: CGFloat = 1.0) -> UIImage? {
+        decodedImage(image, fittingSize: fittingSize, scale: scale, useSystemThumbnailPreparation: true)
+    }
+
+    static func decodedImage(_ image: UIImage?,
+                             fittingSize: CGSize? = nil,
+                             scale: CGFloat = 1.0,
+                             useSystemThumbnailPreparation: Bool) -> UIImage? {
         guard let image, let newImage = image.cgImage else { return nil }
 
-        if #available(iOS 15.0, *) {
+        if useSystemThumbnailPreparation, #available(iOS 15.0, *) {
             let size = fittingSize ?? image.size
             return image.preparingThumbnail(of: CGSize(width: size.width * scale, height: size.height * scale))
         }
 
-        let newSize = Self.size(CGSize(width: newImage.width, height: newImage.height),
+        return legacyDecodedImage(newImage, fittingSize: fittingSize, scale: scale)
+    }
+
+    /// The pre-iOS 15 image decoding path. Kept separate so it can be covered on
+    /// newer simulators where `preparingThumbnail(of:)` is always available.
+    static func legacyDecodedImage(_ image: CGImage, fittingSize: CGSize? = nil, scale: CGFloat = 1.0) -> UIImage? {
+        let newSize = Self.size(CGSize(width: image.width, height: image.height),
                                 fitting: fittingSize)
 
         let colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -55,7 +68,7 @@ public class PromoImageProcessing {
                                 space: colorSpace,
                                 bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue)
 
-        context?.draw(newImage, in: CGRect(x: 0, y: 0, width: Int(newSize.width * scale), height: Int(newSize.height * scale)))
+        context?.draw(image, in: CGRect(x: 0, y: 0, width: Int(newSize.width * scale), height: Int(newSize.height * scale)))
         if let drawnImage = context?.makeImage() {
             return UIImage(cgImage: drawnImage, scale: scale, orientation: .up)
         }
