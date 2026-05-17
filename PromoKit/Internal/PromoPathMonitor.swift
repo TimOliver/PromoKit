@@ -82,11 +82,19 @@ internal class PromoPathMonitor: PromoPathMonitoring {
 
     /// Whether the device currently has a satisfied network path (i.e. internet access).
     /// Thread-safe — may be read from any queue.
+    ///
+    /// Defaults to `true` when the underlying `NWPathMonitor` hasn't yet reported
+    /// a first status. `NWPathMonitor.start(queue:)` is async, so a synchronous
+    /// `reload()` immediately after `start()` would otherwise race with the
+    /// first callback and see `false` even on devices that have full
+    /// connectivity. Treat "unknown" as optimistic: let the provider attempt
+    /// its fetch and surface a real network failure from the SDK if there's
+    /// genuinely no connection.
     public var hasInternetAccess: Bool {
         // In case it's being mutated on another thread,
         // use a lock to fetch the current path status
         // and check if we're online.
-        var value = false
+        var value = true
         os_unfair_lock_lock(unfairLock)
         if let currentStatus {
             value = currentStatus == .satisfied

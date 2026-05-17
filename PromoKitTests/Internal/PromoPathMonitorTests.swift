@@ -25,11 +25,14 @@ final class PromoPathMonitorTests: XCTestCase {
         XCTAssertFalse(monitor.isRunning)
     }
 
-    func testPathMonitorHasInternetAccessIsFalseBeforeAnyPathArrives() {
-        // Without start() the monitor has no captured path — hasInternetAccess must report
-        // false rather than crashing when reading through the unfair lock.
+    func testPathMonitorHasInternetAccessDefaultsToTrueBeforeAnyPathArrives() {
+        // Optimistic default: before NWPathMonitor has reported its first
+        // path, hasInternetAccess returns true so a synchronous fetch issued
+        // immediately after construction isn't blocked by the racy first
+        // callback on real devices/simulators. Genuine offline state is
+        // picked up by the next path update (covered separately below).
         let monitor = PromoPathMonitor()
-        XCTAssertFalse(monitor.hasInternetAccess)
+        XCTAssertTrue(monitor.hasInternetAccess)
     }
 
     func testPathMonitorReceivesAtLeastOnePathUpdateAfterStart() {
