@@ -615,7 +615,7 @@ extension PromoView {
         // Create the spinner view and configure it to our current environment.
         if isLoading {
             if spinnerView == nil {
-                spinnerView = UIActivityIndicatorView(style: .gray)
+                spinnerView = UIActivityIndicatorView(style: .medium)
                 insertSubview(spinnerView!, aboveSubview: backgroundView)
             }
             spinnerView?.startAnimating()
@@ -704,7 +704,7 @@ extension PromoView {
             // so the size doesn't randomly change as we're winding down
             if isLoading {
                 let useLargeSize = frame.height > PromoView.largeSpinnerRequiredHeight
-                spinnerView.style = useLargeSize ? .whiteLarge : .gray
+                spinnerView.style = useLargeSize ? .large : .medium
             }
             spinnerView.sizeToFit()
         }

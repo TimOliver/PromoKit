@@ -9,7 +9,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
   s.requires_arc = true
   s.swift_version = '5.9'
-  s.ios.deployment_target = '12.0'
+  s.ios.deployment_target = '15.0'
   s.default_subspecs = 'Core'
 
   s.subspec 'Core' do |core|

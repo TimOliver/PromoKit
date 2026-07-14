@@ -41,8 +41,19 @@ internal final class PromoCloudKitDataSource: PromoCloudEventDataSource {
                       completion: @escaping (Error?) -> Void) {
         let operation = CKQueryOperation(query: query)
         operation.desiredKeys = desiredKeys
-        operation.recordFetchedBlock = { record in recordHandler(record) }
-        operation.queryCompletionBlock = { _, error in completion(error) }
+
+        // A per-record failure is skipped rather than surfaced, matching the old
+        // recordFetchedBlock, which simply never fired for a record it couldn't decode.
+        // Anything fatal to the query still arrives through the result block below.
+        operation.recordMatchedBlock = { _, result in
+            if case .success(let record) = result { recordHandler(record) }
+        }
+        operation.queryResultBlock = { result in
+            switch result {
+            case .success: completion(nil)
+            case .failure(let error): completion(error)
+            }
+        }
         database.add(operation)
     }
 

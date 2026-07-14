@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "PromoKit",
-    platforms: [.iOS(.v12)],
+    platforms: [.iOS(.v15)],
     products: [
         .library(name: "PromoKit", targets: ["PromoKit"]),
         .library(name: "PromoKitGoogleAds", targets: ["PromoKitGoogleAds"]),
