@@ -147,7 +147,9 @@ public class PromoView: UIControl {
     /// The current provider being displayed by this view. Externally read-only — the
     /// resolution pipeline owns this value, and assigning from outside would skip the
     /// content-view swap, leaving the on-screen state out of sync with the new provider.
-    public internal(set) var currentProvider: PromoProvider? {
+    /// `@objc` with an `internal` setter exposes this to Objective-C hosts as a
+    /// read-only property; only Swift code inside this module can assign it.
+    @objc public internal(set) var currentProvider: PromoProvider? {
         get { providerCoordinator.currentProvider }
         set { providerCoordinator.currentProvider = newValue }
     }
