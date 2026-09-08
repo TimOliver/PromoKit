@@ -90,6 +90,19 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     // The decoded thumbnail image for the current record, loaded from cache or downloaded
     private var thumbnail: UIImage?
 
+    /// Record names the host has chosen to hide. Records in this set are skipped
+    /// during eligibility, so the provider falls through to the next eligible event.
+    public private(set) var hiddenRecordNames: Set<String> = []
+
+    /// Objective-C reachable setter for `hiddenRecordNames` (Set doesn't bridge).
+    @objc public func setHiddenRecordNames(_ recordNames: [String]) {
+        hiddenRecordNames = Set(recordNames)
+    }
+
+    /// The `recordName` of the record currently being displayed, or nil when nothing
+    /// is resolved. Lets a host identify (and then hide) the notice on screen.
+    @objc public var currentRecordName: String? { record?.recordID.recordName }
+
     // MARK: - Init
 
     /// Create a new instance of this provider with the specified CloudKit container name
@@ -177,6 +190,9 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// - Parameter record: The record to display
     /// - Returns: Whether the object is eligible or not
     private func isRecordEligibleForDisplay(_ record: CKRecord) -> Bool {
+        // Host-hidden notices never display again.
+        guard !hiddenRecordNames.contains(record.recordID.recordName) else { return false }
+
         guard isCurrentAppVersionEligible(for: record) else { return false }
 
         // If we don't have any local duration value, this record is always valid

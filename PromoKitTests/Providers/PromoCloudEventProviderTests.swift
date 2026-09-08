@@ -272,6 +272,29 @@ final class PromoCloudEventProviderTests: XCTestCase {
                       "Predicate should constrain results to the configured eventType")
     }
 
+    func testCloudEventProviderSkipsHiddenRecordNamesAndPicksNext() {
+        let dataSource = StubCloudEventDataSource()
+
+        let hidden = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "hidden-notice"))
+        hidden["title"] = "Hidden"
+        let visible = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "visible-notice"))
+        visible["title"] = "Visible"
+
+        dataSource.queryRecords = [hidden, visible]
+        dataSource.fetchRecord = visible
+
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent",
+                                               eventType: nil,
+                                               dataSource: dataSource)
+        provider.setHiddenRecordNames(["hidden-notice"])
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        let result = waitForFetch(provider: provider, promoView: promoView)
+        XCTAssertEqual(result, .contentAvailable)
+        XCTAssertEqual(provider.currentRecordName, "visible-notice",
+                       "A hidden record must be skipped in favour of the next eligible one")
+    }
+
     // MARK: - Helpers
 
     private func waitForFetch(provider: PromoProvider,
