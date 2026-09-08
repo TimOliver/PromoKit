@@ -92,6 +92,13 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     /// Record names the host has chosen to hide. Records in this set are skipped
     /// during eligibility, so the provider falls through to the next eligible event.
+    ///
+    /// Deliberately not `@objc`, unlike most other members here: the explicit
+    /// `setHiddenRecordNames(_:)` below already publishes the Objective-C-facing
+    /// `setHiddenRecordNames:` selector for this (since `Set<String>` doesn't
+    /// bridge). Annotating this property `@objc` too would hand the compiler a
+    /// second, synthesized claim on that same selector — a redeclaration error
+    /// that won't obviously point back to this line. Leave it Swift-only.
     public private(set) var hiddenRecordNames: Set<String> = []
 
     /// Objective-C reachable setter for `hiddenRecordNames` (Set doesn't bridge).
