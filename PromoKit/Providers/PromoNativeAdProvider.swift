@@ -191,7 +191,11 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
             switch result {
             case .success:
                 self.resultHandler?(.contentAvailable)
-            case .failure:
+            case .failure(let error):
+                // See PromoBannerAdProvider: .fetchRequestFailed erases the reason,
+                // and the reason is the only useful part when ads stop serving.
+                NSLog("[PromoKit] Native ad failed to load (unit %@): %@",
+                      adUnitID, error.localizedDescription)
                 self.resultHandler?(.fetchRequestFailed)
             }
             self.resultHandler = nil
@@ -252,6 +256,7 @@ extension PromoNativeAdProvider: NativeAdLoaderDelegate {
         }
 
         self.nativeAd = nativeAd
+
 
         // Generate a blurred background image to position behind the media view
         makeBlurredMediaImageIfAvailable {

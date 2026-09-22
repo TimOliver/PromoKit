@@ -132,7 +132,16 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         resultHandler = nil
         switch result {
         case .success: handler(.contentAvailable)
-        case .failure: handler(.fetchRequestFailed)
+        case .failure(let error):
+            // `.fetchRequestFailed` tells the host a provider lost, not why. Every
+            // ad-serving cause — no fill, an ad unit that belongs to a different
+            // app's bundle id, an account still in review — collapses into that one
+            // case, so the host silently falls through to the next provider with no
+            // way to tell a real outage from normal no-fill. Log the underlying
+            // error, which is the only place the reason exists.
+            NSLog("[PromoKit] Banner ad failed to load (unit %@): %@",
+                  adUnitID, error.localizedDescription)
+            handler(.fetchRequestFailed)
         }
     }
 
