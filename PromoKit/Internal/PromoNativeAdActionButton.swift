@@ -45,6 +45,13 @@ final internal class PromoNativeAdActionButton: UIView {
         label.font = UIFont.boldSystemFont(ofSize: 18.0)
         label.textColor = .white
         label.textAlignment = .center
+        // Google supplies the call to action, and its length varies wildly by
+        // locale — "Install" is 7 characters, "今すぐダウンロード" is 9 full-width
+        // ones, and some locales are far longer than either. Shrink rather than
+        // truncate: a clipped call to action reads as a broken ad.
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.7
+        label.lineBreakMode = .byTruncatingTail
 
         if #available(iOS 26.0, *) {
             let effect = UIGlassEffect()
@@ -70,14 +77,23 @@ final internal class PromoNativeAdActionButton: UIView {
         super.layoutSubviews()
         let radius = bounds.height / 2.0
         layer.cornerRadius = radius
+        // The label is inset from the pill's ends so text never runs into the
+        // rounded caps, whose width is half the height on each side.
+        let labelFrame = bounds.insetBy(dx: radius * 0.5, dy: 0.0)
+
         if let glassView {
             glassView.frame = bounds
             glassView.layer.cornerRadius = radius
-            label.frame = glassView.contentView.bounds
+            // Deliberately derived from `bounds`, NOT glassView.contentView.bounds:
+            // contentView is resized by UIKit in a later pass, so reading it here —
+            // immediately after assigning glassView.frame — yields the PREVIOUS
+            // size. A label narrower than the button truncates its text, which is
+            // invisible for a short call to action and obvious for a long one.
+            label.frame = labelFrame
         } else {
             solidBackground.frame = bounds
             solidBackground.layer.cornerRadius = radius
-            label.frame = bounds
+            label.frame = labelFrame
         }
     }
 
