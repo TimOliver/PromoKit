@@ -296,7 +296,7 @@ final public class PromoNativeAdView: NativeAdView {
             let iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
             let iconOrigin = CGPoint(x: (textContentSize.width - iconSize.width) * 0.5,
                                      y: textContentSize.height * 0.12)
-            iconImageView.frame = CGRect(origin: iconOrigin, size: iconSize)
+            iconImageView.frame = pixelAligned(CGRect(origin: iconOrigin, size: iconSize))
             iconImageView.layer.cornerRadius = iconSize.height * 0.23
         } else {
             iconImageView.removeFromSuperview()
@@ -368,7 +368,7 @@ final public class PromoNativeAdView: NativeAdView {
             if iconImageView.superview == nil { addSubview(iconImageView) }
             let aspectRatio = icon.size.width / icon.size.height
             iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
-            iconImageView.frame = CGRect(origin: origin, size: iconSize)
+            iconImageView.frame = pixelAligned(CGRect(origin: origin, size: iconSize))
             iconImageView.layer.cornerRadius = iconSize.height * 0.23
         } else {
             iconImageView.removeFromSuperview()
@@ -420,7 +420,7 @@ final public class PromoNativeAdView: NativeAdView {
             if !needsCompactLayout {
                 let buttonSize = CGSize(width: size.width, height: ctaButtonHeight)
                 let buttonOrigin = CGPoint(x: padding, y: size.height - ctaButtonHeight)
-                actionButton.frame = CGRect(origin: buttonOrigin, size: buttonSize)
+                actionButton.frame = pixelAligned(CGRect(origin: buttonOrigin, size: buttonSize))
             } else {
                 actionButton.frame.size = compactActionSize
                 actionButton.frame.origin = CGPoint(x: size.width - (actionButton.frame.width + padding),
@@ -437,8 +437,8 @@ final public class PromoNativeAdView: NativeAdView {
         let aspectRatio = mediaContent.aspectRatio > 0.0 ? mediaContent.aspectRatio : 1.0
         let actionButtonY = (actionButton.superview != nil && !needsCompactLayout) ? (actionButton.frame.minY - innerMargin) : size.height
         let mediaContainerSize = CGSize(width: size.width, height: actionButtonY - origin.y)
-        contentMediaContainerView.frame.size = mediaContainerSize
-        contentMediaContainerView.frame.origin = CGPoint(x: padding, y: origin.y)
+        contentMediaContainerView.frame = pixelAligned(CGRect(origin: CGPoint(x: padding, y: origin.y),
+                                                              size: mediaContainerSize))
         contentMediaContainerView.layer.cornerRadius = 15.0
         updateMediaViewBackgroundColor()
 
@@ -447,10 +447,16 @@ final public class PromoNativeAdView: NativeAdView {
         let mediaSize = CGSize(width: size.width, height: size.width / aspectRatio)
         let scale = min(mediaContainerSize.width / mediaSize.width,
                         mediaContainerSize.height / mediaSize.height)
-        contentMediaView.frame.size = CGSize(width: isLandscape ? mediaContainerSize.width : mediaSize.width * scale,
-                                             height: !isLandscape ? mediaContainerSize.height : mediaSize.height * scale)
-        contentMediaView.frame.origin = CGPoint(x: (mediaContainerSize.width - contentMediaView.frame.width) * 0.5,
-                                                y: (mediaContainerSize.height - contentMediaView.frame.height) * 0.5)
+        // Centring halves an odd remainder, so an un-snapped media view lands on a
+        // half-pixel and the container's tint bleeds through as a hairline sliver
+        // down one edge. Snap by edges so a media view that should span the
+        // container's full width reaches both sides exactly.
+        let fittedSize = CGSize(width: isLandscape ? mediaContainerSize.width : mediaSize.width * scale,
+                                height: !isLandscape ? mediaContainerSize.height : mediaSize.height * scale)
+        contentMediaView.frame = pixelAligned(CGRect(x: (mediaContainerSize.width - fittedSize.width) * 0.5,
+                                                     y: (mediaContainerSize.height - fittedSize.height) * 0.5,
+                                                     width: fittedSize.width,
+                                                     height: fittedSize.height))
 
     }
 
@@ -488,6 +494,24 @@ final public class PromoNativeAdView: NativeAdView {
     private var ctaButtonHeight: CGFloat { 54 }
     private var googleButtonWidth: CGFloat { 20.0 }
     private var displayScale: CGFloat { max(2.0, traitCollection.displayScale) }
+
+    /// Snaps a value to the device's physical pixel grid.
+    private func pixelAligned(_ value: CGFloat) -> CGFloat {
+        (value * displayScale).rounded() / displayScale
+    }
+
+    /// Snaps a rect to the pixel grid by its EDGES rather than its origin and size.
+    ///
+    /// Rounding origin and size separately is what produces hairline seams: each is
+    /// rounded independently, so the resulting trailing edge can land up to a whole
+    /// pixel away from where it should, and whatever sits behind shows through the
+    /// gap. Rounding the edges keeps a view that should meet its container's edge
+    /// actually meeting it.
+    private func pixelAligned(_ rect: CGRect) -> CGRect {
+        let minX = pixelAligned(rect.minX), minY = pixelAligned(rect.minY)
+        let maxX = pixelAligned(rect.maxX), maxY = pixelAligned(rect.maxY)
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
     private var iconHeight: CGFloat { 64.0 }
     private var compactActionSize: CGSize { CGSize(width: 120, height: 40) }
 
