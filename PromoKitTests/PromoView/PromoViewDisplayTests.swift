@@ -295,3 +295,19 @@ extension PromoViewDisplayTests {
         XCTAssertTrue(parent.hitTest(point, with: nil) === parent, "An invisible promo must not capture the close button hit area")
     }
 }
+
+
+extension PromoViewDisplayTests {
+    func testDraggingOutsideDoesNotReportTapUpInside() {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let provider = TouchTrackingPromoProvider()
+        view.currentProvider = provider
+        let touch = FakeTouch(location: CGPoint(x: 20, y: 20))
+        view.touchesBegan([touch], with: nil)
+        touch.location = CGPoint(x: 500, y: 500)
+        view.touchesMoved([touch], with: nil)
+        view.touchesEnded([touch], with: nil)
+        XCTAssertEqual(provider.tapUpCount, 0, "Dragging away must cancel activation rather than invoke didTapUpInside")
+        XCTAssertEqual(provider.cancelTapCount, 1)
+    }
+}

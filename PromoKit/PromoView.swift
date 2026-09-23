@@ -876,6 +876,7 @@ extension PromoView {
         // Disable the animation while we're showing a spinner
         if isLoading {
             canPlayTapAnimation = false
+            isInteractionCancelled = true
             return
         }
 
@@ -915,7 +916,11 @@ extension PromoView {
         setZoomed(false, animated: true)
         guard !isInteractionCancelled else { return }
         if let provider = currentProvider, let touch = touches.first {
-            provider.didTapUpInside?(promoView: self, with: touch)
+            if !isLoading, bounds.contains(touch.location(in: self)) {
+                provider.didTapUpInside?(promoView: self, with: touch)
+            } else {
+                provider.didCancelTap?(promoView: self, with: touch)
+            }
         }
     }
 
