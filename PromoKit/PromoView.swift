@@ -198,6 +198,7 @@ public class PromoView: UIControl {
         set { setIsLoading(newValue, animated: false) }
     }
     private var _isLoading: Bool = false
+    private var hasPresentedLoadingState = false
 
     /// When visible, the amount of vertical or horizontal spacing between the promo view and close button
     public var closeButtonSpacing = CGSize(width: 6.0, height: 4.0) {
@@ -365,7 +366,7 @@ extension PromoView {
         // (no superview during fetch) and then attached to a real hierarchy
         // shouldn't briefly cover its loaded content with a spinner.
         if currentProvider == nil && !providerCoordinator.isFetching {
-            setIsLoading(true, animated: animatesInitialLoadingState)
+            setIsLoading(true, animated: true)
         }
     }
 
@@ -646,7 +647,9 @@ extension PromoView {
     public func setIsLoading(_ isLoading: Bool, animated: Bool = false) {
         guard isLoading != _isLoading else { return }
 
+        let shouldAnimate = animated && (!isLoading || hasPresentedLoadingState || animatesInitialLoadingState)
         _isLoading = isLoading
+        if isLoading { hasPresentedLoadingState = true }
 
         // Create the spinner view and configure it to our current environment.
         if isLoading {
@@ -685,7 +688,7 @@ extension PromoView {
         }
 
         // If not animated, call these blocks right away
-        if !animated {
+        if !shouldAnimate {
             scalingAnimationBlock()
             crossFadeAnimationBlock()
             completionBlock(true)

@@ -262,3 +262,21 @@ private final class AnimationBlockingPromoProvider: NSObject, PromoProvider {
         return false
     }
 }
+
+
+extension PromoViewDisplayTests {
+    func testInitialAnimationOptOutBeforeProvidersAreAssigned() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let controller = UIViewController()
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 50))
+        promo.animatesInitialLoadingState = false
+        promo.providers = [TestPromoProvider(result: .contentAvailable, showsLoadingIndicatorDuringFetch: true, completes: false)]
+        controller.view.addSubview(promo)
+        let spinner = promo.subviews.compactMap { $0 as? UIActivityIndicatorView }.first
+        let keys = spinner?.layer.animationKeys() ?? []
+        XCTAssertTrue(keys.isEmpty, "Initial loading animation is disabled, but spinner has animations: \(keys)")
+    }
+}
