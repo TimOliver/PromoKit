@@ -347,3 +347,23 @@ extension PromoViewDisplayTests {
         XCTAssertEqual(promo.backgroundView.backgroundColor, .blue)
     }
 }
+
+
+extension PromoViewDisplayTests {
+    func testDefaultCornerRadiusRestoredAfterProviderSwap() {
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        promo.cornerRadius = 12
+        let firstDelegate = PromoViewDelegateSpy()
+        promo.delegate = firstDelegate
+        promo.providers = [AuditStyledProvider()]
+        wait(for: [firstDelegate.updateExpectation], timeout: 1)
+        promo.layoutIfNeeded()
+        XCTAssertEqual(promo.cornerRadius, 30)
+        let secondDelegate = PromoViewDelegateSpy()
+        promo.delegate = secondDelegate
+        promo.providers = [TestPromoProvider(result: .contentAvailable)]
+        wait(for: [secondDelegate.updateExpectation], timeout: 1)
+        promo.layoutIfNeeded()
+        XCTAssertEqual(promo.cornerRadius, 12, "A provider override must not replace the host's default corner radius")
+    }
+}

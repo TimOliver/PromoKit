@@ -86,8 +86,12 @@ public class PromoView: UIControl {
     /// The corner radius of the promo view (Default is 20.0)
     public var cornerRadius: CGFloat {
         get { backgroundView.layer.cornerRadius }
-        set { backgroundView.layer.cornerRadius = newValue }
+        set {
+            defaultCornerRadius = newValue
+            updateCornerRadius()
+        }
     }
+    private var defaultCornerRadius: CGFloat = 20.0
 
     /// Whether a close button is shown on the trailing side of the ad view (Default is false).
     /// Note: This property requires iOS 13.0 or later. On earlier versions, setting this has no effect.
@@ -465,7 +469,7 @@ extension PromoView {
     private func updateCornerRadius(for provider: PromoProvider? = nil) {
         let provider = provider ?? currentProvider ?? nil
         let contentPadding = contentPadding(for: provider)
-        var cornerRadius = self.cornerRadius
+        var cornerRadius = defaultCornerRadius
         if let providerCornerRadius = provider?.cornerRadius?(for: self, with: contentPadding) {
             cornerRadius = providerCornerRadius
         }
@@ -530,6 +534,7 @@ extension PromoView {
             displayNewProvider(provider)
         } else { // Remove anything
             reclaimCurrentContentView()
+            updateCornerRadius()
         }
     }
 
