@@ -172,6 +172,19 @@ public class PromoView: UIControl {
         PromoView.sharedBackgroundQueue
     }
 
+    /// Whether the loading placeholder animates into view the first time this
+    /// promo view is attached to a superview.
+    ///
+    /// Leave this on for a promo view that appears in response to something the
+    /// user did — the animation marks its arrival. Turn it off for one that is
+    /// part of the screen from the moment it opens: there is no previous state
+    /// to transition away from, so animating makes the placeholder itself read
+    /// as an event, the spinner scaling up into an empty card during launch.
+    ///
+    /// Only the initial appearance is affected. Transitions between the loading
+    /// state and real content always animate.
+    @objc public var animatesInitialLoadingState: Bool = true
+
     /// Shows a loading spinner view. This is used as a placeholder whenever a provider isn't being shown.
     public var isLoading: Bool {
         get { _isLoading }
@@ -336,7 +349,7 @@ extension PromoView {
         // (no superview during fetch) and then attached to a real hierarchy
         // shouldn't briefly cover its loaded content with a spinner.
         if currentProvider == nil && !providerCoordinator.isFetching {
-            setIsLoading(true, animated: true)
+            setIsLoading(true, animated: animatesInitialLoadingState)
         }
     }
 
