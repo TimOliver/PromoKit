@@ -276,3 +276,23 @@ extension PromoViewResolutionTests {
         XCTAssertTrue(view.currentProvider === second)
     }
 }
+
+
+extension PromoViewResolutionTests {
+    func testRemovingProvidersInvalidatesPendingManualFetch() {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        view.reloadsAutomatically = false
+        let provider = TestPromoProvider(result: .contentAvailable, completionDelay: 0.04)
+        let started = expectation(description: "Old provider fetch starts")
+        provider.onFetch = { started.fulfill() }
+        view.providers = [provider]
+        view.reload()
+        wait(for: [started], timeout: 1)
+        view.providers = []
+        let settled = expectation(description: "Removed provider returns")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { settled.fulfill() }
+        wait(for: [settled], timeout: 1)
+        XCTAssertNil(view.currentProvider, "A provider no longer assigned must not resolve")
+        XCTAssertNil(view.contentView)
+    }
+}

@@ -128,6 +128,13 @@ public class PromoView: UIControl {
     @objc public var providers: [PromoProvider]? {
         get { providerCoordinator.providers }
         set {
+            if providerCoordinator.isFetching,
+               providerCoordinator.queryingProvider.map({ querying in
+                   newValue?.contains(where: { $0 === querying }) == true
+               }) != true {
+                providerCoordinator.cancelFetch()
+                setIsLoading(false)
+            }
             providerCoordinator.providers = newValue
             if let previous = providerCoordinator.currentProvider,
                newValue?.contains(where: { $0 === previous }) != true {
