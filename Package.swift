@@ -23,6 +23,7 @@ let package = Package(
                 "ContentViews/PromoNativeAdContentView.swift",
                 "Providers/PromoBannerAdProvider.swift",
                 "Providers/PromoNativeAdProvider.swift",
+                "Internal/PromoNativeAdActionButton.swift",
             ],
             linkerSettings: [
                 .linkedFramework("UIKit"),
@@ -47,9 +48,14 @@ let package = Package(
                 "Providers/PromoCloudEventProvider.swift",
                 "Providers/PromoNetworkTestProvider.swift",
                 "Helpers",
-                "Internal",
+                "Internal/PromoCloudEventDataSource.swift",
+                "Internal/PromoCloudKitDataSource.swift",
+                "Internal/PromoPathMonitor.swift",
+                "Internal/PromoPathMonitoring.swift",
+                "Internal/PromoProviderCoordinator.swift",
             ],
             sources: [
+                "Internal/PromoNativeAdActionButton.swift",
                 "ContentViews/PromoNativeAdContentView.swift",
                 "Providers/PromoBannerAdProvider.swift",
                 "Providers/PromoNativeAdProvider.swift",
@@ -63,7 +69,11 @@ let package = Package(
         ),
         .testTarget(
             name: "PromoKitTests",
-            dependencies: ["PromoKit"],
+            dependencies: [
+                "PromoKit",
+                "PromoKitGoogleAds",
+                .product(name: "GoogleMobileAds", package: "swift-package-manager-google-mobile-ads"),
+            ],
             path: "PromoKitTests"
         ),
     ]
