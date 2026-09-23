@@ -62,10 +62,8 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
 
         // Perform the decoding and resizing on this promo view's background queue
         let scale = promoView.traitCollection.displayScale
-        let operation = BlockOperation()
-        operation.addExecutionBlock {
-            guard !operation.isCancelled,
-                  let appIconName = self.appIconName,
+        promoView.backgroundQueue.addOperation {
+            guard let appIconName = self.appIconName,
                   let appIconURL = PromoFileManager.urlForAppIcon(named: appIconName, targetDimension: self.iconDimension),
                   let appIcon = UIImage(contentsOfFile: appIconURL.path)
             else {
@@ -82,7 +80,6 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
                 resultHandler(.contentAvailable)
             }
         }
-        promoView.backgroundQueue.addOperation(operation)
     }
 
     public func contentView(for promoView: PromoView) -> PromoContentView {

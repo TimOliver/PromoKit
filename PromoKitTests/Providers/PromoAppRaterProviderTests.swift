@@ -113,3 +113,20 @@ final class PromoAppRaterProviderTests: XCTestCase {
         return nil
     }
 }
+
+
+extension PromoAppRaterProviderTests {
+    func testAppRaterReleasedAfterCompletedFetch() {
+        weak var weakProvider: PromoAppRaterProvider?
+        let finished = expectation(description: "Icon lookup completes")
+        autoreleasepool {
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+            let provider = PromoAppRaterProvider(appIconName: "AuditMissingIcon")
+            weakProvider = provider
+            provider.fetchNewContent(for: view) { _ in finished.fulfill() }
+            wait(for: [finished], timeout: 1)
+            view.backgroundQueue.waitUntilAllOperationsAreFinished()
+        }
+        XCTAssertNil(weakProvider, "Finished BlockOperation must release the provider")
+    }
+}
