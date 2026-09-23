@@ -289,3 +289,16 @@ private final class FakeNativeAd: NativeAd {
     override var images: [NativeAdImage]? { fakeImages }
     override var mediaContent: MediaContent { fakeMediaContent }
 }
+
+
+extension PromoNativeAdContentViewTests {
+    func testReuseClearsGoogleNativeAdRegistration() throws {
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 360, height: 420))
+        let content = PromoNativeAdContentView(promoView: promo)
+        content.nativeAd = FakeNativeAd(aspectRatio: 1.4, headline: "Old creative", callToAction: "Install")
+        let inner = try XCTUnwrap(content.subviews.compactMap { $0 as? PromoNativeAdView }.first)
+        XCTAssertNotNil(inner.nativeAd)
+        content.prepareForReuse()
+        XCTAssertNil(inner.nativeAd, "The SDK ad registration must be cleared when returning a view to the pool")
+    }
+}

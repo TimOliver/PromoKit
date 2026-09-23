@@ -149,6 +149,7 @@ final public class PromoNativeAdView: NativeAdView {
     }
 
     public func reset() {
+        self.nativeAd = nil
         // Detach the views from the Google references until the next layout pass
         self.headlineView = nil
         self.bodyView = nil
@@ -216,6 +217,7 @@ final public class PromoNativeAdView: NativeAdView {
 
     public func configureContentViews(with nativeAd: NativeAd?) {
         guard let nativeAd else {
+            reset()
             return
         }
 
