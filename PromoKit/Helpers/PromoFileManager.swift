@@ -57,16 +57,21 @@ public class PromoFileManager {
                   let scaleString = droppedName.components(separatedBy: "@").last?.components(separatedBy: "x").first, let scale = Int(scaleString)
             else { continue }
 
-            // We have two goals here. To find the app icon with a larger dimension that what was requested.
-            // But failing that, the largest one we have available.
+            guard size > 0, scale > 0 else { continue }
 
-            // If we're a smaller value than the dimension, but we're bigger than the last saved value, save.
-            // Or, if we're bigger than the dimension, and we're smaller than the last saved value (if it's not 0), also save.
-            if (size < dimension && size >= appIcon.size) ||
-                (size > dimension && (appIcon.size == 0 || size <= appIcon.size)) {
-                if size == appIcon.size, appIcon.scale > scale { continue } // If the sizes match, upgrade to the highest scale
-                appIcon = (name: fileName, size: size, scale: scale)
+            // Prefer the smallest icon that meets the requested size. If none
+            // does, use the largest available icon, independent of file order.
+            let preferred: Bool
+            if appIcon.size == 0 {
+                preferred = true
+            } else if size == appIcon.size {
+                preferred = scale > appIcon.scale
+            } else if size >= dimension {
+                preferred = appIcon.size < dimension || size < appIcon.size
+            } else {
+                preferred = appIcon.size < dimension && size > appIcon.size
             }
+            if preferred { appIcon = (name: fileName, size: size, scale: scale) }
         }
 
         guard !appIcon.name.isEmpty else { return nil }

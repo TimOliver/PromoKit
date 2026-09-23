@@ -5,10 +5,6 @@ import XCTest
 final class PromoFileManagerTests: XCTestCase {
 
     func testFileManagerSelectsLargestIconBelowTargetDimension() throws {
-        // Note: when candidates straddle the target dimension, the production algorithm is
-        // order-dependent (filesystem iteration that returns an above-target icon first
-        // can prevent below-target icons from being chosen). To keep this test deterministic
-        // we use only below-target candidates. The straddling case is flagged separately.
         try withSyntheticIconBundle(["AppIcon20x20@2x.png",
                                      "AppIcon40x40@2x.png",
                                      "AppIcon76x76@2x.png"]) { _ in
@@ -54,4 +50,34 @@ final class PromoFileManagerTests: XCTestCase {
 
         try body(tempDir)
     }
+}
+
+
+extension PromoFileManagerTests {
+    func testExactSizeAppIconIsSelected() throws {
+        try withSyntheticIconBundle(["AppIcon76x76@2x.png"]) { _ in
+            XCTAssertEqual(PromoFileManager.urlForAppIcon(named: "AppIcon", targetDimension: 76)?.lastPathComponent,
+                           "AppIcon76x76@2x.png", "The default requested size should select an exact match")
+        }
+    }
+}
+
+extension PromoFileManagerTests {
+    func testIconSelectionDoesNotDependOnDirectoryOrder() {
+        let original = PromoFileManager.fileManager
+        defer { PromoFileManager.fileManager = original }
+        for names in [["AppIcon60x60@3x.png", "AppIcon120x120@2x.png"],
+                      ["AppIcon120x120@2x.png", "AppIcon60x60@3x.png"]] {
+            let manager = OrderedIconFileManager()
+            manager.names = names
+            PromoFileManager.fileManager = manager
+            XCTAssertEqual(PromoFileManager.urlForAppIcon(named: "AppIcon", targetDimension: 76)?.lastPathComponent,
+                           "AppIcon120x120@2x.png")
+        }
+    }
+}
+
+private final class OrderedIconFileManager: FileManager, @unchecked Sendable {
+    var names: [String] = []
+    override func contentsOfDirectory(atPath path: String) throws -> [String] { names }
 }
