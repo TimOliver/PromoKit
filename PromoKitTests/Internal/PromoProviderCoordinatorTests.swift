@@ -708,3 +708,24 @@ private final class RefreshingMinimalPromoProvider: MinimalPromoProvider {
 
     var fetchRefreshInterval: TimeInterval { refreshInterval }
 }
+
+
+extension PromoProviderCoordinatorTests {
+    func testCancelledCooldownContinuationCannotReplaceNewFetch() {
+        let fixture = makeCoordinator()
+        let first = TestPromoProvider(result: .contentAvailable, fetchRefreshInterval: 60)
+        let staleNext = TestPromoProvider(result: .contentAvailable)
+        let replacement = TestPromoProvider(result: .contentAvailable)
+        fixture.coordinator.providers = [first, staleNext]
+        fixture.coordinator.providerFetchResults.setObject(NSNumber(value: PromoProviderFetchContentResult.contentAvailable.rawValue), forKey: first)
+        fixture.coordinator.providerFetchDates.setObject(NSDate(), forKey: first)
+        fixture.coordinator.fetchBestProvider()
+        fixture.coordinator.cancelFetch()
+        fixture.coordinator.providers = [replacement]
+        fixture.coordinator.fetchBestProvider()
+        waitForDelay(0.05, description: "Queued continuations settle")
+        XCTAssertEqual(staleNext.fetchCount, 0, "A continuation from a cancelled fetch must not run during its replacement")
+        XCTAssertEqual(replacement.fetchCount, 1)
+        XCTAssertTrue(fixture.coordinator.currentProvider === replacement)
+    }
+}

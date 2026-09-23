@@ -273,9 +273,11 @@ extension PromoProviderCoordinator {
         guard elapsedTime < timeInterval else { return false }
 
         if let nextProvider = nextValidProvider(after: provider) {
+            let generation = fetchGeneration
             DispatchQueue.main.async { [weak self] in
-                guard self?.isFetching ?? false else { return }
-                self?.startContentFetch(for: nextProvider)
+                guard let self, self.isFetching,
+                      self.fetchGeneration == generation else { return }
+                self.startContentFetch(for: nextProvider)
             }
         } else {
             cancelFetch()
