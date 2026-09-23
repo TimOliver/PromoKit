@@ -325,3 +325,30 @@ final class PromoCloudEventProviderTests: XCTestCase {
         try? FileManager.default.removeItem(at: cacheURL)
     }
 }
+
+extension PromoCloudEventProviderTests {
+    func testBackgroundCloudCallbacksResolveOnMainThread() {
+        let source = StubCloudEventDataSource()
+        source.callbackQueue = DispatchQueue(label: "PromoKitTests.CloudCallbacks")
+        let record = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "background-notice"))
+        record["title"] = "Background notice"
+        source.queryRecords = [record]
+        source.fetchRecord = record
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: source)
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let done = expectation(description: "Background callbacks resolve")
+        provider.fetchNewContent(for: view) { result in
+            XCTAssertTrue(Thread.isMainThread)
+            XCTAssertEqual(result, .contentAvailable)
+            XCTAssertEqual(provider.currentRecordName, "background-notice")
+            done.fulfill()
+        }
+        // Exercise host state access while background callbacks are arriving.
+        for _ in 0..<100 {
+            provider.setHiddenRecordNames(["unrelated-notice"])
+            XCTAssertEqual(provider.hiddenRecordNames, ["unrelated-notice"])
+            _ = provider.currentRecordName
+        }
+        wait(for: [done], timeout: 2)
+    }
+}

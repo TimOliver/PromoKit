@@ -5,6 +5,7 @@ import CloudKit
 /// `PromoCloudEventDataSource` stub that vends canned records and errors to exercise
 /// `PromoCloudEventProvider`'s fetch logic without touching CloudKit.
 final class StubCloudEventDataSource: PromoCloudEventDataSource {
+    var callbackQueue = DispatchQueue.main
     var queryRecords: [CKRecord] = []
     var queryError: Error?
     var fetchRecord: CKRecord?
@@ -19,9 +20,8 @@ final class StubCloudEventDataSource: PromoCloudEventDataSource {
                       completion: @escaping (Error?) -> Void) {
         queryCallCount += 1
         lastQuery = query
-        // Hop to the main queue to mirror the real CKDatabase behaviour where callbacks
-        // arrive asynchronously — provider code should remain correct under that ordering.
-        DispatchQueue.main.async {
+        // Tests can select a background queue, matching CloudKit callback delivery.
+        callbackQueue.async {
             for record in self.queryRecords { recordHandler(record) }
             completion(self.queryError)
         }
@@ -30,7 +30,7 @@ final class StubCloudEventDataSource: PromoCloudEventDataSource {
     func fetchRecord(withID recordID: CKRecord.ID,
                      completion: @escaping (CKRecord?, Error?) -> Void) {
         fetchCallCount += 1
-        DispatchQueue.main.async {
+        callbackQueue.async {
             completion(self.fetchRecord, self.fetchError)
         }
     }

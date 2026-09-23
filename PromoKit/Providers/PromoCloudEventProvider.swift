@@ -31,7 +31,7 @@ import UIKit
 /// This provider expects a specific record type to be configured inside this app's CloudKit instance.
 /// The record's parameters are:
 ///
-/// Name:   
+/// Name:
 ///         PromoEvent       (String) - The default name of the hosting record type. This value may be changed to allow multiple streams of events.
 /// Schema:
 ///         recordName       (Ref)    - (Queryable) The CloudKit metadata name for this record. Can be used to uniquely identify this record.
@@ -75,6 +75,9 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     // A cache for persisting record access dates and thumbnail images between sessions
     private let cache = PromoCache()
 
+    // All mutable provider state belongs to this queue. UIKit composition remains on the caller's main thread.
+    private let stateQueue = DispatchQueue(label: "dev.tim.PromoKit.CloudEventState")
+
     // The maximum display size for this provider's content view
     private let maximumSize: CGSize = CGSize(width: 450, height: 75)
 
@@ -90,25 +93,17 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     // The decoded thumbnail image for the current record, loaded from cache or downloaded
     private var thumbnail: UIImage?
 
-    /// Record names the host has chosen to hide. Records in this set are skipped
-    /// during eligibility, so the provider falls through to the next eligible event.
-    ///
-    /// Deliberately not `@objc`, unlike most other members here: the explicit
-    /// `setHiddenRecordNames(_:)` below already publishes the Objective-C-facing
-    /// `setHiddenRecordNames:` selector for this (since `Set<String>` doesn't
-    /// bridge). Annotating this property `@objc` too would hand the compiler a
-    /// second, synthesized claim on that same selector — a redeclaration error
-    /// that won't obviously point back to this line. Leave it Swift-only.
-    public private(set) var hiddenRecordNames: Set<String> = []
+    /// Record names the host has chosen to hide during eligibility checking.
+    /// Objective-C callers configure this set with `setHiddenRecordNames(_:)`.
+    public var hiddenRecordNames: Set<String> { stateQueue.sync { hiddenRecordNamesStorage } }
+    private var hiddenRecordNamesStorage: Set<String> = []
 
-    /// Objective-C reachable setter for `hiddenRecordNames` (Set doesn't bridge).
     @objc public func setHiddenRecordNames(_ recordNames: [String]) {
-        hiddenRecordNames = Set(recordNames)
+        stateQueue.sync { hiddenRecordNamesStorage = Set(recordNames) }
     }
 
-    /// The `recordName` of the record currently being displayed, or nil when nothing
-    /// is resolved. Lets a host identify (and then hide) the notice on screen.
-    @objc public var currentRecordName: String? { record?.recordID.recordName }
+    /// The record name currently resolved by this provider.
+    @objc public var currentRecordName: String? { stateQueue.sync { record?.recordID.recordName } }
 
     // MARK: - Init
 
@@ -135,14 +130,17 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping PromoProviderContentFetchHandler) {
-        self.resultHandler = resultHandler
-        record = nil
-        thumbnail = nil
-        fetchToken = UUID()
-        fetchLatestEventRecordID()
+        stateQueue.sync {
+            self.resultHandler = resultHandler
+            record = nil
+            thumbnail = nil
+            fetchToken = UUID()
+            fetchLatestEventRecordID()
+        }
     }
 
     public func contentView(for promoView: PromoView) -> PromoContentView {
+        let (record, thumbnail) = stateQueue.sync { (self.record, self.thumbnail) }
         let contentView = promoView.dequeueContentView(for: PromoTableListContentView.self)
         var headnote: String?
         if let urlString = record?[Constants.url] as? String, let url = URL(string: urlString) {
@@ -177,11 +175,15 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         // Hand the query off to the data source so production code talks to CloudKit while
         // tests can vend canned records without going through the network.
         dataSource.performQuery(query, desiredKeys: desiredKeys()) { [weak self] record in
-            guard self?.fetchToken == token else { return }
-            self?.didFetchRecordForQuery(record)
+            self?.stateQueue.async { [weak self] in
+                guard let self, self.fetchToken == token else { return }
+                self.didFetchRecordForQuery(record)
+            }
         } completion: { [weak self] error in
-            guard self?.fetchToken == token else { return }
-            self?.recordQueryDidComplete(error: error, token: token)
+            self?.stateQueue.async { [weak self] in
+                guard let self, self.fetchToken == token else { return }
+                self.recordQueryDidComplete(error: error, token: token)
+            }
         }
     }
 
@@ -198,7 +200,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// - Returns: Whether the object is eligible or not
     private func isRecordEligibleForDisplay(_ record: CKRecord) -> Bool {
         // Host-hidden notices never display again.
-        guard !hiddenRecordNames.contains(record.recordID.recordName) else { return false }
+        guard !hiddenRecordNamesStorage.contains(record.recordID.recordName) else { return false }
 
         guard isCurrentAppVersionEligible(for: record) else { return false }
 
@@ -296,21 +298,22 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     private func prepareRecordForDisplay(_ record: CKRecord, token: UUID?) {
         // Re-fetch the selected record so thumbnail changes on the server are reflected locally.
         dataSource.fetchRecord(withID: record.recordID) { [weak self] record, error in
-            guard self?.fetchToken == token else { return }
-            guard let self else { return }
+            self?.stateQueue.async { [weak self] in
+                guard let self, self.fetchToken == token else { return }
 
-            guard let record, error == nil else {
-                if let record = self.record {
-                    self.loadThumbnailFromCache(record: record)
+                guard let record, error == nil else {
+                    if let record = self.record {
+                        self.loadThumbnailFromCache(record: record)
+                    }
+                    self.handleResult(.contentAvailable)
+                    return
                 }
-                self.handleResult(.contentAvailable)
-                return
-            }
 
-            self.record = record
-            self.saveThumbnailToCache(record: record)
-            self.loadThumbnailFromCache(record: record)
-            self.handleResult(.contentAvailable)
+                self.record = record
+                self.saveThumbnailToCache(record: record)
+                self.loadThumbnailFromCache(record: record)
+                self.handleResult(.contentAvailable)
+            }
         }
     }
 
