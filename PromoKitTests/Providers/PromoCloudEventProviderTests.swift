@@ -352,3 +352,31 @@ extension PromoCloudEventProviderTests {
         wait(for: [done], timeout: 2)
     }
 }
+
+extension PromoCloudEventProviderTests {
+    func testDisplayedNoticeIdentitySurvivesReplacementFetch() {
+        let source = StubCloudEventDataSource()
+        let first = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "displayed-notice"))
+        first["title"] = "Displayed notice"
+        source.queryRecords = [first]
+        source.fetchRecord = first
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: source)
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        _ = provider.contentView(for: view)
+        let next = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "replacement-notice"))
+        next["title"] = "Replacement"
+        source.queryRecords = [next]
+        source.fetchRecord = next
+        let resolved = expectation(description: "Replacement resolves")
+        provider.fetchNewContent(for: view) { result in
+            XCTAssertEqual(result, .contentAvailable)
+            resolved.fulfill()
+        }
+        XCTAssertEqual(provider.currentRecordName, "displayed-notice")
+        wait(for: [resolved], timeout: 1)
+        XCTAssertEqual(provider.currentRecordName, "displayed-notice", "Resolution alone has not replaced the visible content")
+        _ = provider.contentView(for: view)
+        XCTAssertEqual(provider.currentRecordName, "replacement-notice")
+    }
+}

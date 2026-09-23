@@ -89,6 +89,8 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     // The CloudKit record selected for display after a successful query
     private var record: CKRecord?
+    private var resolvedRecordName: String?
+    private var displayedRecordName: String?
 
     // The decoded thumbnail image for the current record, loaded from cache or downloaded
     private var thumbnail: UIImage?
@@ -102,8 +104,11 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         stateQueue.sync { hiddenRecordNamesStorage = Set(recordNames) }
     }
 
-    /// The record name currently resolved by this provider.
-    @objc public var currentRecordName: String? { stateQueue.sync { record?.recordID.recordName } }
+    /// The displayed notice's identity, preserved while a replacement loads.
+    /// Before the first display, returns the first fully resolved notice's identity.
+    @objc public var currentRecordName: String? {
+        stateQueue.sync { displayedRecordName ?? resolvedRecordName }
+    }
 
     // MARK: - Init
 
@@ -133,6 +138,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         stateQueue.sync {
             self.resultHandler = resultHandler
             record = nil
+            resolvedRecordName = nil
             thumbnail = nil
             fetchToken = UUID()
             fetchLatestEventRecordID()
@@ -140,7 +146,10 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     }
 
     public func contentView(for promoView: PromoView) -> PromoContentView {
-        let (record, thumbnail) = stateQueue.sync { (self.record, self.thumbnail) }
+        let (record, thumbnail): (CKRecord?, UIImage?) = stateQueue.sync {
+            displayedRecordName = self.record?.recordID.recordName
+            return (self.record, self.thumbnail)
+        }
         let contentView = promoView.dequeueContentView(for: PromoTableListContentView.self)
         var headnote: String?
         if let urlString = record?[Constants.url] as? String, let url = URL(string: urlString) {
@@ -341,6 +350,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// - Parameter result: The final content discovery result
     private func handleResult(_ result: PromoProviderFetchContentResult) {
         guard let handler = resultHandler else { return }
+        resolvedRecordName = result == .contentAvailable ? record?.recordID.recordName : nil
         resultHandler = nil
         DispatchQueue.main.async {
             handler(result)
