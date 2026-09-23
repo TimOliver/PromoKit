@@ -280,3 +280,18 @@ extension PromoViewDisplayTests {
         XCTAssertTrue(keys.isEmpty, "Initial loading animation is disabled, but spinner has animations: \(keys)")
     }
 }
+
+
+extension PromoViewDisplayTests {
+    func testHiddenPromoDoesNotInterceptCloseButtonTouches() throws {
+        let parent = UIView(frame: CGRect(x: 0, y: 0, width: 500, height: 500))
+        let promo = PromoView(frame: CGRect(x: 20, y: 100, width: 240, height: 80))
+        parent.addSubview(promo)
+        promo.showCloseButton = true
+        promo.layoutIfNeeded()
+        let close = try XCTUnwrap(promo.subviews.compactMap { $0 as? UIButton }.first)
+        let point = promo.convert(CGPoint(x: close.frame.midX, y: close.frame.midY), to: parent)
+        promo.isHidden = true
+        XCTAssertTrue(parent.hitTest(point, with: nil) === parent, "An invisible promo must not capture the close button hit area")
+    }
+}

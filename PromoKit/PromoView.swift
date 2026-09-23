@@ -848,6 +848,7 @@ extension PromoView {
     }
 
     public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard !isHidden, alpha > 0.01, isUserInteractionEnabled else { return nil }
         if let closeButton, !closeButton.isHidden {
             let expandedFrame = closeButton.frame.insetBy(dx: -10, dy: -10)
             if expandedFrame.contains(point) {
