@@ -256,3 +256,23 @@ final class PromoViewResolutionTests: XCTestCase {
         XCTAssertEqual(fallbackProvider.fetchCount, 1)
     }
 }
+
+
+extension PromoViewResolutionTests {
+    func testReloadFromResolutionCallbackSurvives() {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let first = TestPromoProvider(result: .contentAvailable)
+        let second = TestPromoProvider(result: .contentAvailable)
+        let delegate = PromoViewDelegateSpy()
+        view.delegate = delegate
+        delegate.onResolve = { provider in
+            if provider === first { view.providers = [second] }
+        }
+        view.providers = [first]
+        let settled = expectation(description: "Resolve callbacks settle")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { settled.fulfill() }
+        wait(for: [settled], timeout: 1)
+        XCTAssertEqual(second.fetchCount, 1, "Delegate-triggered reload must not be cancelled by the old success callback")
+        XCTAssertTrue(view.currentProvider === second)
+    }
+}

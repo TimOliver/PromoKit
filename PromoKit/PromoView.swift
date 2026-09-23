@@ -309,6 +309,7 @@ public class PromoView: UIControl {
         // Coordinator changes
         providerCoordinator.providerUpdatedHandler = { [weak self] provider in
             guard let self else { return }
+            let generation = self.providerCoordinator.fetchGeneration
             // Report the resolution outcome before content is composed so hosts can decide
             // whether to attach the view (or keep it attached) before `didUpdateProvider`.
             if let provider {
@@ -320,6 +321,8 @@ public class PromoView: UIControl {
                 self.delegate?.promoViewDidFailToResolveProvider?(self)
                 self.delegate?.promoViewProviderFetchFailed?(self)
             }
+            guard self.providerCoordinator.fetchGeneration == generation else { return }
+            if let provider, self.currentProvider !== provider { return }
             self.providerDidChange(provider)
         }
         providerCoordinator.providerFetchFailedHandler = { [weak self] in
@@ -593,8 +596,12 @@ extension PromoView {
         self.contentView = provider.contentView(for: self)
         self.containerView.addSubview(contentView!)
 
-        // Inform the delegate a new provider was fetched
+        // Delegates can start a new reload or resize while handling this callback.
+        let generation = providerCoordinator.fetchGeneration
+        let displayedContent = contentView
         delegate?.promoView?(self, didUpdateProvider: provider)
+        guard providerCoordinator.fetchGeneration == generation,
+              currentProvider === provider, contentView === displayedContent else { return }
 
         // Layout the content view
         let contentPadding = contentPadding(for: provider)

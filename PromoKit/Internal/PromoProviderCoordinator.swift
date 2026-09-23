@@ -51,6 +51,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     /// Track fetching state.
     private(set) public var isFetching = false
 
+    /// Identifies the reload, including work between individual provider requests.
+    private(set) var fetchGeneration = UUID()
+
     // MARK: Private
 
     // The network connection observer (injected for tests; defaults to a real path monitor)
@@ -116,7 +119,7 @@ extension PromoProviderCoordinator {
     /// Start the process of looping through each provider,
     /// and see which one is most appropriate at the moment.
     internal func fetchBestProvider(from startingProvider: PromoProvider? = nil) {
-        // If there
+        cancelFetch()
         guard let provider = nextValidProvider(from: startingProvider) else {
             providerUpdatedHandler?(nil)
             return
@@ -133,6 +136,7 @@ extension PromoProviderCoordinator {
     /// Any late callbacks from the canceled provider are ignored.
     internal func cancelFetch() {
         isFetching = false
+        fetchGeneration = UUID()
         invalidateActiveFetch()
     }
 
@@ -198,8 +202,8 @@ extension PromoProviderCoordinator {
         // If this provider reported it has valid content, lets make it the current provider and stop here
         if result == .contentAvailable {
             currentProvider = provider
-            providerUpdatedHandler?(provider)
             cancelFetch()
+            providerUpdatedHandler?(provider)
             return
         }
 
