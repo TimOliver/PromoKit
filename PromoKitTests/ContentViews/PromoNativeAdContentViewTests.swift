@@ -346,3 +346,22 @@ extension PromoNativeAdContentViewTests {
         XCTAssertEqual(results, [.fetchRequestFailed])
     }
 }
+
+
+extension PromoNativeAdContentViewTests {
+    func testNoImageCreativeDoesNotKeepPreviousBackground() {
+        let provider = PromoNativeAdProvider(adUnitID: "audit-native")
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 360, height: 420))
+        provider.didMoveToPromoView(promo)
+        provider.fetchNewContent(for: promo) { _ in }
+        let loader = activeLoader(for: provider)
+        let image = makePromoTestImage(size: CGSize(width: 40, height: 40), color: .red)
+        provider.adLoader(loader, didReceive: FakeNativeAd(aspectRatio: 1, headline: "Old image", images: [NativeAdImage(image: image)]))
+        waitForBackgroundQueueToDrain(promo)
+        provider.fetchNewContent(for: promo) { _ in }
+        let nextLoader = activeLoader(for: provider)
+        provider.adLoader(nextLoader, didReceive: FakeNativeAd(aspectRatio: 1, headline: "New image-free creative"))
+        let content = provider.contentView(for: promo) as? PromoNativeAdContentView
+        XCTAssertNil(content?.mediaBackgroundImage, "New creative must not display the previous advertiser's background")
+    }
+}

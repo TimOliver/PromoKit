@@ -234,6 +234,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     private func makeBlurredMediaImageIfAvailable(for nativeAd: NativeAd, token: UUID,
                                                  completion: @escaping () -> Void) {
         guard let image = nativeAd.images?.first?.image else {
+            mediaBackgroundImage = nil
             completion()
             return
         }
