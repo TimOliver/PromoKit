@@ -55,6 +55,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
 
     /// The Google banner view, created once and reused across fetches
     private let adView = BannerView()
+    private var hostingPadding = UIEdgeInsets.zero
 
     // Store the result handler so we can call it when the ad has returned a value
     private var resultHandler: PromoProviderContentFetchHandler?
@@ -82,7 +83,9 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     /// invalidate the current ad. `AdSize` isn't `Equatable`, so compare
     /// the underlying `size` (which uniquely identifies banner buckets).
     public func shouldReloadForSizeChange(from oldSize: CGSize, to newSize: CGSize) -> Bool {
-        return bannerSizeFor(promoSize: oldSize).size != bannerSizeFor(promoSize: newSize).size
+        let oldContentSize = CGRect(origin: .zero, size: oldSize).inset(by: hostingPadding).size
+        let newContentSize = CGRect(origin: .zero, size: newSize).inset(by: hostingPadding).size
+        return bannerSizeFor(promoSize: oldContentSize).size != bannerSizeFor(promoSize: newContentSize).size
     }
 
     public func fetchNewContent(for promoView: PromoView,
@@ -97,20 +100,14 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         adView.adUnitID = adUnitID
         adView.delegate = self
         adView.rootViewController = promoView.rootViewController
-        adView.adSize = bannerSizeFor(promoSize: promoView.frame.size)
+        hostingPadding = promoView.defaultContentPadding
+        adView.adSize = bannerSizeFor(promoSize: promoView.bounds.inset(by: hostingPadding).size)
         adView.load(Request())
         self.resultHandler = resultHandler
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
-        let defaultSize = CGSize(width: 320, height: 50)
-        guard let superview = promoView.superview else {
-            return defaultSize
-        }
-        if supportedBannerSizes.contains(.full) && superview.frame.width >= 468 {
-            return CGSize(width: 468, height: 60)
-        }
-        return defaultSize
+        bannerSizeFor(promoSize: fittingSize).size
     }
 
     public func cornerRadius(for promoView: PromoView, with contentPadding: UIEdgeInsets) -> CGFloat {

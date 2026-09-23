@@ -31,7 +31,7 @@ final class PromoBannerAdProviderTests: XCTestCase {
 
         XCTAssertEqual(provider.preferredContentSize(fittingSize: CGSize(width: 600, height: 200),
                                                      for: promoView),
-                       CGSize(width: 320, height: 50))
+                       CGSize(width: 468, height: 60))
 
         let hostView = UIView(frame: CGRect(x: 0, y: 0, width: 500, height: 200))
         hostView.addSubview(promoView)
@@ -84,5 +84,17 @@ final class PromoBannerAdProviderTests: XCTestCase {
         failureProvider.bannerView(BannerView(),
                                    didFailToReceiveAdWithError: NSError(domain: "PromoKitTests", code: 1))
         wait(for: [failure], timeout: 1.0)
+    }
+}
+
+
+extension PromoBannerAdProviderTests {
+    func testBannerSizingRespectsFittingWidth() {
+        let provider = PromoBannerAdProvider(adUnitID: "audit-banner")
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 50))
+        let parent = UIView(frame: CGRect(x: 0, y: 0, width: 768, height: 1024))
+        parent.addSubview(view)
+        let preferred = provider.preferredContentSize(fittingSize: CGSize(width: 320, height: 100), for: view)
+        XCTAssertEqual(preferred, CGSize(width: 320, height: 50), "A narrow column in a wide superview must get a fitting banner")
     }
 }
