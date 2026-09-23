@@ -29,3 +29,40 @@ final class PromoCloudKitDataSourceTests: XCTestCase {
         dataSource.fetchRecord(withID: CKRecord.ID(recordName: "missing")) { _, _ in }
     }
 }
+
+extension PromoCloudKitDataSourceTests {
+    func testQueryTraversesEveryPageBeforeCompleting() {
+        var pages: [Int] = []
+        var records: [String] = []
+        var completionCount = 0
+        PromoCloudKitDataSource.fetchAllPages(startingAt: nil as Int?, fetchPage: { cursor, receive, finish in
+            let page = cursor ?? 0
+            pages.append(page)
+            XCTAssertEqual(completionCount, 0)
+            receive(CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: "page-\(page)")))
+            finish(.success(page < 2 ? page + 1 : nil))
+        }, recordHandler: { records.append($0.recordID.recordName) }, completion: { error in
+            XCTAssertNil(error)
+            completionCount += 1
+        })
+        XCTAssertEqual(pages, [0, 1, 2])
+        XCTAssertEqual(records, ["page-0", "page-1", "page-2"])
+        XCTAssertEqual(completionCount, 1)
+    }
+
+    func testQueryPropagatesContinuationFailureExactlyOnce() {
+        var pages: [Int] = []
+        var completionCount = 0
+        PromoCloudKitDataSource.fetchAllPages(startingAt: nil as Int?, fetchPage: { cursor, _, finish in
+            let page = cursor ?? 0
+            pages.append(page)
+            if page == 0 { finish(.success(1)) }
+            else { finish(.failure(NSError(domain: "CloudPagination", code: 42))) }
+        }, recordHandler: { _ in XCTFail("No records supplied") }, completion: { error in
+            XCTAssertEqual((error as NSError?)?.code, 42)
+            completionCount += 1
+        })
+        XCTAssertEqual(pages, [0, 1])
+        XCTAssertEqual(completionCount, 1)
+    }
+}

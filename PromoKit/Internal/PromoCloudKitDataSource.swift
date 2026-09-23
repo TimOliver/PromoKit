@@ -39,22 +39,37 @@ internal final class PromoCloudKitDataSource: PromoCloudEventDataSource {
                       desiredKeys: [String],
                       recordHandler: @escaping (CKRecord) -> Void,
                       completion: @escaping (Error?) -> Void) {
-        let operation = CKQueryOperation(query: query)
-        operation.desiredKeys = desiredKeys
+        Self.fetchAllPages(startingAt: nil as CKQueryOperation.Cursor?, fetchPage: { cursor, receiveRecord, finishPage in
+            let operation = cursor.map { CKQueryOperation(cursor: $0) } ?? CKQueryOperation(query: query)
+            operation.desiredKeys = desiredKeys
+            operation.recordMatchedBlock = { _, result in
+                if case .success(let record) = result { receiveRecord(record) }
+            }
+            operation.queryResultBlock = finishPage
+            self.database.add(operation)
+        }, recordHandler: recordHandler, completion: completion)
+    }
 
-        // A per-record failure is skipped rather than surfaced, matching the old
-        // recordFetchedBlock, which simply never fired for a record it couldn't decode.
-        // Anything fatal to the query still arrives through the result block below.
-        operation.recordMatchedBlock = { _, result in
-            if case .success(let record) = result { recordHandler(record) }
-        }
-        operation.queryResultBlock = { result in
+    /// The cursor is opaque; keeping page traversal independent of its representation
+    /// lets tests exercise continuation and error handling without a live database.
+    static func fetchAllPages<Cursor>(
+        startingAt cursor: Cursor?,
+        fetchPage: @escaping (Cursor?, @escaping (CKRecord) -> Void,
+                              @escaping (Result<Cursor?, Error>) -> Void) -> Void,
+        recordHandler: @escaping (CKRecord) -> Void,
+        completion: @escaping (Error?) -> Void
+    ) {
+        fetchPage(cursor, recordHandler) { result in
             switch result {
-            case .success: completion(nil)
-            case .failure(let error): completion(error)
+            case .success(let nextCursor?):
+                fetchAllPages(startingAt: nextCursor, fetchPage: fetchPage,
+                              recordHandler: recordHandler, completion: completion)
+            case .success(nil):
+                completion(nil)
+            case .failure(let error):
+                completion(error)
             }
         }
-        database.add(operation)
     }
 
     func fetchRecord(withID recordID: CKRecord.ID,
