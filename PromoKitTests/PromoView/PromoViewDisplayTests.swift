@@ -311,3 +311,39 @@ extension PromoViewDisplayTests {
         XCTAssertEqual(provider.cancelTapCount, 1)
     }
 }
+
+
+extension PromoViewDisplayTests {
+    func testProviderBackgroundColorIsApplied() {
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let delegate = PromoViewDelegateSpy()
+        promo.delegate = delegate
+        promo.providers = [AuditStyledProvider()]
+        wait(for: [delegate.updateExpectation], timeout: 1)
+        XCTAssertEqual(promo.backgroundView.backgroundColor, UIColor.red, "The provider protocol's backgroundColor must be honoured")
+    }
+}
+
+private final class AuditStyledProvider: NSObject, PromoProvider {
+    var backgroundColor: UIColor? { .red }
+    func cornerRadius(for promoView: PromoView, with contentPadding: UIEdgeInsets) -> CGFloat { 30 }
+    func fetchNewContent(for promoView: PromoView, with resultHandler: @escaping PromoProviderContentFetchHandler) { resultHandler(.contentAvailable) }
+    func contentView(for promoView: PromoView) -> PromoContentView { promoView.dequeueContentView(for: TestPromoContentView.self) }
+}
+
+extension PromoViewDisplayTests {
+    func testProviderBackgroundColorRestoresHostDefault() {
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        promo.backgroundView.backgroundColor = .blue
+        let first = PromoViewDelegateSpy()
+        promo.delegate = first
+        promo.providers = [AuditStyledProvider()]
+        wait(for: [first.updateExpectation], timeout: 1)
+        XCTAssertEqual(promo.backgroundView.backgroundColor, .red)
+        let second = PromoViewDelegateSpy()
+        promo.delegate = second
+        promo.providers = [TestPromoProvider(result: .contentAvailable)]
+        wait(for: [second.updateExpectation], timeout: 1)
+        XCTAssertEqual(promo.backgroundView.backgroundColor, .blue)
+    }
+}

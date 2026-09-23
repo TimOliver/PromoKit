@@ -110,6 +110,9 @@ public class PromoView: UIControl {
     /// The background view displayed behind the content view
     @objc public let backgroundView: UIView = UIView()
 
+    private var defaultBackgroundColor: UIColor?
+    private var appliedProviderBackgroundColor: UIColor?
+
     /// When providers don't specify their own insetting, the content insetting of the promo view is used instead
     /// The default value is the view's `layoutMargins`
     public var defaultContentPadding: UIEdgeInsets = .zero
@@ -514,6 +517,13 @@ extension PromoView {
     /// Called by the coordinator when a new provider has been selected or cleared.
     /// Reclaims the previous content view and displays the new one, if any.
     private func providerDidChange(_ provider: PromoProvider?) {
+        // Preserve direct host customization of the public background view.
+        if appliedProviderBackgroundColor == nil || backgroundView.backgroundColor != appliedProviderBackgroundColor {
+            defaultBackgroundColor = backgroundView.backgroundColor
+        }
+        appliedProviderBackgroundColor = provider?.backgroundColor ?? nil
+        backgroundView.backgroundColor = appliedProviderBackgroundColor ?? defaultBackgroundColor
+
         // Display the new content
         if let provider {
             reclaimCurrentContentView()
