@@ -39,10 +39,7 @@ final class PromoNativeAdContentViewTests: XCTestCase {
             failed.fulfill()
         }
 
-        let loader = AdLoader(adUnitID: "test-native",
-                              rootViewController: nil,
-                              adTypes: [.native],
-                              options: nil)
+        let loader = activeLoader(for: provider)
         provider.adLoader(loader,
                           didFailToReceiveAdWithError: NSError(domain: "PromoKitTests", code: 1))
 
@@ -89,10 +86,8 @@ final class PromoNativeAdContentViewTests: XCTestCase {
     func testNativeProviderReceivesFakeNativeAdAndPublishesBlurredImage() {
         let provider = PromoNativeAdProvider(adUnitID: "test-native")
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 300, height: 300))
-        let loader = AdLoader(adUnitID: "test-native",
-                              rootViewController: nil,
-                              adTypes: [.native],
-                              options: nil)
+        provider.fetchNewContent(for: promoView) { _ in }
+        let loader = activeLoader(for: provider)
         let image = makePromoTestImage(size: CGSize(width: 80, height: 80), color: .systemPink)
         let nativeAd = FakeNativeAd(aspectRatio: 1.0,
                                     headline: "Test mode: Promo",
@@ -300,5 +295,54 @@ extension PromoNativeAdContentViewTests {
         XCTAssertNotNil(inner.nativeAd)
         content.prepareForReuse()
         XCTAssertNil(inner.nativeAd, "The SDK ad registration must be cleared when returning a view to the pool")
+    }
+}
+
+
+extension PromoNativeAdContentViewTests {
+    func testOldBlurDoesNotCompleteReplacementRequest() {
+        let provider = PromoNativeAdProvider(adUnitID: "audit-native")
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 360, height: 420))
+        provider.didMoveToPromoView(promo)
+        promo.backgroundQueue.isSuspended = true
+        defer { promo.backgroundQueue.isSuspended = false }
+        provider.fetchNewContent(for: promo) { _ in }
+        let loaderField = Mirror(reflecting: provider).children.first { $0.label == "adLoader" }!.value
+        let loader = Mirror(reflecting: loaderField).children.first!.value as! AdLoader
+        loader.delegate = nil // Hold SDK completion; deliver the old successful load below.
+        let oldImage = makePromoTestImage(size: CGSize(width: 40, height: 40), color: .red)
+        provider.adLoader(loader, didReceive: FakeNativeAd(aspectRatio: 1, headline: "Old request", images: [NativeAdImage(image: oldImage)]))
+        var replacementResults: [PromoProviderFetchContentResult] = []
+        provider.fetchNewContent(for: promo) { replacementResults.append($0) }
+        let replacementField = Mirror(reflecting: provider).children.first { $0.label == "adLoader" }!.value
+        let replacementLoader = Mirror(reflecting: replacementField).children.first!.value as! AdLoader
+        replacementLoader.delegate = nil // The replacement request is still outstanding.
+        promo.backgroundQueue.isSuspended = false
+        waitForBackgroundQueueToDrain(promo)
+        XCTAssertFalse(replacementResults.contains(.contentAvailable), "Old image processing must not resolve a new request with old content")
+    }
+}
+
+extension PromoNativeAdContentViewTests {
+    /// Hold SDK responses so delegate outcomes can be delivered deterministically.
+    private func activeLoader(for provider: PromoNativeAdProvider) -> AdLoader {
+        let field = Mirror(reflecting: provider).children.first { $0.label == "adLoader" }!.value
+        let loader = Mirror(reflecting: field).children.first!.value as! AdLoader
+        loader.delegate = nil
+        return loader
+    }
+
+    func testStaleNativeLoaderCannotCompleteReplacementRequest() {
+        let provider = PromoNativeAdProvider(adUnitID: "test-native")
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 300, height: 300))
+        provider.fetchNewContent(for: view) { _ in XCTFail("Old request should be superseded") }
+        let oldLoader = activeLoader(for: provider)
+        var results: [PromoProviderFetchContentResult] = []
+        provider.fetchNewContent(for: view) { results.append($0) }
+        let newLoader = activeLoader(for: provider)
+        provider.adLoader(oldLoader, didFailToReceiveAdWithError: NSError(domain: "test", code: 1))
+        XCTAssertTrue(results.isEmpty)
+        provider.adLoader(newLoader, didFailToReceiveAdWithError: NSError(domain: "test", code: 1))
+        XCTAssertEqual(results, [.fetchRequestFailed])
     }
 }

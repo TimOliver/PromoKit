@@ -44,6 +44,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
     /// The loading object responsible for loading ads. Re-created on each fetch to discard stale callbacks.
     private var adLoader: AdLoader?
+    private var fetchToken = UUID()
 
     /// The most recently loaded native ad returned by the ad loader
     private var nativeAd: NativeAd?
@@ -91,6 +92,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
                                 with resultHandler: @escaping PromoProviderContentFetchHandler) {
         // Save a reference to the result handler so we can call it when the Google ad delegate returns
         self.resultHandler = resultHandler
+        fetchToken = UUID()
 
         // Discard any in-flight loader so its callbacks can't reach us
         adLoader?.delegate = nil
@@ -187,21 +189,22 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     /// If no handler is present (i.e. this is a subsequent reload), refreshes the content view instead.
     private func didReceiveResult(_ result: Result<Void, Error>) {
         // Inform the promo view of the results
-        if resultHandler != nil {
+        if let handler = resultHandler {
+            resultHandler = nil
             switch result {
             case .success:
-                self.resultHandler?(.contentAvailable)
+                handler(.contentAvailable)
             case .failure(let error):
                 // See PromoBannerAdProvider: .fetchRequestFailed erases the reason,
                 // and the reason is the only useful part when ads stop serving.
                 NSLog("[PromoKit] Native ad failed to load (unit %@): %@",
                       adUnitID, error.localizedDescription)
-                self.resultHandler?(.fetchRequestFailed)
+                handler(.fetchRequestFailed)
             }
-            self.resultHandler = nil
         } else {
-            // This was a subsequent reload, so just refresh the content view
-            if case .success = result { promoView?.reloadContentView() }
+            if case .success = result, promoView?.currentProvider === self {
+                promoView?.reloadContentView()
+            }
         }
     }
 
@@ -228,8 +231,9 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
     /// If the loaded ad has image content, generates a blurred background image on a background queue
     /// and calls the completion handler on the main thread once done (or immediately if no image is available).
-    private func makeBlurredMediaImageIfAvailable(completion: @escaping () -> Void) {
-        guard let image = nativeAd?.images?.first?.image else {
+    private func makeBlurredMediaImageIfAvailable(for nativeAd: NativeAd, token: UUID,
+                                                 completion: @escaping () -> Void) {
+        guard let image = nativeAd.images?.first?.image else {
             completion()
             return
         }
@@ -238,7 +242,8 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
             let blurredImage = PromoImageProcessing
                 .blurredImage(image, radius: 50, brightness: -0.05, fittingSize: fittingSize)
             OperationQueue.main.addOperation { [weak self] in
-                self?.mediaBackgroundImage = blurredImage
+                guard let self, self.fetchToken == token, self.nativeAd === nativeAd else { return }
+                self.mediaBackgroundImage = blurredImage
                 completion()
             }
         }
@@ -249,6 +254,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
 extension PromoNativeAdProvider: NativeAdLoaderDelegate {
     public func adLoader(_ adLoader: AdLoader, didReceive nativeAd: NativeAd) {
+        guard adLoader === self.adLoader else { return }
         // Skip if the same ad was sent down
         if nativeAd == self.nativeAd {
             didReceiveResult(.success(()))
@@ -259,12 +265,13 @@ extension PromoNativeAdProvider: NativeAdLoaderDelegate {
 
 
         // Generate a blurred background image to position behind the media view
-        makeBlurredMediaImageIfAvailable {
-            self.didReceiveResult(.success(()))
+        makeBlurredMediaImageIfAvailable(for: nativeAd, token: fetchToken) { [weak self] in
+            self?.didReceiveResult(.success(()))
         }
     }
 
     public func adLoader(_ adLoader: AdLoader, didFailToReceiveAdWithError error: Error) {
+        guard adLoader === self.adLoader else { return }
         didReceiveResult(.failure(error))
     }
 }
