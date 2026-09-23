@@ -729,3 +729,18 @@ extension PromoProviderCoordinatorTests {
         XCTAssertTrue(fixture.coordinator.currentProvider === replacement)
     }
 }
+
+
+extension PromoProviderCoordinatorTests {
+    func testReconnectRetriesWhenNoProviderWasResolved() {
+        let fixture = makeCoordinator(connected: false)
+        let online = InternetOnlyPromoProvider(result: .contentAvailable)
+        fixture.coordinator.providers = [online]
+        fixture.coordinator.fetchBestProvider()
+        XCTAssertNil(fixture.coordinator.currentProvider)
+        fixture.monitor.simulateConnectivityChange(true)
+        waitForDelay(0.05, description: "Connectivity recovery settles")
+        XCTAssertEqual(online.fetchCount, 1, "An initially offline online-only promo must retry on reconnect")
+        XCTAssertTrue(fixture.coordinator.currentProvider === online)
+    }
+}

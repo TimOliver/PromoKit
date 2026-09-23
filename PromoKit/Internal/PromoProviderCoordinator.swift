@@ -78,6 +78,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
     // Run only when a reload reaches a provider that will actually be fetched.
     private var beforeFetch: (() -> Void)?
+    private var hasRequestedFetch = false
 
     // MARK: Init
 
@@ -124,6 +125,7 @@ extension PromoProviderCoordinator {
     internal func fetchBestProvider(from startingProvider: PromoProvider? = nil,
                                     beforeFetch: (() -> Void)? = nil) {
         cancelFetch()
+        hasRequestedFetch = true
         self.beforeFetch = beforeFetch
         guard let provider = nextValidProvider(from: startingProvider) else {
             providerUpdatedHandler?(nil)
@@ -341,7 +343,11 @@ extension PromoProviderCoordinator {
     /// Called when network connectivity changes. If we're currently showing an offline provider
     /// and the internet returns, triggers a fresh fetch to promote an online provider if one is available.
     func pathMonitor(_ pathMonitor: PromoPathMonitoring, didUpdateConnectivity connected: Bool) {
-        guard let provider = currentProvider else { return }
+        guard !isFetching else { return }
+        guard let provider = currentProvider else {
+            if connected && hasRequestedFetch { fetchBestProvider() }
+            return
+        }
 
         // If we're already showing an internet enabled provider, we can skip, assuming it may still render offline.
         if connected, (provider.isInternetAccessRequired ?? false) { return }
