@@ -155,3 +155,19 @@ private final class ContentSizeOnlyPromoProvider: NSObject, PromoProvider {
         promoView.dequeueContentView(for: TestPromoContentView.self)
     }
 }
+
+
+extension PromoViewSizingTests {
+    func testThrottledResizeKeepsContentVisible() {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let provider = TestPromoProvider(result: .contentAvailable, needsReloadOnSizeChange: true, fetchRefreshInterval: 60)
+        let delegate = PromoViewDelegateSpy()
+        view.delegate = delegate
+        view.providers = [provider]
+        wait(for: [delegate.updateExpectation], timeout: 1)
+        XCTAssertNotNil(view.contentView)
+        view.frame.size.width = 260
+        XCTAssertNotNil(view.contentView, "Skipping a fetch must not leave the view permanently empty")
+        XCTAssertFalse(view.isLoading, "No request is running after the cooldown skip")
+    }
+}

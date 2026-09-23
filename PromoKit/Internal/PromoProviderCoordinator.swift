@@ -76,6 +76,9 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     // The pending timeout work item for the currently active provider fetch.
     private var fetchTimeoutWorkItem: DispatchWorkItem?
 
+    // Run only when a reload reaches a provider that will actually be fetched.
+    private var beforeFetch: (() -> Void)?
+
     // MARK: Init
 
     init(promoView: PromoView, networkMonitor: PromoPathMonitoring = PromoPathMonitor()) {
@@ -118,8 +121,10 @@ extension PromoProviderCoordinator {
 
     /// Start the process of looping through each provider,
     /// and see which one is most appropriate at the moment.
-    internal func fetchBestProvider(from startingProvider: PromoProvider? = nil) {
+    internal func fetchBestProvider(from startingProvider: PromoProvider? = nil,
+                                    beforeFetch: (() -> Void)? = nil) {
         cancelFetch()
+        self.beforeFetch = beforeFetch
         guard let provider = nextValidProvider(from: startingProvider) else {
             providerUpdatedHandler?(nil)
             return
@@ -136,6 +141,7 @@ extension PromoProviderCoordinator {
     /// Any late callbacks from the canceled provider are ignored.
     internal func cancelFetch() {
         isFetching = false
+        beforeFetch = nil
         fetchGeneration = UUID()
         invalidateActiveFetch()
     }
@@ -149,6 +155,10 @@ extension PromoProviderCoordinator {
 
         // Check if we need to skip this one as its time interval hasn't elapsed yet
         if skipToNextProvider(provider) { return }
+
+        let preparation = beforeFetch
+        beforeFetch = nil
+        preparation?()
 
         // Assign the promo view to this provider if it requires it
         if let promoView { provider.didMoveToPromoView?(promoView) }

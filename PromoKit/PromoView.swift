@@ -533,10 +533,10 @@ extension PromoView {
         // the resized frame (often the wrong size for the new bounds) until
         // the new fetch completes — fading it out wouldn't help here either,
         // because it'd still be visible (just transparent) at the wrong size.
-        reclaimCurrentContentView(animated: false)
-        setIsLoading(true, animated: false)
-
-        providerCoordinator.fetchBestProvider(from: currentProvider)
+        providerCoordinator.fetchBestProvider(from: currentProvider) { [weak self] in
+            self?.reclaimCurrentContentView(animated: false)
+            self?.setIsLoading(true, animated: false)
+        }
     }
 }
 
