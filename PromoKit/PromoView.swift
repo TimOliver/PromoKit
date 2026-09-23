@@ -224,23 +224,27 @@ public class PromoView: UIControl {
     /// A separate container view that is used to play an interactive animation when tapped.
     private let containerView = UIView()
 
-    /// Changing the frame of this promo view
     public override var frame: CGRect {
-        didSet {
-            guard oldValue.size != frame.size else { return }
+        didSet { updateContainerSizeIfNeeded() }
+    }
 
-            // Because the 'transform' property influences view frames,
-            // if a frame change happens mid animation, put the transform briefly back to handle it.
-            // But don't touch the container view any other time.
-            let transform = containerView.transform
-            containerView.transform = .identity
-            containerView.frame = bounds
-            backgroundView.frame = containerView.bounds
-            containerView.transform = transform
+    public override var bounds: CGRect {
+        didSet { updateContainerSizeIfNeeded() }
+    }
 
-            // If the provider needs to refresh on a bounds change, do it now
-            refreshCurrentProviderIfNeeded(oldSize: oldValue.size)
-        }
+    private var lastObservedSize: CGSize = .zero
+    private var isConfigured = false
+
+    private func updateContainerSizeIfNeeded() {
+        guard isConfigured, lastObservedSize != bounds.size else { return }
+        let oldSize = lastObservedSize
+        lastObservedSize = bounds.size
+        let transform = containerView.transform
+        containerView.transform = .identity
+        containerView.frame = bounds
+        backgroundView.frame = containerView.bounds
+        containerView.transform = transform
+        refreshCurrentProviderIfNeeded(oldSize: oldSize)
     }
 
     // MARK: - Private Properties
@@ -337,6 +341,8 @@ public class PromoView: UIControl {
             self.delegate?.promoViewDidFailToResolveProvider?(self)
             self.delegate?.promoViewProviderFetchFailed?(self)
         }
+        isConfigured = true
+        updateContainerSizeIfNeeded()
     }
 
     required init?(coder: NSCoder) {
@@ -425,6 +431,7 @@ extension PromoView {
 
     public override func layoutSubviews() {
         super.layoutSubviews()
+        updateContainerSizeIfNeeded()
 
         // Set the content view to be inset over the background view
         let contentPadding = contentPadding(for: currentProvider)
@@ -523,7 +530,7 @@ extension PromoView {
         // For example, a banner provider that picks the same AdSize for two
         // different container widths returns false here, avoiding a needless
         // refetch when only the surrounding layout changed.
-        if let shouldReload = currentProvider.shouldReloadForSizeChange?(from: oldSize, to: frame.size),
+        if let shouldReload = currentProvider.shouldReloadForSizeChange?(from: oldSize, to: bounds.size),
            !shouldReload {
             return
         }

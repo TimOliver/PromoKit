@@ -171,3 +171,36 @@ extension PromoViewSizingTests {
         XCTAssertFalse(view.isLoading, "No request is running after the cooldown skip")
     }
 }
+
+
+extension PromoViewSizingTests {
+    func testBoundsChangeRelayoutsBackground() {
+        let view = PromoView(frame: .zero)
+        view.frame = CGRect(x: 0, y: 0, width: 240, height: 80)
+        view.layoutIfNeeded()
+        XCTAssertEqual(view.backgroundView.bounds.size, view.bounds.size)
+        view.bounds.size = CGSize(width: 320, height: 120)
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        XCTAssertEqual(view.backgroundView.bounds.size, view.bounds.size, "Auto Layout/bounds resizing must resize the background and interaction container")
+    }
+}
+
+
+extension PromoViewSizingTests {
+    func testBoundsChangeRefetchesSizeSensitiveProvider() {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let provider = TestPromoProvider(result: .contentAvailable, needsReloadOnSizeChange: true)
+        let delegate = PromoViewDelegateSpy()
+        view.delegate = delegate
+        view.providers = [provider]
+        wait(for: [delegate.updateExpectation], timeout: 1)
+        view.bounds.size.width = 480
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        let settled = expectation(description: "Bounds reload settles")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { settled.fulfill() }
+        wait(for: [settled], timeout: 1)
+        XCTAssertEqual(provider.fetchCount, 2, "Bounds size changes must consult the provider reload policy")
+    }
+}
