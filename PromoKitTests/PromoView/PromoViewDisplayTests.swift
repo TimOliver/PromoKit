@@ -367,3 +367,58 @@ extension PromoViewDisplayTests {
         XCTAssertEqual(promo.cornerRadius, 12, "A provider override must not replace the host's default corner radius")
     }
 }
+
+// The close button sits beside the promo view when the superview leaves room to its
+// right, and above its top-right corner when it does not. Shrinking a window moved
+// it above correctly; widening the window again left it stranded there.
+@MainActor
+final class PromoViewCloseButtonPlacementTests: XCTestCase {
+
+    private func makeHosted(containerWidth: CGFloat,
+                            promoFrame: CGRect) -> (UIView, PromoView, UIButton)? {
+        let container = UIView(frame: CGRect(x: 0, y: 0, width: containerWidth, height: 200))
+        let promoView = PromoView(frame: promoFrame)
+        promoView.showCloseButton = true
+        container.addSubview(promoView)
+        container.layoutIfNeeded()
+        guard let button = promoView.subviews.compactMap({ $0 as? UIButton }).first else { return nil }
+        return (container, promoView, button)
+    }
+
+    /// Beside means starting past the promo view's trailing edge; above means sitting
+    /// at a negative y, over its top-right corner.
+    private func isBeside(_ button: UIButton, _ promoView: PromoView) -> Bool {
+        button.frame.minX >= promoView.bounds.maxX && button.frame.minY >= 0
+    }
+
+    func testCloseButtonSitsBesideWhenThereIsRoom() throws {
+        let (_, promoView, button) = try XCTUnwrap(
+            makeHosted(containerWidth: 600, promoFrame: CGRect(x: 40, y: 20, width: 460, height: 60)))
+        XCTAssertTrue(isBeside(button, promoView))
+    }
+
+    func testCloseButtonMovesAboveWhenRoomRunsOut() throws {
+        let (_, promoView, button) = try XCTUnwrap(
+            makeHosted(containerWidth: 340, promoFrame: CGRect(x: 10, y: 20, width: 320, height: 50)))
+        XCTAssertFalse(isBeside(button, promoView))
+        XCTAssertLessThan(button.frame.minY, 0, "should sit above the promo view")
+    }
+
+    func testCloseButtonReturnsBesideWhenRoomComesBack() throws {
+        // The reported bug: narrow the window, then widen it again.
+        let (container, promoView, button) = try XCTUnwrap(
+            makeHosted(containerWidth: 600, promoFrame: CGRect(x: 40, y: 20, width: 460, height: 60)))
+        XCTAssertTrue(isBeside(button, promoView), "precondition: starts beside")
+
+        container.frame.size.width = 340
+        promoView.frame = CGRect(x: 10, y: 20, width: 320, height: 50)
+        container.layoutIfNeeded()
+        XCTAssertFalse(isBeside(button, promoView), "should have moved above while narrow")
+
+        container.frame.size.width = 600
+        promoView.frame = CGRect(x: 40, y: 20, width: 460, height: 60)
+        container.layoutIfNeeded()
+        XCTAssertTrue(isBeside(button, promoView),
+                      "close button stayed above after the window was restored")
+    }
+}
