@@ -279,7 +279,11 @@ public class PromoView: UIControl {
         let operationQueue = OperationQueue()
         operationQueue.name = "dev.tim.PromoKit.MediaQueue"
         operationQueue.maxConcurrentOperationCount = 1
-        operationQueue.qualityOfService = .userInitiated
+        // .utility, not .userInitiated: nothing on this queue is what the user is
+        // waiting for frame by frame, and at .userInitiated its work competes with
+        // the main thread for CPU — which showed up as a dropped frame when a
+        // native ad resolved mid-swipe.
+        operationQueue.qualityOfService = .utility
         return operationQueue
     }()
 
