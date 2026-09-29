@@ -271,10 +271,14 @@ final public class PromoNativeAdView: NativeAdView {
         let size = frame.insetBy(dx: padding, dy: padding).size
         let aspectRatio = nativeAd.mediaContent.aspectRatio
 
-        // Layout horizontally on very tightly constrained sizes
-        if needsCompactLayout, aspectRatio < 1.0 {
+        // Set the creative beside its text whenever the box leaves room for both.
+        switch Self.layoutFormat(containerSize: size,
+                                 mediaAspectRatio: aspectRatio,
+                                 minimumTextColumnWidth: minimumTextColumnWidth,
+                                 maximumMediaWidthFraction: maximumMediaWidthFraction) {
+        case .sideBySide:
             layoutSubviewsInLandscapeFormat(size: size, nativeAd: nativeAd)
-        } else {
+        case .stacked:
             layoutSubviewsInPortraitFormat(size: size, nativeAd: nativeAd)
         }
 
@@ -291,11 +295,19 @@ final public class PromoNativeAdView: NativeAdView {
     private func layoutSubviewsInLandscapeFormat(size: CGSize, nativeAd: NativeAd) {
         // Lay out the ad view on the right hand side
         let aspectRatio = nativeAd.mediaContent.aspectRatio
-        let mediaHeight = size.height - (padding * 2.0)
-        let mediaWidth = mediaHeight * aspectRatio
+        // The creative takes the full height until that would claim more than
+        // `maximumMediaWidthFraction` of the card. Past that it yields — shrinking
+        // and picking up vertical letterboxing — so the text column keeps its width
+        // and the text never has to scale down to fit beside it.
+        let mediaBox = CGSize(width: size.width, height: size.height - (padding * 2.0))
+        let media = Self.mediaSize(fitting: mediaBox,
+                                   aspectRatio: aspectRatio,
+                                   maximumWidthFraction: maximumMediaWidthFraction)
+        let mediaWidth = media.width
+        let mediaHeight = media.height
         contentMediaContainerView.frame.size = CGSize(width: mediaWidth, height: mediaHeight)
         contentMediaContainerView.frame.origin = CGPoint(x: (size.width - (googleButtonWidth + padding)) - mediaWidth,
-                                                         y: padding)
+                                                         y: padding + ((mediaBox.height - mediaHeight) * 0.5))
         contentMediaView.frame = contentMediaContainerView.bounds
         contentMediaContainerView.layer.cornerRadius = 15.0
 
@@ -458,17 +470,12 @@ final public class PromoNativeAdView: NativeAdView {
         contentMediaContainerView.layer.cornerRadius = 15.0
         updateMediaViewBackgroundColor()
 
-        // Fit the media inside the container
-        let isLandscape = aspectRatio > 1.0
-        let mediaSize = CGSize(width: size.width, height: size.width / aspectRatio)
-        let scale = min(mediaContainerSize.width / mediaSize.width,
-                        mediaContainerSize.height / mediaSize.height)
+        // Fit the media inside the container, keeping the creative's shape.
         // Centring halves an odd remainder, so an un-snapped media view lands on a
         // half-pixel and the container's tint bleeds through as a hairline sliver
         // down one edge. Snap by edges so a media view that should span the
         // container's full width reaches both sides exactly.
-        let fittedSize = CGSize(width: isLandscape ? mediaContainerSize.width : mediaSize.width * scale,
-                                height: !isLandscape ? mediaContainerSize.height : mediaSize.height * scale)
+        let fittedSize = Self.fittedMediaSize(containerSize: mediaContainerSize, aspectRatio: aspectRatio)
         contentMediaView.frame = pixelAligned(CGRect(x: (mediaContainerSize.width - fittedSize.width) * 0.5,
                                                      y: (mediaContainerSize.height - fittedSize.height) * 0.5,
                                                      width: fittedSize.width,
@@ -531,6 +538,13 @@ final public class PromoNativeAdView: NativeAdView {
     private var iconHeight: CGFloat { 64.0 }
     private var compactActionSize: CGSize { CGSize(width: 120, height: 40) }
 
+    /// The narrowest column of text worth setting beside a creative. Below this the
+    /// headline wraps to a word or two a line, and stacking reads better.
+    private var minimumTextColumnWidth: CGFloat { 240.0 }
+
+    /// The most of the card's width a creative may claim when set beside its text.
+    private var maximumMediaWidthFraction: CGFloat { 0.55 }
+
     /// Given an outer size, work out the most appropriate size this view should be
     /// - Parameter size: Size constraining the ad view
     /// - Returns: Resulting size of the ad view
@@ -544,13 +558,14 @@ final public class PromoNativeAdView: NativeAdView {
         // Aspect ratio of the ad view
         let aspectRatio = nativeAd.mediaContent.aspectRatio
 
-        // Work out the horizontal width we can support
-        // Cap it to the readable content width if applicable
-        let width = min(size.width - (padding * 2.0), maximumWidth)
-
-        // When in compact landscape, and a portrait ad, let's
-        // line both up horizontally
-        let isHorizontalLayout = (aspectRatio < 1.0) && needsCompactLayout
+        // Must reach the same verdict as -layoutSubviews(for:), or the card is
+        // measured for one arrangement and then drawn as the other.
+        let contentBox = CGSize(width: size.width - (padding * 2.0),
+                                height: size.height - (padding * 2.0))
+        let isHorizontalLayout = Self.layoutFormat(containerSize: contentBox,
+                                                   mediaAspectRatio: aspectRatio,
+                                                   minimumTextColumnWidth: minimumTextColumnWidth,
+                                                   maximumMediaWidthFraction: maximumMediaWidthFraction) == .sideBySide
         if isHorizontalLayout {
             let height = size.height
             let mediaWidth = (height * aspectRatio) + innerMargin
@@ -561,44 +576,164 @@ final public class PromoNativeAdView: NativeAdView {
         // Line out the elements vertically
         var iconSize = CGSize.zero
         if let icon = nativeAd.icon?.image {
-            let aspectRatio = icon.size.width / icon.size.height
-            iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
+            let iconAspectRatio = icon.size.width / icon.size.height
+            iconSize = CGSize(width: iconHeight * iconAspectRatio, height: iconHeight)
         }
-        var textWidth = width - ((iconSize.width > 0.0 ? innerMargin + iconSize.width : 0.0) + googleButtonWidth)
-        if needsCompactLayout { textWidth -= (innerMargin + compactActionSize.width) }
-        let textSize = CGSize(width: textWidth, height: .greatestFiniteMagnitude)
 
-        // Start assembling the height off the size of the views
-        var height: CGFloat = padding * 2.0
-
-        // Add the size of the media content
-        height += floor(width / aspectRatio)
-
-        // Work out if the text or the icon is taller
-        var textHeight = 0.0
-
-        // Add the size of the title text
         headlineLabel.text = headlineText(for: nativeAd)
-        textHeight += headlineLabel.sizeThatFits(textSize).height
-
-        // Add the subtitle text
-        if let body = bodyText(for: nativeAd) {
-            textHeight += titleVerticalSpacing
+        let body = bodyText(for: nativeAd)
+        if let body {
             bodyLabel.numberOfLines = needsCompactLayout ? 2 : 3
             bodyLabel.text = body
-            textHeight += bodyLabel.sizeThatFits(textSize).height
-        }
-        height += max(textHeight, iconSize.height) + innerMargin
-
-        // Add the CTA button height
-        if !needsCompactLayout {
-            height += innerMargin + ctaButtonHeight
         }
 
-        // Cap the height of the size to max supported
-        let maxHeight = min(maximumHeight, size.height - (padding * 2.0))
-        height = min(maxHeight, height)
+        // Everything the card owes before the media band is given any height at all.
+        func chromeHeight(forWidth cardWidth: CGFloat) -> CGFloat {
+            var textWidth = cardWidth - ((iconSize.width > 0.0 ? innerMargin + iconSize.width : 0.0) + googleButtonWidth)
+            if needsCompactLayout { textWidth -= (innerMargin + compactActionSize.width) }
+            let textSize = CGSize(width: textWidth, height: .greatestFiniteMagnitude)
 
+            var textHeight = headlineLabel.sizeThatFits(textSize).height
+            if body != nil {
+                textHeight += titleVerticalSpacing + bodyLabel.sizeThatFits(textSize).height
+            }
+
+            var chrome = (padding * 2.0) + max(textHeight, iconSize.height) + innerMargin
+            if !needsCompactLayout { chrome += innerMargin + ctaButtonHeight }
+            return chrome
+        }
+
+        let availableSize = CGSize(width: min(size.width - (padding * 2.0), maximumWidth),
+                                   height: min(maximumHeight, size.height - (padding * 2.0)))
+
+        // A wide creative's band has to be paid for out of the height the text and
+        // call to action leave behind, so derive the width from that rather than
+        // measuring the two independently — budgeting the band at one width and then
+        // drawing it at another is what left it too short for its own shape, and
+        // pillarboxed the creative inside it. A tall creative is already fitted by
+        // height into whatever band remains, so narrowing the card would only squeeze
+        // its text for no gain.
+        let width: CGFloat
+        if aspectRatio >= 1.0 {
+            // Narrowing the card re-wraps the text, so measure again at the width we land on.
+            let firstPass = Self.contentWidth(fitting: availableSize,
+                                              aspectRatio: aspectRatio,
+                                              chromeHeight: chromeHeight(forWidth: availableSize.width),
+                                              maximumWidth: maximumWidth)
+            width = Self.contentWidth(fitting: availableSize,
+                                      aspectRatio: aspectRatio,
+                                      chromeHeight: chromeHeight(forWidth: firstPass),
+                                      maximumWidth: maximumWidth)
+        } else {
+            width = availableSize.width
+        }
+
+        let height = min(availableSize.height, chromeHeight(forWidth: width) + floor(width / aspectRatio))
         return CGSize(width: width, height: height)
+    }
+}
+
+// MARK: - Layout Geometry
+
+extension PromoNativeAdView {
+
+    /// How the ad arranges its creative against its text.
+    enum LayoutFormat {
+        /// Text above, creative below, call to action at the foot. The media
+        /// container spans the card, so a creative narrower than the card sits on
+        /// blurred backdrop.
+        case stacked
+        /// The creative hugging its own aspect ratio on the trailing side, with the
+        /// icon, headline, body and call to action stacked in the column beside it.
+        case sideBySide
+    }
+
+    /// Whether a creative can be set beside its text rather than above it.
+    ///
+    /// This asks about the box, not the device. Its predecessor checked
+    /// `verticalSizeClass == .compact` — true of a phone in landscape and never of an
+    /// iPad, which is always regular height. So an iPad went on stacking portrait
+    /// creatives however much width was going spare, and the surplus became blurred
+    /// backdrop: on a landscape iPad, roughly two thirds of the media area.
+    static func layoutFormat(containerSize: CGSize,
+                             mediaAspectRatio: CGFloat,
+                             minimumTextColumnWidth: CGFloat,
+                             maximumMediaWidthFraction: CGFloat) -> LayoutFormat {
+        // A wide creative already fills the card's width with nothing left over, and
+        // an unresolved one — Google reports an aspect ratio of 0 until the media
+        // content loads — has no shape to reason about. Both belong in the layout
+        // that doesn't need to know.
+        guard mediaAspectRatio > 0, mediaAspectRatio < 1.0 else { return .stacked }
+
+        let media = mediaSize(fitting: containerSize,
+                              aspectRatio: mediaAspectRatio,
+                              maximumWidthFraction: maximumMediaWidthFraction)
+        return (containerSize.width - media.width) >= minimumTextColumnWidth ? .sideBySide : .stacked
+    }
+
+    /// How much to grow the copy so it occupies `targetFill` of the column it sits in.
+    ///
+    /// Only ever grows. Overflow is already handled by a shrink-to-fit pass further
+    /// down, and having two mechanisms pulling in opposite directions would make the
+    /// result depend on which ran last.
+    static func textScale(availableHeight: CGFloat,
+                          naturalHeight: CGFloat,
+                          targetFill: CGFloat,
+                          maximumScale: CGFloat) -> CGFloat {
+        guard naturalHeight > 0, availableHeight > 0 else { return 1.0 }
+        return min(maximumScale, max(1.0, (availableHeight * targetFill) / naturalHeight))
+    }
+
+    /// The size a creative renders at inside a media band, preserving its shape.
+    ///
+    /// The previous version pinned a wide creative's width to the band and scaled only
+    /// its height, which produced a media view wider than the creative. Google's
+    /// `MediaView` then pillarboxed the creative inside it, and the gap read as grey
+    /// wings either side of the video. Scaling both axes by the same factor is the
+    /// whole fix; the scale is capped at 1 so a roomy band leaves space rather than
+    /// blowing the creative up past its natural size.
+    static func fittedMediaSize(containerSize: CGSize, aspectRatio: CGFloat) -> CGSize {
+        guard aspectRatio > 0, containerSize.width > 0, containerSize.height > 0 else { return .zero }
+
+        let natural = CGSize(width: containerSize.width, height: containerSize.width / aspectRatio)
+        let scale = min(containerSize.width / natural.width, containerSize.height / natural.height)
+        return CGSize(width: natural.width * scale, height: natural.height * scale)
+    }
+
+    /// The width the card should take, given that its media band has to be paid for
+    /// out of the height left over once the text and call to action have had theirs.
+    ///
+    /// Measuring width and height independently is what let the two disagree: the band
+    /// was budgeted at `width / aspectRatio` for one width and then drawn at another,
+    /// leaving it too short for its own shape. Deriving the width from the height the
+    /// band can actually have keeps the two in step.
+    static func contentWidth(fitting containerSize: CGSize,
+                             aspectRatio: CGFloat,
+                             chromeHeight: CGFloat,
+                             maximumWidth: CGFloat) -> CGFloat {
+        // No shape to reason about yet: fall back to the width alone.
+        guard aspectRatio > 0 else { return min(containerSize.width, maximumWidth) }
+
+        let bandHeight = max(0, containerSize.height - chromeHeight)
+        return min(containerSize.width, maximumWidth, bandHeight * aspectRatio)
+    }
+
+    /// The size a creative renders at when set beside its text.
+    ///
+    /// It takes the container's full height until doing so would claim more than
+    /// `maximumWidthFraction` of the card's width. Past that the creative yields
+    /// rather than the text: it shrinks and gains vertical letterboxing, so the text
+    /// column keeps its width and the text itself never scales down to fit.
+    static func mediaSize(fitting containerSize: CGSize,
+                          aspectRatio: CGFloat,
+                          maximumWidthFraction: CGFloat) -> CGSize {
+        guard aspectRatio > 0, containerSize.height > 0 else { return .zero }
+
+        let fullHeightWidth = containerSize.height * aspectRatio
+        let widthCap = containerSize.width * maximumWidthFraction
+        guard fullHeightWidth > widthCap else {
+            return CGSize(width: fullHeightWidth, height: containerSize.height)
+        }
+        return CGSize(width: widthCap, height: widthCap / aspectRatio)
     }
 }

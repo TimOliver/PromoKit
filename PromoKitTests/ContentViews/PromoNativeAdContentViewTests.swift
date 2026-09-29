@@ -365,3 +365,170 @@ extension PromoNativeAdContentViewTests {
         XCTAssertNil(content?.mediaBackgroundImage, "New creative must not display the previous advertiser's background")
     }
 }
+
+// A portrait creative in a wide container used to be laid out stacked: the media
+// container kept the card's full width while the video, fitted to the container's
+// height, only needed a fraction of it. The rest became blurred backdrop — on a
+// landscape iPad, roughly two thirds of the media area.
+//
+// The side-by-side layout that solves this already existed, but was gated on
+// `verticalSizeClass == .compact`, which asks about the device rather than the box.
+// An iPad is always regular height, so it never qualified no matter how wide it got.
+// These cover the geometry that replaced that check.
+@MainActor
+final class PromoNativeAdLayoutGeometryTests: XCTestCase {
+
+    private let portraitAspect: CGFloat = 9.0 / 16.0
+    private let minimumColumn: CGFloat = 240.0
+    private let maximumFraction: CGFloat = 0.55
+
+    private func format(_ size: CGSize, aspect: CGFloat) -> PromoNativeAdView.LayoutFormat {
+        PromoNativeAdView.layoutFormat(containerSize: size,
+                                              mediaAspectRatio: aspect,
+                                              minimumTextColumnWidth: minimumColumn,
+                                              maximumMediaWidthFraction: maximumFraction)
+    }
+
+    private func media(_ size: CGSize, aspect: CGFloat) -> CGSize {
+        PromoNativeAdView.mediaSize(fitting: size,
+                                           aspectRatio: aspect,
+                                           maximumWidthFraction: maximumFraction)
+    }
+
+    // MARK: - Choosing a format
+
+    func testPhonePortraitStaysStacked() {
+        // The video very nearly fills the width; there is no column to move text into.
+        XCTAssertEqual(format(CGSize(width: 360, height: 600), aspect: portraitAspect), .stacked)
+    }
+
+    func testPhoneLandscapeGoesSideBySide() {
+        // Already the behaviour today, via the compact-height check. It must survive
+        // the move to geometry, or this fix regresses the one case that worked.
+        XCTAssertEqual(format(CGSize(width: 700, height: 300), aspect: portraitAspect), .sideBySide)
+    }
+
+    func testLandscapeIPadGoesSideBySide() {
+        // The case that motivated all of this: ~636pt of video leaves ~974pt of column.
+        XCTAssertEqual(format(CGSize(width: 1610, height: 1130), aspect: portraitAspect), .sideBySide)
+    }
+
+    func testLandscapeCreativeStaysStacked() {
+        // A wide creative already fills the card's width with no wasted space, so
+        // stacking it is right regardless of how much room is going spare.
+        XCTAssertEqual(format(CGSize(width: 1610, height: 1130), aspect: 16.0 / 9.0), .stacked)
+    }
+
+    func testUnusableAspectRatioStaysStacked() {
+        // Google reports 0 before the media content resolves. Fail back to the layout
+        // that works without knowing the shape rather than dividing by it.
+        XCTAssertEqual(format(CGSize(width: 1610, height: 1130), aspect: 0), .stacked)
+    }
+
+    // MARK: - Sizing the media
+
+    func testVideoTakesFullHeightWhenItFitsUnderTheCap() {
+        // 1130 * (9/16) = 635.6, comfortably under the 885.5 cap.
+        let size = media(CGSize(width: 1610, height: 1130), aspect: portraitAspect)
+        XCTAssertEqual(size.height, 1130, accuracy: 0.5)
+        XCTAssertEqual(size.width, 635.6, accuracy: 0.5)
+    }
+
+    func testVideoIsCappedAndLetterboxedWhenItWouldDominate() {
+        // 1000 * (9/16) = 562.5 against a 330 cap, so the video yields: it shrinks
+        // and gains vertical letterboxing rather than squeezing the text column.
+        let size = media(CGSize(width: 600, height: 1000), aspect: portraitAspect)
+        XCTAssertEqual(size.width, 330, accuracy: 0.5)
+        XCTAssertEqual(size.height, 586.7, accuracy: 0.5)
+        XCTAssertLessThan(size.height, 1000)
+    }
+
+    func testMediaNeverExceedsTheContainer() {
+        let container = CGSize(width: 600, height: 1000)
+        let size = media(container, aspect: portraitAspect)
+        XCTAssertLessThanOrEqual(size.width, container.width)
+        XCTAssertLessThanOrEqual(size.height, container.height)
+    }
+
+    func testCapIsAFractionOfWidthNotHeight() {
+        // Guards the axis: capping against height would make the rule collapse into
+        // the vertical fit that already exists, and the wings would come back.
+        let size = media(CGSize(width: 400, height: 2000), aspect: portraitAspect)
+        XCTAssertEqual(size.width, 220, accuracy: 0.5)
+    }
+}
+
+// The card used to be measured at one width and then drawn at another. PromoKit
+// budgeted the media band as `width / aspectRatio` against its own 500pt cap, and
+// the host then widened the card to its readable-content width without the height
+// being recomputed. The band ended up far too short for its width, so the media
+// view was stretched wider than the creative and Google's MediaView pillarboxed
+// inside it — the grey wings either side of a 16:9 video.
+@MainActor
+final class PromoNativeAdMediaFitTests: XCTestCase {
+
+    private let landscapeAspect: CGFloat = 16.0 / 9.0
+    private let portraitAspect: CGFloat = 9.0 / 16.0
+
+    private func fitted(_ container: CGSize, aspect: CGFloat) -> CGSize {
+        PromoNativeAdView.fittedMediaSize(containerSize: container, aspectRatio: aspect)
+    }
+
+    // MARK: - Fitting preserves the creative's shape
+
+    func testWideCreativeInAShortBandKeepsItsAspectRatio() {
+        // The regression: an 890x281 band for a 16:9 creative. The media view must
+        // not take the band's full width, or the creative pillarboxes inside it.
+        let size = fitted(CGSize(width: 890, height: 281), aspect: landscapeAspect)
+        XCTAssertEqual(size.width / size.height, landscapeAspect, accuracy: 0.01)
+        XCTAssertEqual(size.height, 281, accuracy: 0.5)
+        XCTAssertLessThan(size.width, 890)
+    }
+
+    func testTallCreativeInAWideBandKeepsItsAspectRatio() {
+        let size = fitted(CGSize(width: 890, height: 600), aspect: portraitAspect)
+        XCTAssertEqual(size.width / size.height, portraitAspect, accuracy: 0.01)
+        XCTAssertEqual(size.height, 600, accuracy: 0.5)
+    }
+
+    func testCreativeIsNotStretchedToFillABandLargerThanItself() {
+        // Scale is capped at 1: a band roomier than the creative leaves space rather
+        // than blowing the creative up past its natural size.
+        let size = fitted(CGSize(width: 2000, height: 2000), aspect: landscapeAspect)
+        XCTAssertEqual(size.width / size.height, landscapeAspect, accuracy: 0.01)
+        XCTAssertLessThanOrEqual(size.width, 2000)
+        XCTAssertLessThanOrEqual(size.height, 2000)
+    }
+
+    func testUnusableAspectRatioYieldsNoMedia() {
+        XCTAssertEqual(fitted(CGSize(width: 890, height: 281), aspect: 0), .zero)
+    }
+
+    // MARK: - Choosing a width the height can actually pay for
+
+    private func width(_ container: CGSize, aspect: CGFloat, chrome: CGFloat, maximum: CGFloat) -> CGFloat {
+        PromoNativeAdView.contentWidth(fitting: container,
+                                       aspectRatio: aspect,
+                                       chromeHeight: chrome,
+                                       maximumWidth: maximum)
+    }
+
+    func testWidthIsLimitedByTheHeightLeftForTheBand() {
+        // 700pt tall, 200pt of it text and chrome, so the band can be 500 — which at
+        // 16:9 pays for 889pt of width. Anything wider would squeeze the band.
+        let w = width(CGSize(width: 1100, height: 700), aspect: landscapeAspect, chrome: 200, maximum: 4000)
+        XCTAssertEqual(w, 889, accuracy: 1.0)
+    }
+
+    func testWidthStillRespectsTheContainerAndTheCap() {
+        XCTAssertEqual(width(CGSize(width: 320, height: 700), aspect: landscapeAspect, chrome: 200, maximum: 4000), 320, accuracy: 0.5)
+        XCTAssertEqual(width(CGSize(width: 1100, height: 700), aspect: landscapeAspect, chrome: 200, maximum: 500), 500, accuracy: 0.5)
+    }
+
+    func testWidthNeverGoesNegativeWhenChromeEatsTheContainer() {
+        // A container shorter than its own text: the band gets nothing rather than a
+        // negative width that would invert the frame.
+        XCTAssertEqual(width(CGSize(width: 1100, height: 120), aspect: landscapeAspect, chrome: 200, maximum: 4000), 0, accuracy: 0.5)
+    }
+}
+
