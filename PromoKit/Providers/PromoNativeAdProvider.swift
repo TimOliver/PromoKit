@@ -60,6 +60,11 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     private let adUnitID: String
 
     /// The loading object responsible for loading ads. Re-created on each fetch to discard stale callbacks.
+    /// How long the card waits for a creative that reports no shape at all before
+    /// showing anyway, and how often it looks. Google offers no callback for this.
+    private static let creativeShapeTimeout: TimeInterval = 1.0
+    private static let creativeShapePollInterval: TimeInterval = 0.05
+
     private var adLoader: AdLoader?
     private var fetchToken = UUID()
 
@@ -285,10 +290,45 @@ extension PromoNativeAdProvider: NativeAdLoaderDelegate {
 
         self.nativeAd = nativeAd
 
-
         // Generate a blurred background image to position behind the media view
-        makeBlurredMediaImageIfAvailable(for: nativeAd, token: fetchToken) { [weak self] in
-            self?.didReceiveResult(.success(()))
+        let token = fetchToken
+        makeBlurredMediaImageIfAvailable(for: nativeAd, token: token) { [weak self] in
+            guard let self else { return }
+            self.awaitCreativeShape(for: nativeAd,
+                                    token: token,
+                                    deadline: Date().addingTimeInterval(Self.creativeShapeTimeout)) { [weak self] in
+                self?.didReceiveResult(.success(()))
+            }
+        }
+    }
+
+    /// Holds the ad back until something can say what shape its creative is.
+    ///
+    /// A video creative's `aspectRatio` stays unknown until the media loads, and
+    /// showing the card before then means sizing it against a guess and then
+    /// resizing in the reader's face. The still that ships with the creative
+    /// normally answers at once, so this usually returns on its first look; it
+    /// only really waits for a video that arrived without one. It gives up after
+    /// `creativeShapeTimeout` rather than dropping the slot — a card sized from a
+    /// square is still better than no ad at all.
+    private func awaitCreativeShape(for nativeAd: NativeAd,
+                                    token: UUID,
+                                    deadline: Date,
+                                    completion: @escaping () -> Void) {
+        // A newer fetch has overtaken this one; its own wait owns the outcome.
+        guard fetchToken == token, self.nativeAd === nativeAd else { return }
+
+        let needsShape = PromoNativeAdView.needsCreativeShape(
+            reported: nativeAd.mediaContent.aspectRatio,
+            stillSize: PromoNativeAdView.stillSize(for: nativeAd))
+
+        if !needsShape || Date() >= deadline {
+            completion()
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.creativeShapePollInterval) { [weak self] in
+            self?.awaitCreativeShape(for: nativeAd, token: token, deadline: deadline, completion: completion)
         }
     }
 

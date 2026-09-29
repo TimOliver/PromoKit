@@ -610,3 +610,66 @@ final class PromoNativeAdActionButtonWidthTests: XCTestCase {
         XCTAssertEqual(button("").widthThatFits(height: 40), 80)
     }
 }
+
+// MARK: - Unknown Creative Shape
+
+extension PromoNativeAdContentViewTests {
+
+    func testAReportedAspectRatioWins() {
+        // Authoritative when Google has it, whatever the still says.
+        XCTAssertEqual(PromoNativeAdView.usableAspectRatio(reported: 16.0 / 9.0,
+                                                           stillSize: CGSize(width: 100, height: 400)),
+                       16.0 / 9.0, accuracy: 0.0001)
+    }
+
+    func testTheStillStandsInForAnUnreportedRatio() {
+        // GADMediaContent.aspectRatio reads 0 until the media has loaded, which
+        // for a video creative lands after the card is first measured. The image
+        // asset that ships with the creative is the same shape and is there at
+        // once, so the card can be sized correctly the first time.
+        XCTAssertEqual(PromoNativeAdView.usableAspectRatio(reported: 0.0,
+                                                           stillSize: CGSize(width: 1080, height: 1920)),
+                       1080.0 / 1920.0, accuracy: 0.0001)
+    }
+
+    func testASquareIsTheLastResort() {
+        // No ratio and no still: a square is the least wrong guess, and crucially
+        // not the degenerate full-container one a raw zero produced.
+        XCTAssertEqual(PromoNativeAdView.usableAspectRatio(reported: 0.0, stillSize: nil), 1.0)
+    }
+
+    func testADegenerateStillIsIgnored() {
+        XCTAssertEqual(PromoNativeAdView.usableAspectRatio(reported: 0.0,
+                                                           stillSize: CGSize(width: 0, height: 100)), 1.0)
+        XCTAssertEqual(PromoNativeAdView.usableAspectRatio(reported: 0.0,
+                                                           stillSize: CGSize(width: 100, height: 0)), 1.0)
+    }
+
+    func testANegativeReportedRatioFallsThroughToTheStill() {
+        XCTAssertEqual(PromoNativeAdView.usableAspectRatio(reported: -1.5,
+                                                           stillSize: CGSize(width: 400, height: 200)),
+                       2.0, accuracy: 0.0001)
+    }
+
+    func testTheCardWaitsOnlyWhenNothingCanGiveItAShape() {
+        // The hold-back: with neither a ratio nor a still there is nothing to
+        // size against, so the card is held until Google reports one.
+        XCTAssertTrue(PromoNativeAdView.needsCreativeShape(reported: 0.0, stillSize: nil))
+        XCTAssertFalse(PromoNativeAdView.needsCreativeShape(reported: 0.0,
+                                                            stillSize: CGSize(width: 16, height: 9)))
+        XCTAssertFalse(PromoNativeAdView.needsCreativeShape(reported: 1.5, stillSize: nil))
+    }
+
+    func testAnUnknownShapeNoLongerClaimsTheWholeContainer() {
+        // The bug this guards: measuring with a raw 0 sent the height through
+        // `width / aspectRatio`, so the card took the full container and then
+        // snapped down to the creative once its real shape arrived mid-swipe.
+        // Squared off, it asks for a band it can actually fill.
+        let container = CGSize(width: 700, height: 900)
+        let squared = PromoNativeAdView.usableAspectRatio(reported: 0.0, stillSize: nil)
+        let fitted = PromoNativeAdView.fittedMediaSize(containerSize: container, aspectRatio: squared)
+        XCTAssertGreaterThan(fitted.height, 0)
+        XCTAssertLessThan(fitted.height, container.height)
+        XCTAssertEqual(fitted.width, fitted.height, accuracy: 1.0)
+    }
+}

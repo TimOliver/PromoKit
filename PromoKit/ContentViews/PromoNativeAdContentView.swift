@@ -290,7 +290,7 @@ final public class PromoNativeAdView: NativeAdView {
         guard let nativeAd else { return }
 
         let size = frame.insetBy(dx: padding, dy: padding).size
-        let aspectRatio = nativeAd.mediaContent.aspectRatio
+        let aspectRatio = Self.usableAspectRatio(for: nativeAd)
 
         // Set the creative beside its text whenever the box leaves room for both.
         switch Self.layoutFormat(containerSize: size,
@@ -315,7 +315,7 @@ final public class PromoNativeAdView: NativeAdView {
 
     private func layoutSubviewsInLandscapeFormat(size: CGSize, nativeAd: NativeAd) {
         // Lay out the ad view on the right hand side
-        let aspectRatio = nativeAd.mediaContent.aspectRatio
+        let aspectRatio = Self.usableAspectRatio(for: nativeAd)
         // The creative takes the full height until that would claim more than
         // `maximumMediaWidthFraction` of the card. Past that it yields — shrinking
         // and picking up vertical letterboxing — so the text column keeps its width
@@ -542,7 +542,7 @@ final public class PromoNativeAdView: NativeAdView {
 
         // Position the media container
         let mediaContent = nativeAd.mediaContent
-        let aspectRatio = mediaContent.aspectRatio > 0.0 ? mediaContent.aspectRatio : 1.0
+        let aspectRatio = Self.usableAspectRatio(for: nativeAd)
         let actionButtonY = (actionButton.superview != nil && !needsCompactLayout) ? (actionButton.frame.minY - innerMargin) : size.height
         let mediaContainerSize = CGSize(width: size.width, height: actionButtonY - origin.y)
         contentMediaContainerView.frame = pixelAligned(CGRect(origin: CGPoint(x: padding, y: origin.y),
@@ -649,7 +649,7 @@ final public class PromoNativeAdView: NativeAdView {
         guard let nativeAd else { return .zero }
 
         // Aspect ratio of the ad view
-        let aspectRatio = nativeAd.mediaContent.aspectRatio
+        let aspectRatio = Self.usableAspectRatio(for: nativeAd)
 
         // Must reach the same verdict as -layoutSubviews(for:), or the card is
         // measured for one arrangement and then drawn as the other.
@@ -785,6 +785,45 @@ extension PromoNativeAdView {
     /// wings either side of the video. Scaling both axes by the same factor is the
     /// whole fix; the scale is capped at 1 so a roomy band leaves space rather than
     /// blowing the creative up past its natural size.
+    /// The creative's shape, from the best source that can answer.
+    ///
+    /// `mediaContent.aspectRatio` is documented as 0 "when the media content
+    /// aspect ratio is unknown", which for a video creative lasts until the media
+    /// loads — well after the card is first measured. Used raw, that 0 reaches
+    /// `width / aspectRatio` in `sizeThatFits` and the card claims the entire
+    /// container, then snaps down to the creative the moment the real shape
+    /// arrives. The still that ships with the creative is the same shape and is
+    /// there immediately, so it stands in and the card is sized right the first
+    /// time. Every read goes through here, so measurement and layout can't hold
+    /// different opinions about it either.
+    static func usableAspectRatio(reported: CGFloat, stillSize: CGSize?) -> CGFloat {
+        if reported > 0.0 { return reported }
+        if let stillSize, stillSize.width > 0.0, stillSize.height > 0.0 {
+            return stillSize.width / stillSize.height
+        }
+        return 1.0
+    }
+
+    /// Whether nothing available can say what shape the creative is, so the card
+    /// has nothing honest to size against and should be held back until Google
+    /// reports one.
+    static func needsCreativeShape(reported: CGFloat, stillSize: CGSize?) -> Bool {
+        if reported > 0.0 { return false }
+        guard let stillSize else { return true }
+        return !(stillSize.width > 0.0 && stillSize.height > 0.0)
+    }
+
+    /// The creative's own still, if one shipped with the ad. `mainImage` covers
+    /// image creatives; `images` is the asset a video creative is served with,
+    /// and is already what the blurred backdrop is built from.
+    static func stillSize(for nativeAd: NativeAd) -> CGSize? {
+        nativeAd.mediaContent.mainImage?.size ?? nativeAd.images?.first?.image?.size
+    }
+
+    static func usableAspectRatio(for nativeAd: NativeAd) -> CGFloat {
+        usableAspectRatio(reported: nativeAd.mediaContent.aspectRatio, stillSize: stillSize(for: nativeAd))
+    }
+
     static func fittedMediaSize(containerSize: CGSize, aspectRatio: CGFloat) -> CGSize {
         guard aspectRatio > 0, containerSize.width > 0, containerSize.height > 0 else { return .zero }
 
