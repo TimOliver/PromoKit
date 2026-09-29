@@ -98,3 +98,28 @@ extension PromoBannerAdProviderTests {
         XCTAssertEqual(preferred, CGSize(width: 320, height: 50), "A narrow column in a wide superview must get a fitting banner")
     }
 }
+
+// A banner's requested size must not follow the window. PromoKit refetches when a
+// resize crosses a banner-size boundary, so a provider free to widen on a roomy
+// window would issue a fresh ad request every time a split-screen divider crossed
+// that boundary — a stream of requests for one placement.
+@MainActor
+final class PromoBannerAdProviderFixedSizeTests: XCTestCase {
+
+    func testUnrestrictedProviderRefetchesAcrossTheSizeBoundary() {
+        // The default behaviour, and the reason the restriction exists.
+        let provider = PromoBannerAdProvider(adUnitID: "test-banner")
+        XCTAssertTrue(provider.shouldReloadForSizeChange(from: CGSize(width: 360, height: 50),
+                                                         to: CGSize(width: 800, height: 60)))
+    }
+
+    func testRestrictedProviderNeverReportsASizeChange() {
+        let provider = PromoBannerAdProvider(adUnitID: "test-banner")
+        provider.restrictToStandardBannerSize()
+        for (from, to) in [(320.0, 1194.0), (1194.0, 320.0), (480.0, 500.0)] {
+            XCTAssertFalse(provider.shouldReloadForSizeChange(from: CGSize(width: from, height: 60),
+                                                              to: CGSize(width: to, height: 60)),
+                           "a standard-only banner must not refetch going \(from) -> \(to)")
+        }
+    }
+}
