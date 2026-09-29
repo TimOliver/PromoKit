@@ -181,8 +181,29 @@ final public class PromoNativeAdView: NativeAdView {
         mediaBackgroundImage = nil
     }
 
+    /// Base point sizes for the copy. The side-by-side layout scales up from these
+    /// when the column has room; everything else uses them as-is.
+    private var baseHeadlineFontSize: CGFloat { 21.0 }
+    private var baseBodyFontSize: CGFloat { 16.0 }
+
+    /// The share of the text column the copy aims to occupy once grown.
+    private var textColumnTargetFill: CGFloat { 0.5 }
+
+    /// How far the copy may grow. Past this the headline stops reading as a headline.
+    private var maximumTextScale: CGFloat { 1.8 }
+
+    /// Re-applies the copy's fonts at `scale`. Called on every layout pass, including
+    /// with 1.0, because content views are recycled — a view that grew its text beside
+    /// a tall creative would otherwise keep those sizes when reused for a stacked one.
+    private func applyTextFonts(scale: CGFloat) {
+        let headline = UIFont.systemFont(ofSize: baseHeadlineFontSize * scale, weight: .bold)
+        headlineLabel.font = UIFontMetrics.default.scaledFont(for: headline)
+        let body = UIFont.systemFont(ofSize: baseBodyFontSize * scale)
+        bodyLabel.font = UIFontMetrics.default.scaledFont(for: body)
+    }
+
     private func configureContentViews() {
-        let headlineFont = UIFont.systemFont(ofSize: 21, weight: .bold)
+        let headlineFont = UIFont.systemFont(ofSize: baseHeadlineFontSize, weight: .bold)
         headlineLabel.font = UIFontMetrics.default.scaledFont(for: headlineFont)
         headlineLabel.numberOfLines = 2
         addSubview(headlineLabel)
@@ -200,7 +221,7 @@ final public class PromoNativeAdView: NativeAdView {
         adLabel.clipsToBounds = true
         addSubview(adLabel)
 
-        let bodyFont = UIFont.systemFont(ofSize: 16.0)
+        let bodyFont = UIFont.systemFont(ofSize: baseBodyFontSize)
         bodyLabel.font = UIFontMetrics.default.scaledFont(for: bodyFont)
         bodyLabel.numberOfLines = 3
         if #available(iOS 13.0, *) {
@@ -316,18 +337,13 @@ final public class PromoNativeAdView: NativeAdView {
         let textContentSize = CGSize(width: size.width - mediaTotalWidth,
                                      height: size.height)
 
-        // Layout the icon if it is available
-        iconImageView.isHidden = iconImageView.image == nil
-        if !iconImageView.isHidden, let icon = nativeAd.icon?.image {
-            if iconImageView.superview == nil { addSubview(iconImageView) }
-            let aspectRatio = icon.size.width / icon.size.height
-            let iconSize = CGSize(width: iconHeight * aspectRatio, height: iconHeight)
-            let iconOrigin = CGPoint(x: (textContentSize.width - iconSize.width) * 0.5,
-                                     y: textContentSize.height * 0.12)
-            iconImageView.frame = pixelAligned(CGRect(origin: iconOrigin, size: iconSize))
-            iconImageView.layer.cornerRadius = iconSize.height * 0.23
-        } else {
+        // The icon is sized and placed further down, with the copy: it belongs to the
+        // same block rather than floating at a fixed fraction of the column's height.
+        iconImageView.isHidden = (iconImageView.image == nil)
+        if iconImageView.isHidden {
             iconImageView.removeFromSuperview()
+        } else if iconImageView.superview == nil {
+            addSubview(iconImageView)
         }
 
         // Layout the action button at the bottom
@@ -342,35 +358,89 @@ final public class PromoNativeAdView: NativeAdView {
             actionButton.removeFromSuperview()
         }
 
-        // Fill the remaining space with the text labels
-        let iconOriginY = iconImageView.isHidden ? padding : iconImageView.frame.maxY + titleVerticalSpacing
-        let ctaOriginY = actionButton.isHidden ? (size.height - padding) : actionButton.frame.minY - innerMargin
+        // The column the icon and copy share, from the card's top down to the button.
+        let columnTop = padding
+        let columnBottom = actionButton.isHidden ? (size.height - padding)
+                                                 : actionButton.frame.minY - innerMargin
         let remainingTextSize = CGSize(width: textContentSize.width,
-                                       height: ctaOriginY - iconOriginY)
+                                       height: columnBottom - columnTop)
 
-        // Lay out the title
         let headlineStyle = NSMutableParagraphStyle()
         headlineStyle.firstLineHeadIndent = 0
+        let bodyString = bodyText(for: nativeAd)
+
+        // Measure the copy at its base sizes, then grow it into the column. Beside a
+        // tall creative the column is far taller than two lines of headline and three
+        // of body need, which left the copy stranded at the top with the button at the
+        // foot and most of the column empty. A short column scales by 1 and is unchanged.
+        applyTextFonts(scale: 1.0)
+        // The column is tall, so let the body wrap as far as it needs. Capped at three
+        // lines it ran out of lines rather than space once grown, and truncated with an
+        // ellipsis while the space below it went unused. The scale is derived from the
+        // measured height, so freeing the line count is what makes that measurement true.
+        bodyLabel.numberOfLines = 0
         headlineLabel.attributedText = NSAttributedString(string: headlineText(for: nativeAd),
                                                           attributes: [.paragraphStyle: headlineStyle ])
+        bodyLabel.text = bodyString
+        var naturalTextHeight = headlineLabel.sizeThatFits(remainingTextSize).height
+        if !(bodyString?.isEmpty ?? true) {
+            naturalTextHeight += titleVerticalSpacing + bodyLabel.sizeThatFits(remainingTextSize).height
+        }
+        if !iconImageView.isHidden { naturalTextHeight += iconHeight + titleVerticalSpacing }
+        let textScale = Self.textScale(availableHeight: remainingTextSize.height,
+                                       naturalHeight: naturalTextHeight,
+                                       targetFill: textColumnTargetFill,
+                                       maximumScale: maximumTextScale)
+        applyTextFonts(scale: textScale)
+
+        // Lay out the title
         headlineLabel.textAlignment = .center
         headlineLabel.frame.size = headlineLabel.sizeThatFits(remainingTextSize)
-        headlineLabel.frame.origin = CGPoint(x: (remainingTextSize.width - headlineLabel.frame.width) * 0.5,
-                                             y: iconImageView.isHidden ? remainingTextSize.height * 0.2 : iconOriginY)
 
         // Lay out the ad label
         adLabel.frame.size = adLabelSize
         adLabel.frame.origin = CGPoint(x: 7, y: 3)
         adLabel.textColor = backgroundColor
 
-        // We're done if the label is hidden
-        bodyLabel.text = bodyText(for: nativeAd)
         bodyLabel.isHidden = bodyLabel.text?.isEmpty ?? true
+        if !bodyLabel.isHidden {
+            bodyLabel.textAlignment = .center
+            bodyLabel.frame.size = bodyLabel.sizeThatFits(remainingTextSize)
+        }
+
+        // Size the icon with the copy, so it keeps its proportion as the text grows
+        // rather than shrinking away beside it.
+        var iconSize = CGSize.zero
+        if !iconImageView.isHidden, let icon = nativeAd.icon?.image {
+            let iconAspectRatio = icon.size.width / icon.size.height
+            let scaledHeight = iconHeight * textScale
+            iconSize = CGSize(width: scaledHeight * iconAspectRatio, height: scaledHeight)
+        }
+
+        // Icon, headline and body are one block, centred together. Whatever slack the
+        // growth cap leaves sits either side of that block, not between its parts.
+        var blockHeight = headlineLabel.frame.height
+        if !bodyLabel.isHidden { blockHeight += titleVerticalSpacing + bodyLabel.frame.height }
+        if iconSize.height > 0 { blockHeight += iconSize.height + titleVerticalSpacing }
+
+        var blockOriginY = columnTop + max(0.0, (remainingTextSize.height - blockHeight) * 0.5)
+
+        if iconSize.height > 0 {
+            iconImageView.frame = pixelAligned(CGRect(x: (remainingTextSize.width - iconSize.width) * 0.5,
+                                                      y: blockOriginY,
+                                                      width: iconSize.width,
+                                                      height: iconSize.height))
+            iconImageView.layer.cornerRadius = iconSize.height * 0.23
+            blockOriginY = iconImageView.frame.maxY + titleVerticalSpacing
+        }
+
+        headlineLabel.frame.origin = CGPoint(x: (remainingTextSize.width - headlineLabel.frame.width) * 0.5,
+                                             y: blockOriginY)
+
+        // We're done if the label is hidden
         if bodyLabel.isHidden { return }
 
         // Lay out the subtitle
-        bodyLabel.textAlignment = .center
-        bodyLabel.frame.size = bodyLabel.sizeThatFits(remainingTextSize)
         bodyLabel.frame.origin = CGPoint(x: (remainingTextSize.width - bodyLabel.frame.width) * 0.5,
                                          y: headlineLabel.frame.maxY + titleVerticalSpacing)
 
@@ -387,6 +457,10 @@ final public class PromoNativeAdView: NativeAdView {
     }
 
     private func layoutSubviewsInPortraitFormat(size: CGSize, nativeAd: NativeAd) {
+        // Recycled views may arrive with the side-by-side layout's grown fonts and its
+        // unbounded line count.
+        applyTextFonts(scale: 1.0)
+        bodyLabel.numberOfLines = needsCompactLayout ? 2 : 3
         var origin = CGPoint(x: padding, y: padding)
 
         // Lay out the icon view

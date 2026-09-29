@@ -532,3 +532,47 @@ final class PromoNativeAdMediaFitTests: XCTestCase {
     }
 }
 
+// Set beside a tall creative, the text column is far taller than two lines of
+// headline and three of body need, so the copy was stranded at the top with the
+// call to action pinned to the foot and most of the column empty. The text grows
+// into that space instead. A short column — an iPhone in landscape, which is what
+// this layout was originally written for — must come out exactly as before.
+@MainActor
+final class PromoNativeAdTextScaleTests: XCTestCase {
+
+    private let targetFill: CGFloat = 0.5
+    private let maximumScale: CGFloat = 2.2
+
+    private func scale(available: CGFloat, natural: CGFloat) -> CGFloat {
+        PromoNativeAdView.textScale(availableHeight: available,
+                                    naturalHeight: natural,
+                                    targetFill: targetFill,
+                                    maximumScale: maximumScale)
+    }
+
+    func testShortColumnLeavesTheTextAlone() {
+        // iPhone landscape: ~200pt of column against ~120pt of text. Scaling here
+        // would make the copy bigger than the layout was designed around.
+        XCTAssertEqual(scale(available: 200, natural: 120), 1.0, accuracy: 0.01)
+    }
+
+    func testTallColumnGrowsTheText() {
+        // 550pt of column against ~120pt of text wants 2.29, so the cap applies.
+        XCTAssertEqual(scale(available: 550, natural: 120), maximumScale, accuracy: 0.01)
+    }
+
+    func testGrowthIsProportionalBelowTheCap() {
+        // 300 * 0.5 / 100 = 1.5, comfortably under the cap and used as-is.
+        XCTAssertEqual(scale(available: 300, natural: 100), 1.5, accuracy: 0.01)
+    }
+
+    func testTextIsNeverScaledDown() {
+        // Overflow is already handled further down by the existing shrink-to-fit
+        // pass; this one only ever grows, so it must not fight it.
+        XCTAssertEqual(scale(available: 100, natural: 400), 1.0, accuracy: 0.01)
+    }
+
+    func testUnmeasuredTextIsLeftAlone() {
+        XCTAssertEqual(scale(available: 550, natural: 0), 1.0, accuracy: 0.01)
+    }
+}
