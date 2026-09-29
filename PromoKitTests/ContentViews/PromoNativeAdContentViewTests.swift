@@ -576,3 +576,37 @@ final class PromoNativeAdTextScaleTests: XCTestCase {
         XCTAssertEqual(scale(available: 550, natural: 0), 1.0, accuracy: 0.01)
     }
 }
+
+// Google's call to action varies wildly by locale — "Install" against
+// "今すぐダウンロード" — and the compact pill was a fixed 120pt wide. Shrink-to-fit
+// rescues a near miss; it cannot rescue a call to action half again too long, so
+// those clipped. The pill now reports the width its own text needs.
+@MainActor
+final class PromoNativeAdActionButtonWidthTests: XCTestCase {
+
+    private func button(_ title: String) -> PromoNativeAdActionButton {
+        let button = PromoNativeAdActionButton(frame: .zero)
+        button.title = title
+        return button
+    }
+
+    func testLongerTitlesAskForMoreWidth() {
+        let short = button("Install").widthThatFits(height: 40)
+        let long = button("今すぐダウンロードする").widthThatFits(height: 40)
+        XCTAssertGreaterThan(long, short)
+    }
+
+    func testWidthLeavesRoomForTheRoundedCaps() {
+        // The label is inset by half the corner radius at each end, so the pill must
+        // ask for more than its bare text or the text runs into the curve.
+        let title = "Learn More"
+        let height: CGFloat = 40
+        let bare = (title as NSString)
+            .size(withAttributes: [.font: UIFont.boldSystemFont(ofSize: 18.0)]).width
+        XCTAssertGreaterThan(button(title).widthThatFits(height: height), bare)
+    }
+
+    func testEmptyTitleStillAsksForAPillShape() {
+        XCTAssertEqual(button("").widthThatFits(height: 40), 80)
+    }
+}

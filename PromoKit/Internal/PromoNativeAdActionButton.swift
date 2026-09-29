@@ -73,6 +73,19 @@ final internal class PromoNativeAdActionButton: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// The width this pill needs for its own text at full size, including the
+    /// rounded caps it must not run into. Google's call to action varies wildly by
+    /// locale, so a fixed width fits some and clips others — shrink-to-fit only
+    /// rescues the near misses.
+    func widthThatFits(height: CGFloat) -> CGFloat {
+        guard let title, !title.isEmpty else { return height * 2.0 }
+        let text = title as NSString
+        let textWidth = text.size(withAttributes: [.font: label.font as Any]).width
+        // The label is inset by half the corner radius at each end; the radius is
+        // half the height, so that is height * 0.5 in total.
+        return ceil(textWidth + (height * 0.5))
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         let radius = bounds.height / 2.0

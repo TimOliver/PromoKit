@@ -408,6 +408,22 @@ final public class PromoNativeAdView: NativeAdView {
             bodyLabel.frame.size = bodyLabel.sizeThatFits(remainingTextSize)
         }
 
+        // Shrink the copy if it overflows its column. The previous version scaled the
+        // labels' frame heights, which does not make the text any smaller — it only
+        // gives it less room to draw in, so it clipped. Reducing the font is what
+        // actually fits it. Floored, because past a point the copy is unreadable and
+        // the shrink-to-fit is doing more harm than the overflow it is avoiding.
+        let naturalCopyHeight = headlineLabel.frame.height
+            + (bodyLabel.isHidden ? 0.0 : titleVerticalSpacing + bodyLabel.frame.height)
+        if naturalCopyHeight > remainingTextSize.height, naturalCopyHeight > 0 {
+            let shrink = max(minimumTextShrink, remainingTextSize.height / naturalCopyHeight)
+            applyTextFonts(scale: textScale * shrink)
+            headlineLabel.frame.size = headlineLabel.sizeThatFits(remainingTextSize)
+            if !bodyLabel.isHidden {
+                bodyLabel.frame.size = bodyLabel.sizeThatFits(remainingTextSize)
+            }
+        }
+
         // Size the icon with the copy, so it keeps its proportion as the text grows
         // rather than shrinking away beside it.
         var iconSize = CGSize.zero
@@ -444,16 +460,6 @@ final public class PromoNativeAdView: NativeAdView {
         bodyLabel.frame.origin = CGPoint(x: (remainingTextSize.width - bodyLabel.frame.width) * 0.5,
                                          y: headlineLabel.frame.maxY + titleVerticalSpacing)
 
-        // Scale the labels down if they overflowed
-        let totalHeight = bodyLabel.frame.height + titleVerticalSpacing + headlineLabel.frame.height
-        if totalHeight < remainingTextSize.height {
-            return
-        }
-
-        let scale = remainingTextSize.height / (totalHeight - titleVerticalSpacing)
-        headlineLabel.frame.size.height *= scale
-        bodyLabel.frame.size.height *= scale
-        bodyLabel.frame.origin.y = headlineLabel.frame.maxY + titleVerticalSpacing
     }
 
     private func layoutSubviewsInPortraitFormat(size: CGSize, nativeAd: NativeAd) {
@@ -610,7 +616,20 @@ final public class PromoNativeAdView: NativeAdView {
         return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
     private var iconHeight: CGFloat { 64.0 }
-    private var compactActionSize: CGSize { CGSize(width: 120, height: 40) }
+    /// The compact call to action, sized to its own text. A fixed width fitted some
+    /// of Google's calls to action and clipped others — "Install" and
+    /// "今すぐダウンロード" are not the same size, and shrink-to-fit only rescues the
+    /// near misses. Floored at the original width so short ones keep their shape, and
+    /// capped so a long one cannot crowd the copy out of an already compact card.
+    private var compactActionSize: CGSize {
+        let height: CGFloat = 40
+        return CGSize(width: min(max(120, actionButton.widthThatFits(height: height)), 200),
+                      height: height)
+    }
+
+    /// How far the copy may shrink to fit its column before losing a line is the
+    /// better trade.
+    private var minimumTextShrink: CGFloat { 0.6 }
 
     /// The narrowest column of text worth setting beside a creative. Below this the
     /// headline wraps to a word or two a line, and stacking reads better.
