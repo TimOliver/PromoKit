@@ -39,6 +39,23 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         static let adTapDistanceThreshold: CGFloat = 44
     }
 
+    /// The default ceiling on a native ad card's width.
+    @objc public static let defaultMaximumContentWidth: CGFloat = 500
+
+    /// The default ceiling on a native ad card's height.
+    @objc public static let defaultMaximumContentHeight: CGFloat = 750
+
+    /// The widest the ad's card may be laid out, whatever space the host offers it.
+    ///
+    /// The card's media band is sized from this width, so a host that stretches the
+    /// card wider afterwards gets a band measured for the wrong one — too short for
+    /// its own shape, with the creative pillarboxed inside it. A host that wants a
+    /// wider card should raise this instead of resizing the view after the fact.
+    @objc public var maximumContentWidth: CGFloat = PromoNativeAdProvider.defaultMaximumContentWidth
+
+    /// The tallest the ad's card may be laid out, whatever space the host offers it.
+    @objc public var maximumContentHeight: CGFloat = PromoNativeAdProvider.defaultMaximumContentHeight
+
     /// The Google ad identifier for this native ad
     private let adUnitID: String
 
@@ -119,6 +136,10 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
     public func contentView(for promoView: PromoView) -> PromoContentView {
         let adContentView = promoView.dequeueContentView(for: PromoNativeAdContentView.self)
+        // Applied before the ad is set: assigning `nativeAd` triggers a layout pass,
+        // which measures the card against these.
+        adContentView.maximumContentWidth = maximumContentWidth
+        adContentView.maximumContentHeight = maximumContentHeight
         adContentView.nativeAd = nativeAd
         adContentView.mediaBackgroundImage = mediaBackgroundImage
         return adContentView

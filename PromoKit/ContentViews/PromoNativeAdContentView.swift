@@ -50,6 +50,20 @@ final public class PromoNativeAdContentView: PromoContentView {
         })?.frame ?? .zero
     }
 
+    /// The widest the ad's card may be laid out, independent of the space offered.
+    /// Forwarded from the provider; see `PromoNativeAdProvider.maximumContentWidth`.
+    public var maximumContentWidth: CGFloat {
+        set { adView.maximumWidth = newValue }
+        get { adView.maximumWidth }
+    }
+
+    /// The tallest the ad's card may be laid out, independent of the space offered.
+    /// Forwarded from the provider; see `PromoNativeAdProvider.maximumContentHeight`.
+    public var maximumContentHeight: CGFloat {
+        set { adView.maximumHeight = newValue }
+        get { adView.maximumHeight }
+    }
+
     // The hosted native ad view
     private let adView = PromoNativeAdView()
 
@@ -483,9 +497,9 @@ final public class PromoNativeAdView: NativeAdView {
 
     // Static sizing values
     private var needsCompactLayout: Bool { traitCollection.verticalSizeClass == .compact }
-    private var maximumWidth: CGFloat { 500 }
+    var maximumWidth: CGFloat = PromoNativeAdProvider.defaultMaximumContentWidth
     private var minimumWidth: CGFloat { 340 }
-    private var maximumHeight: CGFloat { 750 }
+    var maximumHeight: CGFloat = PromoNativeAdProvider.defaultMaximumContentHeight
     private var headlineIndent: CGFloat { 31 }
     private var adLabelOffset: CGFloat { 4 }
     private var adLabelSize: CGSize { CGSize(width: 26, height: 18) }
