@@ -96,3 +96,23 @@ final class PromoImageProcessingTests: XCTestCase {
                        CGSize(width: 100, height: 50))
     }
 }
+
+extension PromoImageProcessingTests {
+    func testDecodedThumbnailPreservesRequestedLogicalSizeAndScale() throws {
+        let rendered = makePromoTestImage(size: CGSize(width: 200, height: 100), color: .blue)
+        let pixels = try XCTUnwrap(rendered.cgImage)
+        for sourceScale in [CGFloat(1), 2, 3] {
+            let source = UIImage(cgImage: pixels, scale: sourceScale, orientation: .up)
+            for outputScale in [CGFloat(1), 2, 3] {
+                let output = try XCTUnwrap(PromoImageProcessing.decodedImage(source,
+                                                                           fittingSize: CGSize(width: 40, height: 20),
+                                                                           scale: outputScale))
+                XCTAssertEqual(output.scale, outputScale)
+                XCTAssertEqual(output.size.width, 40, accuracy: 0.1)
+                XCTAssertEqual(output.size.height, 20, accuracy: 0.1)
+                XCTAssertEqual(output.cgImage?.width, Int(40 * outputScale))
+                XCTAssertEqual(output.cgImage?.height, Int(20 * outputScale))
+            }
+        }
+    }
+}

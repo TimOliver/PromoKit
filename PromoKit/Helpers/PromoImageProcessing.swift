@@ -47,7 +47,13 @@ public class PromoImageProcessing {
 
         if useSystemThumbnailPreparation, #available(iOS 15.0, *) {
             let size = fittingSize ?? image.size
-            return image.preparingThumbnail(of: CGSize(width: size.width * scale, height: size.height * scale))
+            let relativeScale = scale / image.scale
+            guard let thumbnail = image.preparingThumbnail(of: CGSize(width: size.width * relativeScale,
+                                                                      height: size.height * relativeScale)),
+                  let cgImage = thumbnail.cgImage else { return nil }
+            // Preparation sizes pixels using the source image's scale. Convert
+            // that request, then label the result with the desired display scale.
+            return UIImage(cgImage: cgImage, scale: scale, orientation: thumbnail.imageOrientation)
         }
 
         return legacyDecodedImage(newImage, fittingSize: fittingSize, scale: scale)
