@@ -140,8 +140,10 @@ final class PromoCloudEventProviderTests: XCTestCase {
     func testCloudEventProviderSelectsNonExpiringRecordWhenOthersHaveExpired() {
         let dataSource = StubCloudEventDataSource()
         let expired = CKRecord(recordType: "PromoEvent")
+        expired["type"] = "app-update"
         expired["expirationDate"] = Date.distantPast as NSDate
         let nonExpiring = CKRecord(recordType: "PromoEvent")
+        nonExpiring["type"] = "app-update"
         nonExpiring["title"] = "Ongoing announcement"
         dataSource.queryRecords = [expired, nonExpiring]
         dataSource.fetchRecord = nonExpiring
@@ -531,5 +533,122 @@ extension PromoCloudEventProviderTests {
         _ = provider.contentView(for: view)
         provider.didTapUpInside(promoView: view, with: UITouch())
         XCTAssertEqual(openedURLs.count, 3, "Displaying a notice without a URL must clear the previous destination")
+    }
+}
+
+extension PromoCloudEventProviderTests {
+    func testFullRecordVersionChangeCannotBypassEligibility() throws {
+        let currentVersion = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            ?? Bundle.main.object(forInfoDictionaryKey: kCFBundleVersionKey as String) as? String)
+        let minimumVersion = currentVersion + ".1"
+        XCTAssertFalse(PromoCloudEventProvider.isVersionEligible(currentVersion, minVersion: minimumVersion))
+        let source = StubCloudEventDataSource()
+        let queryRecord = CKRecord(recordType: "PromoEvent")
+        queryRecord["title"] = "Announcement"
+        let refreshedRecord = CKRecord(recordType: "PromoEvent", recordID: queryRecord.recordID)
+        refreshedRecord["title"] = "Requires a newer app"
+        refreshedRecord["minVersion"] = minimumVersion
+        source.queryRecords = [queryRecord]
+        source.fetchRecord = refreshedRecord
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: source)
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .noContentAvailable,
+                       "The full record is authoritative and no longer eligible for this app version")
+        XCTAssertNil(provider.currentRecordName)
+    }
+
+    func testFullRecordCategoryChangeCannotBypassEventTypeFilter() {
+        let source = StubCloudEventDataSource()
+        let queryRecord = CKRecord(recordType: "PromoEvent")
+        queryRecord["title"] = "App update"
+        queryRecord["type"] = "app-update"
+        let refreshedRecord = CKRecord(recordType: "PromoEvent", recordID: queryRecord.recordID)
+        refreshedRecord["title"] = "A different category"
+        refreshedRecord["type"] = "advertisement"
+        source.queryRecords = [queryRecord]
+        source.fetchRecord = refreshedRecord
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: "app-update", dataSource: source)
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .noContentAvailable,
+                       "Stale query matches must not show a refreshed record from another category")
+        XCTAssertNil(provider.currentRecordName)
+    }
+
+    func testNoticeHiddenDuringFullFetchCannotBecomeAvailable() {
+        let record = CKRecord(recordType: "PromoEvent")
+        record["title"] = "Notice hidden while downloading"
+        let source = CloudEventDataSourceWithFetchHook(record: record)
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: source)
+        source.beforeFullFetchCompletion = { [weak provider] in
+            provider?.setHiddenRecordNames([record.recordID.recordName])
+        }
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .noContentAvailable)
+        XCTAssertNil(provider.currentRecordName)
+    }
+
+    func testCategoryFilteredQueryRequestsCategoryMetadata() {
+        let record = CKRecord(recordType: "PromoEvent")
+        record["title"] = "App update"
+        record["type"] = "app-update"
+        let source = CloudEventDataSourceWithFetchHook(record: record)
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: "app-update", dataSource: source)
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        XCTAssertTrue(source.desiredKeys.contains("type"), "Local filtering requires the category in query metadata")
+    }
+
+    func testEligibleRefreshedRecordRemainsAvailableWithOptionalCategoryFilter() throws {
+        let currentVersion = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            ?? Bundle.main.object(forInfoDictionaryKey: kCFBundleVersionKey as String) as? String)
+        let eventTypes: [String?] = [nil, "", "app-update", "APP-UPDATE"]
+        for eventType in eventTypes {
+            let source = StubCloudEventDataSource()
+            let queryRecord = CKRecord(recordType: "PromoEvent")
+            queryRecord["title"] = "Original title"
+            queryRecord["type"] = "app-update"
+            let refreshedRecord = CKRecord(recordType: "PromoEvent", recordID: queryRecord.recordID)
+            refreshedRecord["title"] = "Updated title"
+            refreshedRecord["type"] = "app-update"
+            refreshedRecord["minVersion"] = currentVersion
+            refreshedRecord["maxVersion"] = currentVersion
+            source.queryRecords = [queryRecord]
+            source.fetchRecord = refreshedRecord
+            let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: eventType, dataSource: source)
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+            XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+            let content = try XCTUnwrap(provider.contentView(for: view) as? PromoTableListContentView)
+            XCTAssertEqual(content.label.attributedText?.string, "Updated title")
+        }
+    }
+}
+
+private final class CloudEventDataSourceWithFetchHook: PromoCloudEventDataSource {
+    let record: CKRecord
+    private(set) var desiredKeys: [String] = []
+    var beforeFullFetchCompletion: (() -> Void)?
+
+    init(record: CKRecord) { self.record = record }
+
+    func performQuery(_ query: CKQuery, desiredKeys: [String],
+                      recordHandler: @escaping (CKRecord) -> Void,
+                      completion: @escaping (Error?) -> Void) {
+        self.desiredKeys = desiredKeys
+        DispatchQueue.main.async {
+            recordHandler(self.record)
+            completion(nil)
+        }
+    }
+
+    func fetchRecord(withID recordID: CKRecord.ID, completion: @escaping (CKRecord?, Error?) -> Void) {
+        DispatchQueue.main.async {
+            self.beforeFullFetchCompletion?()
+            completion(self.record, nil)
+        }
     }
 }

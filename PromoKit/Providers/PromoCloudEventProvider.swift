@@ -56,6 +56,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         static let title = "title"
         static let subtitle = "subtitle"
         static let url = "url"
+        static let type = "type"
         static let minVersion = "minVersion"
         static let maxVersion = "maxVersion"
         static let localDuration = "localDuration"
@@ -216,6 +217,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// - Parameter record: The record that was fetched
     private func didFetchRecordForQuery(_ record: CKRecord) {
         guard isRecordEligibleForDisplay(record) else { return }
+        guard isRecordWithinLocalDuration(record) else { return }
         guard Self.isRecordPreferred(record, over: self.record) else { return }
         self.record = record
     }
@@ -231,6 +233,15 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
         guard isCurrentAppVersionEligible(for: record) else { return false }
 
+        if let eventType, !eventType.isEmpty {
+            // CloudKit's equality comparisons for strings are case-insensitive.
+            guard let recordType = record[Constants.type] as? String,
+                  recordType.caseInsensitiveCompare(eventType) == .orderedSame else { return false }
+        }
+        return true
+    }
+
+    private func isRecordWithinLocalDuration(_ record: CKRecord) -> Bool {
         // If we don't have any local duration value, this record is always valid
         guard let localDuration = record[Constants.localDuration] as? Int, localDuration > 0 else {
             return true
@@ -335,7 +346,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
                 let fetchedRecord = error == nil ? record : nil
                 guard let displayRecord = fetchedRecord ?? self.record,
-                      self.isRecordUnexpired(displayRecord) else {
+                      self.isRecordEligibleForDisplay(displayRecord) else {
                     self.record = nil
                     self.handleResult(.noContentAvailable)
                     return
@@ -389,6 +400,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
                 Constants.title,
                 Constants.subtitle,
                 Constants.url,
+                Constants.type,
                 Constants.expirationDate,
                 Constants.localDuration,
                 Constants.minVersion,
