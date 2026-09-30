@@ -594,6 +594,10 @@ final public class PromoNativeAdView: NativeAdView {
             actionButton.removeFromSuperview()
         }
 
+        if needsCompactLayout, !actionButton.isHidden {
+            origin.y = max(origin.y, actionButton.frame.maxY + innerMargin)
+        }
+
         // Position the media container
         let aspectRatio = Self.usableAspectRatio(for: nativeAd)
         let actionButtonY = (actionButton.superview != nil && !needsCompactLayout) ? (actionButton.frame.minY - innerMargin) : size.height
@@ -779,7 +783,14 @@ final public class PromoNativeAdView: NativeAdView {
                 textHeight += titleVerticalSpacing + measuredBody.sizeThatFits(textSize).height
             }
 
-            var chrome = (padding * 2.0) + max(textHeight, iconSize.height) + innerMargin
+            var headerHeight = max(textHeight, iconSize.height)
+            if needsCompactLayout, !(nativeAd.callToAction?.isEmpty ?? true) {
+                // The inline button sits below AdChoices even when the title
+                // is only one line. The media must also pay for that height.
+                headerHeight = max(headerHeight,
+                                   googleButtonWidth + titleVerticalSpacing + compactActionSize.height)
+            }
+            var chrome = (padding * 2.0) + headerHeight + innerMargin
             if !needsCompactLayout { chrome += innerMargin + ctaButtonHeight }
             return chrome
         }

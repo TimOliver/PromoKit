@@ -1045,3 +1045,36 @@ extension PromoNativeAdContentViewTests {
         }
     }
 }
+
+extension PromoNativeAdContentViewTests {
+    func testCompactStackedMediaStartsBelowTheInlineCallToAction() throws {
+        guard #available(iOS 17.0, *) else {
+            throw XCTSkip("Trait overrides require iOS 17")
+        }
+        let adView = PromoNativeAdView()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 700, height: 300))
+        let controller = UIViewController()
+        window.rootViewController = controller
+        controller.view.addSubview(adView)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        adView.traitOverrides.verticalSizeClass = .compact
+        window.layoutIfNeeded()
+        XCTAssertEqual(adView.traitCollection.verticalSizeClass, .compact)
+        adView.configureContentViews(with: FakeNativeAd(aspectRatio: 16.0 / 9.0,
+                                                       headline: "Great App",
+                                                       callToAction: "Install"))
+        let preferred = adView.sizeThatFits(CGSize(width: 700, height: 300))
+        adView.frame = CGRect(origin: .zero, size: preferred)
+        adView.setNeedsLayout()
+        adView.layoutIfNeeded()
+
+        let action = try XCTUnwrap(adView.callToActionView)
+        let media = try XCTUnwrap(adView.mediaView)
+        let mediaContainer = try XCTUnwrap(media.superview)
+        XCTAssertLessThanOrEqual(action.frame.maxY, mediaContainer.frame.minY,
+                                "The media band must start below the inline call to action")
+        XCTAssertFalse(action.frame.intersects(mediaContainer.frame),
+                       "The media container is drawn above the action button and hides any overlap")
+    }
+}
