@@ -433,10 +433,10 @@ final public class PromoNativeAdView: NativeAdView {
             naturalTextHeight += titleVerticalSpacing + bodyLabel.sizeThatFits(remainingTextSize).height
         }
         if !iconImageView.isHidden { naturalTextHeight += iconHeight + titleVerticalSpacing }
-        let textScale = Self.textScale(availableHeight: remainingTextSize.height,
-                                       naturalHeight: naturalTextHeight,
-                                       targetFill: textColumnTargetFill,
-                                       maximumScale: maximumTextScale)
+        var textScale = Self.textScale(availableHeight: remainingTextSize.height,
+                                      naturalHeight: naturalTextHeight,
+                                      targetFill: textColumnTargetFill,
+                                      maximumScale: maximumTextScale)
         applyTextFonts(scale: textScale)
 
         // Lay out the title
@@ -458,35 +458,49 @@ final public class PromoNativeAdView: NativeAdView {
             bodyLabel.removeFromSuperview()
         }
 
-        // Shrink the copy if it overflows its column. The previous version scaled the
-        // labels' frame heights, which does not make the text any smaller — it only
-        // gives it less room to draw in, so it clipped. Reducing the font is what
-        // actually fits it. Floored, because past a point the copy is unreadable and
-        // the shrink-to-fit is doing more harm than the overflow it is avoiding.
-        let naturalCopyHeight = headlineLabel.frame.height
-            + (bodyLabel.isHidden ? 0.0 : titleVerticalSpacing + bodyLabel.frame.height)
-        if naturalCopyHeight > remainingTextSize.height, naturalCopyHeight > 0 {
-            let shrink = max(minimumTextShrink, remainingTextSize.height / naturalCopyHeight)
-            applyTextFonts(scale: textScale * shrink)
+        // The icon and copy share one column. Shrinking only the copy against
+        // the full column leaves no budget for the icon above it on short cards.
+        let naturalSpacing = (bodyLabel.isHidden ? 0 : titleVerticalSpacing)
+            + (iconImageView.isHidden ? 0 : titleVerticalSpacing)
+        let naturalBlockHeight = headlineLabel.frame.height
+            + (bodyLabel.isHidden ? 0 : bodyLabel.frame.height)
+            + (iconImageView.isHidden ? 0 : iconHeight * textScale)
+        let availableHeight = max(0, remainingTextSize.height)
+        if naturalBlockHeight + naturalSpacing > availableHeight, naturalBlockHeight > 0 {
+            let shrink = max(minimumTextShrink,
+                             max(0, availableHeight - naturalSpacing) / naturalBlockHeight)
+            textScale *= shrink
+            applyTextFonts(scale: textScale)
             headlineLabel.frame.size = headlineLabel.sizeThatFits(remainingTextSize)
             if !bodyLabel.isHidden {
                 bodyLabel.frame.size = bodyLabel.sizeThatFits(remainingTextSize)
             }
         }
 
-        // Size the icon with the copy, so it keeps its proportion as the text grows
-        // rather than shrinking away beside it.
+        // If even the minimum readable fonts cannot fit, truncate the copy to
+        // its column and give the icon only the space left above it.
+        headlineLabel.frame.size.height = min(headlineLabel.frame.height, availableHeight)
+        let bodySpacing = bodyLabel.isHidden ? 0
+            : min(titleVerticalSpacing, max(0, availableHeight - headlineLabel.frame.height))
+        if !bodyLabel.isHidden {
+            bodyLabel.frame.size.height = min(bodyLabel.frame.height,
+                                              max(0, availableHeight - headlineLabel.frame.height - bodySpacing))
+        }
+        let copyHeight = headlineLabel.frame.height
+            + (bodyLabel.isHidden ? 0 : bodySpacing + bodyLabel.frame.height)
+
+        // Apply the final scale to the icon too, including any shrink above.
         var iconSize = CGSize.zero
         if !iconImageView.isHidden, let icon = nativeAd.icon?.image {
             let iconAspectRatio = icon.size.width / icon.size.height
-            let scaledHeight = iconHeight * textScale
+            let scaledHeight = min(iconHeight * textScale,
+                                   max(0, availableHeight - copyHeight - titleVerticalSpacing))
             iconSize = CGSize(width: scaledHeight * iconAspectRatio, height: scaledHeight)
         }
 
         // Icon, headline and body are one block, centred together. Whatever slack the
         // growth cap leaves sits either side of that block, not between its parts.
-        var blockHeight = headlineLabel.frame.height
-        if !bodyLabel.isHidden { blockHeight += titleVerticalSpacing + bodyLabel.frame.height }
+        var blockHeight = copyHeight
         if iconSize.height > 0 { blockHeight += iconSize.height + titleVerticalSpacing }
 
         var blockOriginY = columnTop + max(0.0, (remainingTextSize.height - blockHeight) * 0.5)
@@ -498,6 +512,8 @@ final public class PromoNativeAdView: NativeAdView {
                                                       height: iconSize.height))
             iconImageView.layer.cornerRadius = iconSize.height * 0.23
             blockOriginY = iconImageView.frame.maxY + titleVerticalSpacing
+        } else {
+            iconImageView.frame = .zero
         }
 
         headlineLabel.frame.origin = CGPoint(x: (remainingTextSize.width - headlineLabel.frame.width) * 0.5,
@@ -508,7 +524,7 @@ final public class PromoNativeAdView: NativeAdView {
 
         // Lay out the subtitle
         bodyLabel.frame.origin = CGPoint(x: (remainingTextSize.width - bodyLabel.frame.width) * 0.5,
-                                         y: headlineLabel.frame.maxY + titleVerticalSpacing)
+                                         y: headlineLabel.frame.maxY + bodySpacing)
 
     }
 
