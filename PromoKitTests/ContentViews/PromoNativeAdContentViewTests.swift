@@ -886,6 +886,39 @@ extension PromoNativeAdContentViewTests {
 }
 
 extension PromoNativeAdContentViewTests {
+    func testReuseRestoresCallToActionVisibilityInBothLayouts() throws {
+        for aspect in [CGFloat(0.5), 1] {
+            let adView = PromoNativeAdView()
+            adView.maximumWidth = 1000
+            adView.maximumHeight = 1000
+            adView.configureContentViews(with: FakeNativeAd(aspectRatio: 0.5, headline: "No action"))
+            adView.reset()
+            adView.configureContentViews(with: FakeNativeAd(aspectRatio: aspect,
+                                                           headline: "New creative",
+                                                           callToAction: "Install"))
+
+            let action = try XCTUnwrap(adView.callToActionView)
+            XCTAssertTrue(action.superview === adView)
+            XCTAssertFalse(action.isHidden, "A previous ad without a call to action must not hide the next ad's button")
+        }
+    }
+
+    func testReuseReattachesBodyInSideBySideLayout() throws {
+        let adView = PromoNativeAdView()
+        adView.maximumWidth = 1000
+        adView.maximumHeight = 1000
+        adView.configureContentViews(with: FakeNativeAd(aspectRatio: 1, headline: "No body"))
+        adView.reset()
+        adView.configureContentViews(with: FakeNativeAd(aspectRatio: 0.5,
+                                                       headline: "New creative",
+                                                       body: "This body must be visible"))
+
+        let body = try XCTUnwrap(adView.bodyView)
+        XCTAssertFalse(body.isHidden)
+        XCTAssertTrue(body.superview === adView, "A body removed by the prior stacked layout must be reattached")
+        XCTAssertEqual((adView.headlineView as? UILabel)?.textAlignment, .center)
+    }
+
     func testVideoResizeMeasuresTheFontsThatWillBeDisplayed() throws {
         let adView = PromoNativeAdView()
         adView.maximumWidth = 1000
@@ -938,6 +971,42 @@ extension PromoNativeAdContentViewTests {
             XCTAssertEqual(adView.sizeThatFits(container), measured)
             let alignment: NSTextAlignment = container.width == 900 ? .center : .left
             XCTAssertEqual((adView.headlineView as? UILabel)?.textAlignment, alignment)
+        }
+    }
+
+    func testHiddenOptionalViewsDoNotDisplaceMediaAfterReconfigurationOrReuse() throws {
+        for resetFirst in [false, true] {
+            let reused = PromoNativeAdView()
+            reused.maximumWidth = 1000
+            reused.maximumHeight = 1000
+            let icon = makePromoTestImage(size: CGSize(width: 64, height: 64), color: .green)
+            reused.configureContentViews(with: FakeNativeAd(aspectRatio: 0.5,
+                                                            headline: "Old title",
+                                                            body: "Old body",
+                                                            callToAction: "Install",
+                                                            icon: NativeAdImage(image: icon)))
+            reused.frame = CGRect(x: 0, y: 0, width: 900, height: 600)
+            reused.setNeedsLayout()
+            reused.layoutIfNeeded()
+            if resetFirst { reused.reset() }
+
+            let fresh = PromoNativeAdView()
+            fresh.maximumWidth = 1000
+            fresh.maximumHeight = 1000
+            for adView in [reused, fresh] {
+                adView.configureContentViews(with: FakeNativeAd(aspectRatio: 1,
+                                                               headline: "New title",
+                                                               callToAction: "Install"))
+                adView.frame = CGRect(x: 0, y: 0, width: 400, height: 300)
+                adView.setNeedsLayout()
+                adView.layoutIfNeeded()
+            }
+            let reusedMedia = try XCTUnwrap(reused.mediaView)
+            let freshMedia = try XCTUnwrap(fresh.mediaView)
+
+            XCTAssertEqual(reusedMedia.frame, freshMedia.frame,
+                           "Hidden icon/body frames from the prior ad must not shrink the new media")
+            XCTAssertEqual(reusedMedia.superview?.frame, freshMedia.superview?.frame)
         }
     }
 }

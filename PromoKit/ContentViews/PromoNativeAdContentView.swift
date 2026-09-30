@@ -198,6 +198,13 @@ final public class PromoNativeAdView: NativeAdView {
         iconImageView.image = nil
         contentMediaView.mediaContent = nil
         mediaBackgroundImage = nil
+        for view in [headlineLabel, bodyLabel, adLabel, actionButton, iconImageView,
+                     contentMediaContainerView, contentMediaView] {
+            view.frame = .zero
+        }
+        bodyLabel.isHidden = true
+        iconImageView.isHidden = true
+        actionButton.isHidden = true
     }
 
     /// Base point sizes for the copy. The side-by-side layout scales up from these
@@ -345,7 +352,7 @@ final public class PromoNativeAdView: NativeAdView {
         self.bodyView = !bodyLabel.isHidden ? bodyLabel : nil
         self.iconView = !iconImageView.isHidden ? iconImageView : nil
         self.mediaView = contentMediaView
-        self.callToActionView = actionButton
+        self.callToActionView = !actionButton.isHidden ? actionButton : nil
 
         if self.nativeAd === nativeAd {
             updateMediaAspectRatioIfNeeded()
@@ -380,20 +387,22 @@ final public class PromoNativeAdView: NativeAdView {
         // same block rather than floating at a fixed fraction of the column's height.
         iconImageView.isHidden = (iconImageView.image == nil)
         if iconImageView.isHidden {
+            iconImageView.frame = .zero
             iconImageView.removeFromSuperview()
         } else if iconImageView.superview == nil {
             addSubview(iconImageView)
         }
 
         // Layout the action button at the bottom
-        if !(actionButton.title?.isEmpty ?? true) {
+        actionButton.isHidden = actionButton.title?.isEmpty ?? true
+        if !actionButton.isHidden {
             actionButton.tintColor = self.tintColor
             let buttonSize = CGSize(width: textContentSize.width, height: ctaButtonHeight)
             let buttonOrigin = CGPoint(x: padding, y: size.height - (ctaButtonHeight + padding))
             actionButton.frame = CGRect(origin: buttonOrigin, size: buttonSize)
             if actionButton.superview == nil { insertSubview(actionButton, at: 0) }
         } else {
-            actionButton.isHidden = true
+            actionButton.frame = .zero
             actionButton.removeFromSuperview()
         }
 
@@ -441,8 +450,12 @@ final public class PromoNativeAdView: NativeAdView {
 
         bodyLabel.isHidden = bodyLabel.text?.isEmpty ?? true
         if !bodyLabel.isHidden {
+            if bodyLabel.superview == nil { addSubview(bodyLabel) }
             bodyLabel.textAlignment = .center
             bodyLabel.frame.size = bodyLabel.sizeThatFits(remainingTextSize)
+        } else {
+            bodyLabel.frame = .zero
+            bodyLabel.removeFromSuperview()
         }
 
         // Shrink the copy if it overflows its column. The previous version scaled the
@@ -516,6 +529,7 @@ final public class PromoNativeAdView: NativeAdView {
             iconImageView.frame = pixelAligned(CGRect(origin: origin, size: iconSize))
             iconImageView.layer.cornerRadius = iconSize.height * 0.23
         } else {
+            iconImageView.frame = .zero
             iconImageView.removeFromSuperview()
         }
 
@@ -552,12 +566,16 @@ final public class PromoNativeAdView: NativeAdView {
             bodyLabel.frame.origin = CGPoint(x: textX, y: textY)
             bodyLabel.textAlignment = .left
         } else {
+            bodyLabel.frame = .zero
             bodyLabel.removeFromSuperview()
         }
 
-        origin.y = max(iconImageView.frame.maxY, max(headlineLabel.frame.maxY, bodyLabel.frame.maxY)) + innerMargin
+        let iconBottom = iconImageView.isHidden ? 0 : iconImageView.frame.maxY
+        let bodyBottom = bodyLabel.isHidden ? 0 : bodyLabel.frame.maxY
+        origin.y = max(iconBottom, max(headlineLabel.frame.maxY, bodyBottom)) + innerMargin
 
-        if !(actionButton.title?.isEmpty ?? true) {
+        actionButton.isHidden = actionButton.title?.isEmpty ?? true
+        if !actionButton.isHidden {
             if actionButton.superview == nil { insertSubview(actionButton, at: 0) }
             actionButton.tintColor = self.tintColor
             if !needsCompactLayout {
@@ -572,6 +590,7 @@ final public class PromoNativeAdView: NativeAdView {
             }
             actionButton.setNeedsLayout()
         } else {
+            actionButton.frame = .zero
             actionButton.removeFromSuperview()
         }
 
