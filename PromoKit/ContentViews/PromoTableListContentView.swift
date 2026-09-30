@@ -123,18 +123,27 @@ extension PromoTableListContentView {
     public override func layoutSubviews() {
         super.layoutSubviews()
 
-        var xOffset = promoView?.contentPadding.left ?? 0.0
+        let size = bounds.size
+        let imageSpacing = min(max(0, promoView?.contentPadding.left ?? 0), size.width)
+        var xOffset = imageSpacing
         if !imageView.isHidden,
            let imageSize = imageView.image?.size,
            imageSize.width > 0, imageSize.height > 0 {
-            let scale = min(bounds.width / imageSize.width, bounds.height / imageSize.height)
-            imageView.frame.size = CGSize(width: imageSize.width * scale,
-                                          height: imageSize.height * scale)
+            // Keep the thumbnail within a row-height square and reserve at least
+            // half of the available column width for the title and detail text.
+            let maximumImageWidth = min(size.height, max(0, size.width - imageSpacing) * 0.5)
+            let scale = min(maximumImageWidth / imageSize.width, size.height / imageSize.height)
+            let imageFrameSize = CGSize(width: imageSize.width * scale,
+                                        height: imageSize.height * scale)
+            imageView.frame = CGRect(x: 0, y: (size.height - imageFrameSize.height) * 0.5,
+                                     width: imageFrameSize.width, height: imageFrameSize.height)
             if let promoView = self.promoView {
                 let radius = promoView.cornerRadius - promoView.contentPadding.top
                 imageView.layer.cornerRadius = max(0, radius)
             }
-            xOffset = imageView.frame.maxX + (promoView?.contentPadding.left ?? 0.0)
+            xOffset = imageView.frame.maxX + imageSpacing
+        } else {
+            imageView.frame = .zero
         }
 
         var footnoteHeight = 0.0
@@ -143,7 +152,6 @@ extension PromoTableListContentView {
             footnoteHeight = footnoteLabel.frame.height + labelSpacing
         }
 
-        let size = bounds.size
         let fittingSize = CGSize(width: max(0, size.width - xOffset),
                                  height: max(0, size.height - footnoteHeight))
         let labelHeight = label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize), limitedToNumberOfLines: 4).height
