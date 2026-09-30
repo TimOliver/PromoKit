@@ -72,6 +72,9 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     // The CloudKit-facing data source. Production uses `PromoCloudKitDataSource`; tests inject a stub.
     private let dataSource: PromoCloudEventDataSource
 
+    // Opens the displayed notice's destination. Tests inject a handler without leaving the app.
+    private let openURL: (URL) -> Void
+
     // A cache for persisting record access dates and thumbnail images between sessions
     private let cache = PromoCache()
 
@@ -91,6 +94,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     private var record: CKRecord?
     private var resolvedRecordName: String?
     private var displayedRecordName: String?
+    private var displayedURL: URL?
 
     // The decoded thumbnail image for the current record, loaded from cache or downloaded
     private var thumbnail: UIImage?
@@ -123,14 +127,17 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
                   dataSource: PromoCloudKitDataSource(containerIdentifier: containerIdentifier))
     }
 
-    /// Designated initializer that accepts an injected data source. Internal so tests can supply
-    /// a stub without exposing the abstraction publicly.
+    /// Designated initializer that accepts injected dependencies without exposing them publicly.
     internal init(recordType: String,
                   eventType: String?,
-                  dataSource: PromoCloudEventDataSource) {
+                  dataSource: PromoCloudEventDataSource,
+                  openURL: @escaping (URL) -> Void = { url in
+                      UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                  }) {
         self.recordType = recordType
         self.eventType = eventType
         self.dataSource = dataSource
+        self.openURL = openURL
     }
 
     public func fetchNewContent(for promoView: PromoView,
@@ -146,19 +153,21 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     }
 
     public func contentView(for promoView: PromoView) -> PromoContentView {
-        let (record, thumbnail): (CKRecord?, UIImage?) = stateQueue.sync {
+        let (record, thumbnail, url): (CKRecord?, UIImage?, URL?) = stateQueue.sync {
             displayedRecordName = self.record?.recordID.recordName
-            return (self.record, self.thumbnail)
+            if let urlString = self.record?[Constants.url] as? String,
+               let url = URL(string: urlString), url.scheme != nil {
+                displayedURL = url
+            } else {
+                displayedURL = nil
+            }
+            return (self.record, self.thumbnail, displayedURL)
         }
         let contentView = promoView.dequeueContentView(for: PromoTableListContentView.self)
-        var headnote: String?
-        if let urlString = record?[Constants.url] as? String, let url = URL(string: urlString) {
-            headnote = url.host
-        }
 
         if let heading = record?[Constants.title] as? String {
             let byline = record?[Constants.subtitle] as? String
-            contentView.configure(title: heading, detailText: byline, footnote: headnote, image: thumbnail)
+            contentView.configure(title: heading, detailText: byline, footnote: url?.host, image: thumbnail)
         }
         return contentView
     }
@@ -166,6 +175,12 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
         CGSize(width: min(maximumSize.width, fittingSize.width),
                height: min(maximumSize.height, fittingSize.height))
+    }
+
+    public func didTapUpInside(promoView: PromoView, with touch: UITouch) {
+        let url = stateQueue.sync { displayedURL }
+        guard let url else { return }
+        openURL(url)
     }
 
     // MARK: - Private

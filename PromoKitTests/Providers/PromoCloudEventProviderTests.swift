@@ -445,3 +445,91 @@ extension PromoCloudEventProviderTests {
         XCTAssertEqual(provider.currentRecordName, "replacement-notice")
     }
 }
+
+extension PromoCloudEventProviderTests {
+    func testCloudEventTapOpensDisplayedURL() {
+        let source = StubCloudEventDataSource()
+        let record = CKRecord(recordType: "PromoEvent")
+        record["title"] = "Read the announcement"
+        record["url"] = "https://example.com/news"
+        source.queryRecords = [record]
+        source.fetchRecord = record
+        var openedURLs: [URL] = []
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil,
+                                               dataSource: source, openURL: { openedURLs.append($0) })
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        _ = provider.contentView(for: view)
+
+        let tappingProvider: PromoProvider = provider
+        tappingProvider.didTapUpInside?(promoView: view, with: UITouch())
+
+        XCTAssertEqual(openedURLs.map(\.absoluteString), ["https://example.com/news"])
+    }
+
+    func testCloudEventTapIgnoresMissingAndInvalidURLs() {
+        let urlStrings: [String?] = [nil, "", "/news", "https://["]
+        for urlString in urlStrings {
+            let source = StubCloudEventDataSource()
+            let record = CKRecord(recordType: "PromoEvent")
+            record["title"] = "Announcement"
+            record["url"] = urlString
+            source.queryRecords = [record]
+            source.fetchRecord = record
+            var openedURLs: [URL] = []
+            let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil,
+                                                   dataSource: source, openURL: { openedURLs.append($0) })
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+            XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+            _ = provider.contentView(for: view)
+
+            provider.didTapUpInside(promoView: view, with: UITouch())
+
+            XCTAssertTrue(openedURLs.isEmpty)
+        }
+    }
+
+    func testCloudEventTapKeepsDisplayedDestinationUntilReplacementIsShown() {
+        let source = StubCloudEventDataSource()
+        let first = CKRecord(recordType: "PromoEvent")
+        first["title"] = "Displayed notice"
+        first["url"] = "https://example.com/first"
+        source.queryRecords = [first]
+        source.fetchRecord = first
+        var openedURLs: [URL] = []
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil,
+                                               dataSource: source, openURL: { openedURLs.append($0) })
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        _ = provider.contentView(for: view)
+
+        let replacement = CKRecord(recordType: "PromoEvent")
+        replacement["title"] = "Replacement notice"
+        replacement["url"] = "https://example.com/replacement"
+        source.queryRecords = [replacement]
+        source.fetchRecord = replacement
+        let resolved = expectation(description: "Replacement resolves")
+        provider.fetchNewContent(for: view) { result in
+            XCTAssertEqual(result, .contentAvailable)
+            resolved.fulfill()
+        }
+        provider.didTapUpInside(promoView: view, with: UITouch())
+        wait(for: [resolved], timeout: 1)
+        provider.didTapUpInside(promoView: view, with: UITouch())
+        _ = provider.contentView(for: view)
+        provider.didTapUpInside(promoView: view, with: UITouch())
+
+        XCTAssertEqual(openedURLs.map(\.absoluteString), ["https://example.com/first",
+                                                        "https://example.com/first",
+                                                        "https://example.com/replacement"])
+
+        let noticeWithoutURL = CKRecord(recordType: "PromoEvent")
+        noticeWithoutURL["title"] = "Information only"
+        source.queryRecords = [noticeWithoutURL]
+        source.fetchRecord = noticeWithoutURL
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        _ = provider.contentView(for: view)
+        provider.didTapUpInside(promoView: view, with: UITouch())
+        XCTAssertEqual(openedURLs.count, 3, "Displaying a notice without a URL must clear the previous destination")
+    }
+}
