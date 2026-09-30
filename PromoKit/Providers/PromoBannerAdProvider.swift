@@ -56,6 +56,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     /// The Google banner view, created once and reused across fetches
     private let adView = BannerView()
     private var hostingPadding = UIEdgeInsets.zero
+    private weak var promoView: PromoView?
 
     // Store the result handler so we can call it when the ad has returned a value
     private var resultHandler: PromoProviderContentFetchHandler?
@@ -90,6 +91,8 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
 
     public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
+        self.promoView = promoView
+        self.resultHandler = resultHandler
         // Hide the ad view during the fetch. AdMob updates the adView's rendering to the new
         // ad synchronously just before firing its load-success callback, so if it were visible
         // the user would see the new banner "snap in" inside the old content view before our
@@ -103,7 +106,6 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         hostingPadding = promoView.defaultContentPadding
         adView.adSize = bannerSizeFor(promoSize: promoView.bounds.inset(by: hostingPadding).size)
         adView.load(Request())
-        self.resultHandler = resultHandler
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
@@ -130,6 +132,12 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
         switch result {
         case .success: handler(.contentAvailable)
         case .failure(let error):
+            // A failed ordinary refresh keeps its existing card. Restore only
+            // the banner still hosted by that card, before notifying the host.
+            if let promoView, promoView.currentProvider === self,
+               let contentView = promoView.contentView, adView.superview === contentView {
+                adView.isHidden = false
+            }
             // `.fetchRequestFailed` tells the host a provider lost, not why. Every
             // ad-serving cause — no fill, an ad unit that belongs to a different
             // app's bundle id, an account still in review — collapses into that one

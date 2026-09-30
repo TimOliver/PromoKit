@@ -123,3 +123,52 @@ final class PromoBannerAdProviderFixedSizeTests: XCTestCase {
         }
     }
 }
+
+extension PromoBannerAdProviderTests {
+    func testFailedBannerRefreshRestoresTheDisplayedBanner() throws {
+        let provider = PromoBannerAdProvider(adUnitID: "test-banner")
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 50))
+        var results: [PromoProviderFetchContentResult] = []
+        provider.fetchNewContent(for: promoView) { results.append($0) }
+        let banner = try XCTUnwrap(Mirror(reflecting: provider).children.first {
+            $0.label == "adView"
+        }?.value as? BannerView)
+        banner.delegate = nil
+        provider.bannerViewDidReceiveAd(banner)
+        let displayedContent = provider.contentView(for: promoView)
+        promoView.contentView = displayedContent
+        promoView.currentProvider = provider
+        XCTAssertFalse(banner.isHidden)
+
+        provider.fetchNewContent(for: promoView) {
+            XCTAssertFalse(banner.isHidden, "Failure observers must see the restored card")
+            results.append($0)
+        }
+        banner.delegate = nil
+        XCTAssertTrue(banner.isHidden)
+        provider.bannerView(banner, didFailToReceiveAdWithError: NSError(domain: "PromoKitTests", code: 1))
+
+        XCTAssertEqual(results, [.contentAvailable, .fetchRequestFailed])
+        XCTAssertTrue(promoView.contentView === displayedContent)
+        XCTAssertTrue(banner.superview === displayedContent)
+        XCTAssertFalse(banner.isHidden,
+                       "A failed refresh retains the previous container, so its banner must be made visible again")
+    }
+}
+
+extension PromoBannerAdProviderTests {
+    func testInitialBannerFailureDoesNotRevealUnresolvedContent() throws {
+        let provider = PromoBannerAdProvider(adUnitID: "test-banner")
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 50))
+        provider.fetchNewContent(for: view) { XCTAssertEqual($0, .fetchRequestFailed) }
+        let banner = try XCTUnwrap(Mirror(reflecting: provider).children.first {
+            $0.label == "adView"
+        }?.value as? BannerView)
+        banner.delegate = nil
+
+        provider.bannerView(banner, didFailToReceiveAdWithError: NSError(domain: "PromoKitTests", code: 1))
+
+        XCTAssertTrue(banner.isHidden)
+        XCTAssertNil(view.contentView)
+    }
+}
