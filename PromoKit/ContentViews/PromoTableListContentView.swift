@@ -77,6 +77,8 @@ final public class PromoTableListContentView: PromoContentView {
         // the overall memory footprint
         label.text = nil
         footnoteLabel.text = nil
+        footnoteLabel.frame = .zero
+        footnoteLabel.isHidden = true
         imageView.image = nil
     }
 
@@ -146,19 +148,27 @@ extension PromoTableListContentView {
             imageView.frame = .zero
         }
 
+        let textWidth = max(0, size.width - xOffset)
+        let hasFootnote = !(footnoteLabel.text?.isEmpty ?? true)
+        footnoteLabel.isHidden = !hasFootnote
         var footnoteHeight = 0.0
-        if footnoteLabel.text != nil {
-            footnoteLabel.sizeToFit()
-            footnoteHeight = footnoteLabel.frame.height + labelSpacing
+        var footnoteSpacing = 0.0
+        if hasFootnote {
+            let measuredSize = footnoteLabel.sizeThatFits(CGSize(width: textWidth, height: size.height))
+            footnoteHeight = min(size.height, measuredSize.height)
+            footnoteSpacing = min(labelSpacing, max(0, size.height - footnoteHeight))
         }
 
-        let fittingSize = CGSize(width: max(0, size.width - xOffset),
-                                 height: max(0, size.height - footnoteHeight))
-        let labelHeight = label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize), limitedToNumberOfLines: 4).height
-        let height = min(size.height, labelHeight + footnoteHeight)
+        let fittingSize = CGSize(width: textWidth,
+                                 height: max(0, size.height - footnoteHeight - footnoteSpacing))
+        let labelHeight = min(fittingSize.height, label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize),
+                                                               limitedToNumberOfLines: 4).height)
+        let height = labelHeight + footnoteHeight + footnoteSpacing
 
         label.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),
                              size: CGSize(width: fittingSize.width, height: labelHeight))
-        footnoteLabel.frame.origin = CGPoint(x: xOffset, y: label.frame.maxY + labelSpacing)
+        footnoteLabel.frame = hasFootnote
+            ? CGRect(x: xOffset, y: label.frame.maxY + footnoteSpacing, width: textWidth, height: footnoteHeight)
+            : .zero
     }
 }
