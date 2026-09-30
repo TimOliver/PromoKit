@@ -809,3 +809,119 @@ extension PromoProviderCoordinatorTests {
         XCTAssertEqual(updates, 0, "Exhaustion must have one notification path")
     }
 }
+
+extension PromoProviderCoordinatorTests {
+    func testReconnectDuringOfflineFetchPromotesOnlineProviderAfterCompletion() throws {
+        let fixture = makeCoordinator(connected: false)
+        let online = InternetOnlyPromoProvider(result: .contentAvailable)
+        let offline = HeldCoordinatorProvider()
+        let offlineStarted = expectation(description: "Offline fallback starts fetching")
+        let onlineResolved = expectation(description: "Reconnection promotes the online provider")
+        offline.onFetch = { offlineStarted.fulfill() }
+        fixture.coordinator.providers = [online, offline]
+        fixture.coordinator.providerUpdatedHandler = {
+            if $0 === online { onlineResolved.fulfill() }
+        }
+
+        fixture.coordinator.fetchBestProvider()
+        wait(for: [offlineStarted], timeout: 1.0)
+        fixture.monitor.simulateConnectivityChange(true)
+        try offline.complete(with: .contentAvailable)
+
+        wait(for: [onlineResolved], timeout: 1.0)
+        XCTAssertEqual(offline.fetchCount, 1, "The pending fallback should be allowed to complete")
+        XCTAssertEqual(online.fetchCount, 1)
+        XCTAssertTrue(fixture.coordinator.currentProvider === online)
+    }
+
+    func testReconnectDuringFailedOfflineFetchStillAttemptsOnlineProvider() throws {
+        let fixture = makeCoordinator(connected: false)
+        let online = InternetOnlyPromoProvider(result: .contentAvailable)
+        let offline = HeldCoordinatorProvider()
+        let offlineStarted = expectation(description: "Offline fallback starts fetching")
+        let onlineResolved = expectation(description: "Online provider resolves after fallback failure")
+        offline.onFetch = { offlineStarted.fulfill() }
+        fixture.coordinator.providers = [online, offline]
+        fixture.coordinator.providerUpdatedHandler = {
+            if $0 === online { onlineResolved.fulfill() }
+        }
+        var failures = 0
+        fixture.coordinator.providerFetchFailedHandler = { failures += 1 }
+
+        fixture.coordinator.fetchBestProvider()
+        wait(for: [offlineStarted], timeout: 1.0)
+        fixture.monitor.simulateConnectivityChange(true)
+        try offline.complete(with: .fetchRequestFailed)
+
+        wait(for: [onlineResolved], timeout: 1.0)
+        XCTAssertEqual(failures, 1)
+        XCTAssertEqual(online.fetchCount, 1)
+        XCTAssertTrue(fixture.coordinator.currentProvider === online)
+    }
+
+    func testResolutionCallbackReloadSupersedesDeferredConnectivityRecheck() throws {
+        let fixture = makeCoordinator(connected: false)
+        let offline = HeldCoordinatorProvider()
+        let replacement = MinimalPromoProvider(result: .contentAvailable)
+        let offlineStarted = expectation(description: "Offline fallback starts fetching")
+        let replacementResolved = expectation(description: "Delegate replacement resolves")
+        offline.onFetch = { offlineStarted.fulfill() }
+        fixture.coordinator.providers = [offline]
+        fixture.coordinator.providerUpdatedHandler = { [weak coordinator = fixture.coordinator] provider in
+            if provider === offline {
+                coordinator?.providers = [replacement]
+                coordinator?.fetchBestProvider()
+            } else if provider === replacement {
+                replacementResolved.fulfill()
+            }
+        }
+
+        fixture.coordinator.fetchBestProvider()
+        wait(for: [offlineStarted], timeout: 1.0)
+        fixture.monitor.simulateConnectivityChange(true)
+        try offline.complete(with: .contentAvailable)
+        wait(for: [replacementResolved], timeout: 1.0)
+        drainCoordinatorCallbacks()
+
+        XCTAssertEqual(replacement.fetchCount, 1,
+                       "The previous reload's pending network change must not start another fetch")
+        XCTAssertTrue(fixture.coordinator.currentProvider === replacement)
+        XCTAssertFalse(fixture.coordinator.isFetching)
+    }
+
+    private func drainCoordinatorCallbacks() {
+        let drained = expectation(description: "Queued coordinator callbacks drain")
+        func enqueueFence(_ remaining: Int) {
+            DispatchQueue.main.async {
+                if remaining == 0 {
+                    drained.fulfill()
+                } else {
+                    enqueueFence(remaining - 1)
+                }
+            }
+        }
+        enqueueFence(4)
+        wait(for: [drained], timeout: 1.0)
+    }
+}
+
+private final class HeldCoordinatorProvider: MinimalPromoProvider {
+    private var pendingCompletion: PromoProviderContentFetchHandler?
+
+    init() {
+        super.init(result: .contentAvailable, completes: false)
+    }
+
+    override func fetchNewContent(for promoView: PromoView,
+                                 with resultHandler: @escaping PromoProviderContentFetchHandler) {
+        fetchCount += 1
+        pendingCompletion = resultHandler
+        onFetch?()
+    }
+
+    func complete(with result: PromoProviderFetchContentResult) throws {
+        let completion = try XCTUnwrap(pendingCompletion)
+        pendingCompletion = nil
+        completion(result)
+    }
+}

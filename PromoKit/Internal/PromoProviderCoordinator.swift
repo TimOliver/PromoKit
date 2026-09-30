@@ -80,6 +80,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     private var beforeFetch: (() -> Void)?
     private var hasRequestedFetch = false
     private var hasAttemptedFetch = false
+    private var needsConnectivityRecheck = false
 
     // MARK: Init
 
@@ -152,6 +153,7 @@ extension PromoProviderCoordinator {
     internal func cancelFetch() {
         isFetching = false
         hasAttemptedFetch = false
+        needsConnectivityRecheck = false
         beforeFetch = nil
         fetchGeneration = UUID()
         invalidateActiveFetch()
@@ -224,20 +226,29 @@ extension PromoProviderCoordinator {
         // If this provider reported it has valid content, lets make it the current provider and stop here
         if result == .contentAvailable {
             currentProvider = provider
-            cancelFetch()
-            providerUpdatedHandler?(provider)
+            finishFetch { providerUpdatedHandler?(provider) }
             return
         }
 
         // Otherwise, move to the next provider and keep looking
         guard isFetching, let nextProvider = nextValidProvider(after: provider) else {
-            cancelFetch()
-            providerFetchFailedHandler?()
+            finishFetch { providerFetchFailedHandler?() }
             return
         }
 
         // Perform next fetch
         startContentFetch(for: nextProvider)
+    }
+
+    /// Finish the current request before handling a connectivity transition that
+    /// arrived during it. A host-triggered reload or cancellation takes priority.
+    private func finishFetch(notify: () -> Void) {
+        let shouldRecheckConnectivity = needsConnectivityRecheck
+        cancelFetch()
+        let completedGeneration = fetchGeneration
+        notify()
+        guard shouldRecheckConnectivity, fetchGeneration == completedGeneration else { return }
+        pathMonitor(networkMonitor, didUpdateConnectivity: networkMonitor.hasInternetAccess)
     }
 
     /// Find the next valid provider, either from the start, from a previously tested provider,
@@ -303,10 +314,11 @@ extension PromoProviderCoordinator {
             }
         } else {
             let didAttemptFetch = hasAttemptedFetch
-            cancelFetch()
             // A failed request followed by a throttled tail still ends the load.
             // If every provider was throttled, keep the existing content as-is.
-            if didAttemptFetch { providerFetchFailedHandler?() }
+            finishFetch {
+                if didAttemptFetch { providerFetchFailedHandler?() }
+            }
         }
 
         return true
@@ -357,7 +369,10 @@ extension PromoProviderCoordinator {
     /// Called when network connectivity changes. If we're currently showing an offline provider
     /// and the internet returns, triggers a fresh fetch to promote an online provider if one is available.
     func pathMonitor(_ pathMonitor: PromoPathMonitoring, didUpdateConnectivity connected: Bool) {
-        guard !isFetching else { return }
+        guard !isFetching else {
+            needsConnectivityRecheck = true
+            return
+        }
         guard let provider = currentProvider else {
             if connected && hasRequestedFetch { fetchBestProvider() }
             return
