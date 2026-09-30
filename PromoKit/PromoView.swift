@@ -931,10 +931,12 @@ extension PromoView {
 
     public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesMoved(touches, with: event)
-        guard !isInteractionCancelled, canPlayTapAnimation, let touch = touches.first else { return }
-        let zoomed = bounds.contains(touch.location(in: self))
-        setZoomed(zoomed, animated: true)
-        if let provider = currentProvider, let touch = touches.first {
+        guard !isInteractionCancelled, let touch = touches.first else { return }
+        if canPlayTapAnimation {
+            let zoomed = bounds.contains(touch.location(in: self))
+            setZoomed(zoomed, animated: true)
+        }
+        if let provider = currentProvider {
             provider.didDragInside?(promoView: self, with: touch)
         }
     }

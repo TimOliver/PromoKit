@@ -198,6 +198,31 @@ final class PromoViewDisplayTests: XCTestCase {
 
         XCTAssertEqual(provider.animationDecisionCount, 1)
     }
+
+    func testAnimationOptOutPreservesDragCallbacksAndCancellation() {
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let provider = AnimationBlockingPromoProvider()
+        promoView.currentProvider = provider
+        let touch = FakeTouch(location: CGPoint(x: 20, y: 20))
+
+        promoView.touchesBegan([touch], with: nil)
+        touch.location = CGPoint(x: 300, y: 20)
+        promoView.touchesMoved([touch], with: nil)
+        touch.location = CGPoint(x: 50, y: 20)
+        promoView.touchesMoved([touch], with: nil)
+        XCTAssertEqual(provider.dragInsideCount, 2)
+        XCTAssertEqual(promoView.backgroundView.superview?.transform, .identity,
+                       "Drag callbacks must not re-enable the opted-out press animation")
+        promoView.touchesEnded([touch], with: nil)
+        XCTAssertEqual(provider.tapUpCount, 1)
+
+        promoView.touchesBegan([touch], with: nil)
+        promoView.cancelTapInteraction()
+        promoView.touchesMoved([touch], with: nil)
+        promoView.touchesEnded([touch], with: nil)
+        XCTAssertEqual(provider.dragInsideCount, 2, "Explicit cancellation still suppresses dragging")
+        XCTAssertEqual(provider.tapUpCount, 1)
+    }
 }
 
 private final class FakeTouch: UITouch {
@@ -247,6 +272,16 @@ private final class TouchTrackingPromoProvider: NSObject, PromoProvider {
 
 private final class AnimationBlockingPromoProvider: NSObject, PromoProvider {
     private(set) var animationDecisionCount = 0
+    private(set) var dragInsideCount = 0
+    private(set) var tapUpCount = 0
+
+    func didDragInside(promoView: PromoView, with touch: UITouch) {
+        dragInsideCount += 1
+    }
+
+    func didTapUpInside(promoView: PromoView, with touch: UITouch) {
+        tapUpCount += 1
+    }
 
     func fetchNewContent(for promoView: PromoView,
                          with resultHandler: @escaping PromoProviderContentFetchHandler) {
