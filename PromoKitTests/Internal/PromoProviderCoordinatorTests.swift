@@ -743,4 +743,69 @@ extension PromoProviderCoordinatorTests {
         XCTAssertEqual(online.fetchCount, 1, "An initially offline online-only promo must retry on reconnect")
         XCTAssertTrue(fixture.coordinator.currentProvider === online)
     }
+
+    func testLoadedOnlineProviderRecoversAfterDisconnectClearsSelection() {
+        let fixture = makeCoordinator()
+        let online = TestPromoProvider(result: .contentAvailable,
+                                       isInternetAccessRequired: true,
+                                       fetchRefreshInterval: 60)
+        let initiallyResolved = expectation(description: "Online provider resolves initially")
+        let resolvedAfterReconnect = expectation(description: "Online provider resolves after reconnecting")
+        var resolutions: [PromoProvider?] = []
+        fixture.coordinator.providers = [online]
+        fixture.coordinator.providerUpdatedHandler = { [weak coordinator = fixture.coordinator] provider in
+            resolutions.append(provider)
+            if provider == nil {
+                XCTAssertNil(coordinator?.currentProvider,
+                             "Selection must be cleared before reporting that no provider is displayed")
+            } else if resolutions.count == 1 {
+                initiallyResolved.fulfill()
+            } else {
+                resolvedAfterReconnect.fulfill()
+            }
+        }
+
+        fixture.coordinator.fetchBestProvider()
+        wait(for: [initiallyResolved], timeout: 1.0)
+        XCTAssertTrue(fixture.coordinator.currentProvider === online)
+
+        fixture.monitor.simulateConnectivityChange(false)
+        XCTAssertEqual(resolutions.count, 2)
+        XCTAssertNil(resolutions.last!)
+        XCTAssertNil(fixture.coordinator.currentProvider)
+
+        fixture.monitor.simulateConnectivityChange(true)
+        wait(for: [resolvedAfterReconnect], timeout: 1.0)
+        XCTAssertEqual(online.fetchCount, 2)
+        XCTAssertEqual(resolutions.count, 3)
+        XCTAssertTrue(fixture.coordinator.currentProvider === online)
+    }
+
+    func testFailedFetchBeforeThrottledTailReportsExhaustionOnce() {
+        let fixture = makeCoordinator()
+        let failing = MinimalPromoProvider(result: .fetchRequestFailed)
+        let throttled = RefreshingMinimalPromoProvider(result: .noContentAvailable, refreshInterval: 60)
+        fixture.coordinator.providers = [failing, throttled]
+        fixture.coordinator.providerFetchResults.setObject(
+            NSNumber(value: PromoProviderFetchContentResult.noContentAvailable.rawValue),
+            forKey: throttled)
+        fixture.coordinator.providerFetchDates.setObject(NSDate(), forKey: throttled)
+        let exhausted = expectation(description: "A real failed fetch reports exhaustion before a throttled tail")
+        var failures = 0
+        var updates = 0
+        fixture.coordinator.providerUpdatedHandler = { _ in updates += 1 }
+        fixture.coordinator.providerFetchFailedHandler = {
+            failures += 1
+            exhausted.fulfill()
+        }
+
+        fixture.coordinator.fetchBestProvider()
+        wait(for: [exhausted], timeout: 1.0)
+        XCTAssertEqual(failing.fetchCount, 1)
+        XCTAssertEqual(throttled.fetchCount, 0)
+        XCTAssertFalse(fixture.coordinator.isFetching)
+        XCTAssertNil(fixture.coordinator.currentProvider)
+        XCTAssertEqual(failures, 1)
+        XCTAssertEqual(updates, 0, "Exhaustion must have one notification path")
+    }
 }

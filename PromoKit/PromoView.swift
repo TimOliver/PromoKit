@@ -338,11 +338,17 @@ public class PromoView: UIControl {
             if let provider {
                 self.delegate?.promoView?(self, didResolveProvider: provider)
             } else {
+                // Finish removing the old card before the host can react by
+                // starting another reload from either failure callback.
+                self.setIsLoading(false)
+                self.providerDidChange(nil)
+                guard self.providerCoordinator.fetchGeneration == generation else { return }
                 // Empty/ineligible providers also count as a fetch failure for hosts that
                 // listen on the older callback — keep both failure paths emitting the same
                 // pair of signals so callers don't have to special-case the early-exit case.
                 self.delegate?.promoViewDidFailToResolveProvider?(self)
                 self.delegate?.promoViewProviderFetchFailed?(self)
+                return
             }
             guard self.providerCoordinator.fetchGeneration == generation else { return }
             if let provider, self.currentProvider !== provider { return }
@@ -350,6 +356,10 @@ public class PromoView: UIControl {
         }
         providerCoordinator.providerFetchFailedHandler = { [weak self] in
             guard let self else { return }
+            // A size refresh removes the old card while retaining its provider
+            // for further size changes. Clear that selection if the refresh fails.
+            if self.contentView == nil { self.currentProvider = nil }
+            self.setIsLoading(false)
             self.delegate?.promoViewDidFailToResolveProvider?(self)
             self.delegate?.promoViewProviderFetchFailed?(self)
         }

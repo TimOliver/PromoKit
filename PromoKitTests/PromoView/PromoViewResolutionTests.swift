@@ -93,6 +93,12 @@ final class PromoViewResolutionTests: XCTestCase {
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
         let delegate = PromoViewDelegateSpy()
         promoView.delegate = delegate
+        promoView.isLoading = true
+        delegate.onResolveFailure = {
+            XCTAssertFalse(promoView.isLoading, "An empty provider list must stop loading before notifying the host")
+            XCTAssertNil(promoView.currentProvider)
+            XCTAssertNil(promoView.contentView)
+        }
 
         promoView.providers = []
 
@@ -102,6 +108,7 @@ final class PromoViewResolutionTests: XCTestCase {
         XCTAssertEqual(delegate.resolveFailedCount, 1)
         XCTAssertEqual(delegate.fetchFailedCount, 1)
         XCTAssertNil(promoView.currentProvider)
+        XCTAssertFalse(promoView.isLoading)
     }
 
     func testEmptyProviderListReportsFetchFailure() {
@@ -294,5 +301,194 @@ extension PromoViewResolutionTests {
         wait(for: [settled], timeout: 1)
         XCTAssertNil(view.currentProvider, "A provider no longer assigned must not resolve")
         XCTAssertNil(view.contentView)
+    }
+}
+
+extension PromoViewResolutionTests {
+    func testFailedSizeRefreshClearsRemovedContentBeforeNotifyingAndAllowsRetry() throws {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let provider = ControlledResolutionProvider(needsReloadOnSizeChange: true)
+        let delegate = PromoViewDelegateSpy()
+        view.delegate = delegate
+        let initialFetch = expectation(description: "Initial fetch starts")
+        provider.onFetch = { initialFetch.fulfill() }
+        view.providers = [provider]
+        wait(for: [initialFetch], timeout: 1.0)
+        try completeFetch(provider, with: .contentAvailable)
+        wait(for: [delegate.updateExpectation], timeout: 1.0)
+        XCTAssertNotNil(view.contentView)
+        XCTAssertTrue(view.currentProvider === provider)
+
+        let refreshFetch = expectation(description: "Size refresh starts")
+        provider.onFetch = { refreshFetch.fulfill() }
+        view.frame.size.width = 280
+        wait(for: [refreshFetch], timeout: 1.0)
+        XCTAssertNil(view.contentView, "The old content is incompatible with the new size")
+        XCTAssertTrue(view.isLoading)
+        delegate.onResolveFailure = {
+            XCTAssertNil(view.currentProvider, "Failure observers must see no stale provider")
+            XCTAssertNil(view.contentView)
+            XCTAssertFalse(view.isLoading, "Failure observers must see a completed loading state")
+        }
+
+        try completeFetch(provider, with: .fetchRequestFailed)
+        wait(for: [delegate.resolveFailedExpectation, delegate.fetchFailedExpectation],
+             timeout: 1.0, enforceOrder: true)
+        XCTAssertNil(view.currentProvider)
+        XCTAssertFalse(view.isLoading)
+        XCTAssertEqual(delegate.resolveFailedCount, 1)
+        XCTAssertEqual(delegate.fetchFailedCount, 1)
+        XCTAssertEqual(delegate.updateCount, 1)
+
+        let retryFetch = expectation(description: "The empty promo can retry")
+        provider.onFetch = { retryFetch.fulfill() }
+        view.reloadIfNeeded()
+        wait(for: [retryFetch], timeout: 1.0)
+        XCTAssertEqual(provider.fetchCount, 3)
+        let retryResolved = expectation(description: "Retry resolves")
+        delegate.onResolve = { _ in retryResolved.fulfill() }
+        try completeFetch(provider, with: .contentAvailable)
+        wait(for: [retryResolved], timeout: 1.0)
+        XCTAssertTrue(view.currentProvider === provider)
+        XCTAssertNotNil(view.contentView)
+        XCTAssertFalse(view.isLoading)
+        XCTAssertEqual(delegate.resolveFailedCount, 1)
+        XCTAssertEqual(delegate.fetchFailedCount, 1)
+    }
+
+    func testFailedReloadPreservesAlreadyDisplayedContentAndStopsLoading() throws {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let provider = ControlledResolutionProvider(needsReloadOnSizeChange: false)
+        let delegate = PromoViewDelegateSpy()
+        view.delegate = delegate
+        let initialFetch = expectation(description: "Initial fetch starts")
+        provider.onFetch = { initialFetch.fulfill() }
+        view.providers = [provider]
+        wait(for: [initialFetch], timeout: 1.0)
+        try completeFetch(provider, with: .contentAvailable)
+        wait(for: [delegate.updateExpectation], timeout: 1.0)
+        let originalContent = try XCTUnwrap(view.contentView)
+
+        let reloadFetch = expectation(description: "Reload starts")
+        provider.onFetch = { reloadFetch.fulfill() }
+        view.reload()
+        wait(for: [reloadFetch], timeout: 1.0)
+        XCTAssertTrue(view.contentView === originalContent)
+        XCTAssertTrue(view.isLoading)
+        delegate.onResolveFailure = {
+            XCTAssertTrue(view.currentProvider === provider)
+            XCTAssertTrue(view.contentView === originalContent,
+                          "A failed refresh must preserve the content still on screen")
+            XCTAssertFalse(view.isLoading)
+        }
+
+        try completeFetch(provider, with: .fetchRequestFailed)
+        wait(for: [delegate.resolveFailedExpectation, delegate.fetchFailedExpectation],
+             timeout: 1.0, enforceOrder: true)
+        XCTAssertTrue(view.currentProvider === provider)
+        XCTAssertTrue(view.contentView === originalContent)
+        XCTAssertFalse(view.isLoading)
+        XCTAssertEqual(delegate.resolveFailedCount, 1)
+        XCTAssertEqual(delegate.fetchFailedCount, 1)
+        XCTAssertEqual(delegate.updateCount, 1, "Preserved content should not be rebuilt")
+    }
+
+    func testConsecutiveSizeChangesReplaceThePendingRequestAndIgnoreItsCompletion() throws {
+        let narrowSize = CGSize(width: 320, height: 80)
+        let wideSize = CGSize(width: 600, height: 80)
+        let view = PromoView(frame: CGRect(origin: .zero, size: narrowSize))
+        view.defaultContentPadding = .zero
+        let provider = ControlledResolutionProvider(needsReloadOnSizeChange: true)
+        let delegate = PromoViewDelegateSpy()
+        view.delegate = delegate
+        let initialFetch = expectation(description: "Initial narrow fetch starts")
+        provider.onFetch = { initialFetch.fulfill() }
+        view.providers = [provider]
+        wait(for: [initialFetch], timeout: 1.0)
+        try completeFetch(provider, with: .contentAvailable)
+        wait(for: [delegate.updateExpectation], timeout: 1.0)
+
+        let wideFetch = expectation(description: "Wide size refresh starts")
+        provider.onFetch = { wideFetch.fulfill() }
+        view.frame.size = wideSize
+        wait(for: [wideFetch], timeout: 1.0)
+        let supersededCompletion = try XCTUnwrap(provider.pendingCompletions.first)
+        provider.pendingCompletions.removeFirst()
+
+        let narrowFetch = expectation(description: "Second resize replaces the pending wide request")
+        provider.onFetch = { narrowFetch.fulfill() }
+        view.frame.size = narrowSize
+        wait(for: [narrowFetch], timeout: 1.0)
+        XCTAssertEqual(provider.requestedSizes, [narrowSize, wideSize, narrowSize])
+        XCTAssertNil(view.contentView)
+        XCTAssertTrue(view.isLoading)
+
+        supersededCompletion(.contentAvailable)
+        let staleCompletionDrained = expectation(description: "Superseded completion is processed")
+        DispatchQueue.main.async { staleCompletionDrained.fulfill() }
+        wait(for: [staleCompletionDrained], timeout: 1.0)
+        XCTAssertNil(view.contentView, "A response for the intermediate width must not be displayed")
+        XCTAssertTrue(view.isLoading, "The final size request is still outstanding")
+        XCTAssertEqual(delegate.resolveCount, 1)
+        XCTAssertEqual(delegate.updateCount, 1)
+
+        let finalResolution = expectation(description: "The final narrow request resolves")
+        delegate.onResolve = { _ in finalResolution.fulfill() }
+        try completeFetch(provider, with: .contentAvailable)
+        wait(for: [finalResolution], timeout: 1.0)
+
+        XCTAssertTrue(view.currentProvider === provider)
+        XCTAssertEqual(provider.displayedRequestSizes, [narrowSize, narrowSize])
+        XCTAssertEqual(view.sizeThatFits(CGSize(width: 1200, height: 1000)), narrowSize)
+        XCTAssertEqual(view.contentView?.frame.size, narrowSize)
+        XCTAssertFalse(view.isLoading)
+        XCTAssertEqual(delegate.resolveCount, 2)
+        XCTAssertEqual(delegate.updateCount, 2)
+        XCTAssertEqual(delegate.resolveFailedCount, 0)
+        XCTAssertEqual(delegate.fetchFailedCount, 0)
+    }
+
+    private func completeFetch(_ provider: ControlledResolutionProvider,
+                               with result: PromoProviderFetchContentResult) throws {
+        let completion = try XCTUnwrap(provider.pendingCompletions.first)
+        provider.pendingCompletions.removeFirst()
+        completion(result)
+    }
+}
+
+private final class ControlledResolutionProvider: NSObject, PromoProvider {
+    let needsReloadOnSizeChange: Bool
+    let showsLoadingIndicatorDuringFetch = true
+    var fetchCount = 0
+    var onFetch: (() -> Void)?
+    var pendingCompletions: [PromoProviderContentFetchHandler] = []
+    private(set) var requestedSizes: [CGSize] = []
+    private(set) var displayedRequestSizes: [CGSize] = []
+    private var loadedSize = CGSize.zero
+
+    init(needsReloadOnSizeChange: Bool) {
+        self.needsReloadOnSizeChange = needsReloadOnSizeChange
+        super.init()
+    }
+
+    func fetchNewContent(for promoView: PromoView,
+                         with resultHandler: @escaping PromoProviderContentFetchHandler) {
+        fetchCount += 1
+        let requestedSize = promoView.bounds.size
+        requestedSizes.append(requestedSize)
+        pendingCompletions.append { [weak self] result in
+            if result == .contentAvailable { self?.loadedSize = requestedSize }
+            resultHandler(result)
+        }
+        onFetch?()
+    }
+
+    func contentView(for promoView: PromoView) -> PromoContentView {
+        displayedRequestSizes.append(loadedSize)
+        return promoView.dequeueContentView(for: TestPromoContentView.self)
+    }
+
+    func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
+        loadedSize
     }
 }

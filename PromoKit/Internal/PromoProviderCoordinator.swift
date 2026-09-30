@@ -79,6 +79,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     // Run only when a reload reaches a provider that will actually be fetched.
     private var beforeFetch: (() -> Void)?
     private var hasRequestedFetch = false
+    private var hasAttemptedFetch = false
 
     // MARK: Init
 
@@ -128,6 +129,13 @@ extension PromoProviderCoordinator {
         hasRequestedFetch = true
         self.beforeFetch = beforeFetch
         guard let provider = nextValidProvider(from: startingProvider) else {
+            // Its content is being removed. A later reconnect must be able to
+            // fetch it again even if its previous success is still within cooldown.
+            if let currentProvider {
+                providerFetchResults.removeObject(forKey: currentProvider)
+                providerFetchDates.removeObject(forKey: currentProvider)
+            }
+            currentProvider = nil
             providerUpdatedHandler?(nil)
             return
         }
@@ -143,6 +151,7 @@ extension PromoProviderCoordinator {
     /// Any late callbacks from the canceled provider are ignored.
     internal func cancelFetch() {
         isFetching = false
+        hasAttemptedFetch = false
         beforeFetch = nil
         fetchGeneration = UUID()
         invalidateActiveFetch()
@@ -158,6 +167,7 @@ extension PromoProviderCoordinator {
         // Check if we need to skip this one as its time interval hasn't elapsed yet
         if skipToNextProvider(provider) { return }
 
+        hasAttemptedFetch = true
         let preparation = beforeFetch
         beforeFetch = nil
         preparation?()
@@ -292,7 +302,11 @@ extension PromoProviderCoordinator {
                 self.startContentFetch(for: nextProvider)
             }
         } else {
+            let didAttemptFetch = hasAttemptedFetch
             cancelFetch()
+            // A failed request followed by a throttled tail still ends the load.
+            // If every provider was throttled, keep the existing content as-is.
+            if didAttemptFetch { providerFetchFailedHandler?() }
         }
 
         return true
