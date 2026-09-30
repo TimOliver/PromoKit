@@ -266,6 +266,9 @@ public class PromoView: UIControl {
     /// Track if an in-progress gesture has been manually canceled
     private var isInteractionCancelled: Bool = false
 
+    /// A press belongs to the provider that received its touch-down.
+    private weak var interactionProvider: PromoProvider?
+
     /// A coordinator for determining the current provider
     private lazy var providerCoordinator: PromoProviderCoordinator = {
         PromoProviderCoordinator(promoView: self)
@@ -599,6 +602,7 @@ extension PromoView {
 
     /// Fades out and removes the current content view, returning it to the recycling pool.
     private func reclaimCurrentContentView(animated: Bool = true) {
+        if interactionProvider != nil { cancelTapInteraction() }
         guard let contentView else { return }
 
         // Fade the current content view out (when animated). For abrupt
@@ -902,6 +906,8 @@ extension PromoView {
 
     public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesBegan(touches, with: event)
+        interactionProvider = nil
+        canPlayTapAnimation = true
         // Disable the animation while we're showing a spinner
         if isLoading {
             canPlayTapAnimation = false
@@ -912,42 +918,42 @@ extension PromoView {
         // Reset the cancellation flag from the previous interaction
         isInteractionCancelled = false
 
-        // If we're not loading, handle interaction events
-        if let provider = currentProvider, let touch = touches.first {
-            provider.didTapDownInside?(promoView: self, with: touch)
-        }
-
-        // If we have a promo visible, check its delegate to make sure we can play the anim
-        if let provider = currentProvider,
-            let touch = touches.first,
-            !(provider.shouldPlayInteractionAnimation?(for: self, with: touch) ?? true) {
-            canPlayTapAnimation = false
+        guard let provider = currentProvider, let touch = touches.first else { return }
+        interactionProvider = provider
+        provider.didTapDownInside?(promoView: self, with: touch)
+        guard !isInteractionCancelled, currentProvider === provider else {
+            cancelTapInteraction()
             return
         }
 
-        // Start playing the zoom animation
-        setZoomed(true, animated: true)
+        canPlayTapAnimation = provider.shouldPlayInteractionAnimation?(for: self, with: touch) ?? true
+        guard !isInteractionCancelled, currentProvider === provider else {
+            cancelTapInteraction()
+            return
+        }
+        if canPlayTapAnimation { setZoomed(true, animated: true) }
     }
 
     public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesMoved(touches, with: event)
-        guard !isInteractionCancelled, let touch = touches.first else { return }
+        guard !isInteractionCancelled, let touch = touches.first,
+              let provider = interactionProvider, currentProvider === provider else { return }
         if canPlayTapAnimation {
             let zoomed = bounds.contains(touch.location(in: self))
             setZoomed(zoomed, animated: true)
         }
-        if let provider = currentProvider {
-            provider.didDragInside?(promoView: self, with: touch)
-        }
+        provider.didDragInside?(promoView: self, with: touch)
     }
 
     public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesEnded(touches, with: event)
         canPlayTapAnimation = true
         setZoomed(false, animated: true)
-        guard !isInteractionCancelled else { return }
-        if let provider = currentProvider, let touch = touches.first {
-            if !isLoading, bounds.contains(touch.location(in: self)) {
+        let provider = interactionProvider
+        interactionProvider = nil
+        if let provider, let touch = touches.first {
+            if !isInteractionCancelled, currentProvider === provider,
+               !isLoading, bounds.contains(touch.location(in: self)) {
                 provider.didTapUpInside?(promoView: self, with: touch)
             } else {
                 provider.didCancelTap?(promoView: self, with: touch)
@@ -959,7 +965,9 @@ extension PromoView {
         super.touchesCancelled(touches, with: event)
         canPlayTapAnimation = true
         setZoomed(false, animated: true)
-        if let provider = currentProvider, let touch = touches.first {
+        let provider = interactionProvider
+        interactionProvider = nil
+        if let provider, let touch = touches.first {
             provider.didCancelTap?(promoView: self, with: touch)
         }
     }

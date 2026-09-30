@@ -457,3 +457,51 @@ final class PromoViewCloseButtonPlacementTests: XCTestCase {
                       "close button stayed above after the window was restored")
     }
 }
+
+extension PromoViewDisplayTests {
+    func testProviderReplacementDuringPressDoesNotActivateReplacement() {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let original = TouchTrackingPromoProvider()
+        let replacement = TouchTrackingPromoProvider()
+        let firstDelegate = PromoViewDelegateSpy()
+        view.delegate = firstDelegate
+        view.providers = [original]
+        wait(for: [firstDelegate.updateExpectation], timeout: 1.0)
+
+        let touch = FakeTouch(location: CGPoint(x: 1, y: 1))
+        view.touchesBegan([touch], with: nil)
+        XCTAssertEqual(original.tapDownCount, 1)
+
+        let replacementDelegate = PromoViewDelegateSpy()
+        view.delegate = replacementDelegate
+        view.providers = [replacement]
+        wait(for: [replacementDelegate.updateExpectation], timeout: 1.0)
+        view.touchesMoved([touch], with: nil)
+        view.touchesEnded([touch], with: nil)
+
+        XCTAssertEqual(replacement.dragInsideCount, 0)
+        XCTAssertEqual(replacement.tapDownCount, 0)
+        XCTAssertEqual(replacement.tapUpCount, 0,
+                       "A promo loaded while the finger is down must not receive activation from the old promo's press")
+        XCTAssertEqual(original.tapUpCount, 0)
+        XCTAssertEqual(original.cancelTapCount, 1, "The original provider must release its press state")
+    }
+}
+
+extension PromoViewDisplayTests {
+    func testReplacingContentForTheSameProviderCancelsAnExistingPress() {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let provider = TouchTrackingPromoProvider()
+        view.currentProvider = provider
+        view.reloadContentView()
+        let touch = FakeTouch(location: CGPoint(x: 1, y: 1))
+        view.touchesBegan([touch], with: nil)
+
+        view.reloadContentView()
+        view.touchesEnded([touch], with: nil)
+
+        XCTAssertEqual(provider.tapDownCount, 1)
+        XCTAssertEqual(provider.tapUpCount, 0, "A replacement creative needs its own new press")
+        XCTAssertEqual(provider.cancelTapCount, 1)
+    }
+}
