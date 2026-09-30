@@ -165,19 +165,24 @@ extension PromoProviderCoordinator {
     /// - Parameter provider: The provider to be instructed to load its content.
     private func startContentFetch(for provider: PromoProvider) {
         guard isFetching else { return }
+        let generation = fetchGeneration
 
         // Check if we need to skip this one as its time interval hasn't elapsed yet
         if skipToNextProvider(provider) { return }
+        guard isFetching, fetchGeneration == generation else { return }
 
-        hasAttemptedFetch = true
         let preparation = beforeFetch
         beforeFetch = nil
         preparation?()
+        guard isFetching, fetchGeneration == generation else { return }
 
         // Assign the promo view to this provider if it requires it
         if let promoView { provider.didMoveToPromoView?(promoView) }
+        // Both hooks can synchronously replace providers or cancel this reload.
+        guard isFetching, fetchGeneration == generation else { return }
 
         // Store a class reference to this provider
+        hasAttemptedFetch = true
         invalidateFetchTimeout()
         let queryingProviderToken = UUID()
         self.queryingProvider = provider
@@ -197,7 +202,9 @@ extension PromoProviderCoordinator {
         }
 
         // If the provider needs a loading indicator, show it now before the fetch starts.
-        if provider.showsLoadingIndicatorDuringFetch ?? false {
+        let showsLoadingIndicator = provider.showsLoadingIndicatorDuringFetch ?? false
+        guard isActiveFetch(for: queryingProvider, token: queryingProviderToken) else { return }
+        if showsLoadingIndicator {
             promoView?.setIsLoading(true, animated: true)
         }
 
@@ -327,7 +334,8 @@ extension PromoProviderCoordinator {
     /// Returns true only if the given provider and token match the currently active fetch,
     /// allowing stale callbacks from cancelled or timed-out fetches to be discarded.
     private func isActiveFetch(for provider: PromoProvider, token: UUID) -> Bool {
-        guard let currentQueryingProvider = queryingProvider,
+        guard isFetching,
+              let currentQueryingProvider = queryingProvider,
               let currentQueryingProviderToken = queryingProviderToken else { return false }
         return currentQueryingProvider === provider && currentQueryingProviderToken == token
     }

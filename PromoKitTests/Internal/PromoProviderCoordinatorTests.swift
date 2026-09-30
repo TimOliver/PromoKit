@@ -889,6 +889,63 @@ extension PromoProviderCoordinatorTests {
         XCTAssertFalse(fixture.coordinator.isFetching)
     }
 
+    func testAttachmentCallbackCannotResurrectAReplacedProvider() {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let replacement = MinimalPromoProvider(result: .contentAvailable)
+        let removed = AttachmentCoordinatorProvider(result: .contentAvailable)
+        let delegate = PromoViewDelegateSpy()
+        view.delegate = delegate
+        removed.onAttach = { $0.providers = [replacement] }
+
+        view.providers = [removed]
+        wait(for: [delegate.updateExpectation], timeout: 1.0)
+
+        XCTAssertEqual(removed.fetchCount, 0)
+        XCTAssertEqual(replacement.fetchCount, 1)
+        XCTAssertTrue(view.currentProvider === replacement)
+        XCTAssertTrue(view.providers?.first === replacement)
+        XCTAssertEqual(delegate.updateCount, 1)
+    }
+
+    func testAttachmentCallbackRemovingAllProvidersCancelsTheFetch() {
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let removed = AttachmentCoordinatorProvider(result: .contentAvailable)
+        view.reloadsAutomatically = false
+        removed.onAttach = { $0.providers = [] }
+        view.providers = [removed]
+
+        view.reload()
+        drainCoordinatorCallbacks()
+
+        XCTAssertEqual(removed.fetchCount, 0,
+                       "The callback's cancellation must survive returning to fetch preparation")
+        XCTAssertNil(view.currentProvider)
+        XCTAssertNil(view.contentView)
+        XCTAssertFalse(view.isLoading)
+    }
+
+    func testPreparationCallbackReplacementSkipsObsoleteAttachmentAndFetch() {
+        let fixture = makeCoordinator()
+        let obsolete = AttachmentCoordinatorProvider(result: .contentAvailable)
+        let replacement = MinimalPromoProvider(result: .contentAvailable)
+        let replacementResolved = expectation(description: "Preparation callback's replacement resolves")
+        fixture.coordinator.providers = [obsolete]
+        fixture.coordinator.providerUpdatedHandler = {
+            if $0 === replacement { replacementResolved.fulfill() }
+        }
+
+        fixture.coordinator.fetchBestProvider(beforeFetch: {
+            fixture.coordinator.providers = [replacement]
+            fixture.coordinator.fetchBestProvider()
+        })
+        wait(for: [replacementResolved], timeout: 1.0)
+
+        XCTAssertEqual(obsolete.attachmentCount, 0)
+        XCTAssertEqual(obsolete.fetchCount, 0)
+        XCTAssertEqual(replacement.fetchCount, 1)
+        XCTAssertTrue(fixture.coordinator.currentProvider === replacement)
+    }
+
     private func drainCoordinatorCallbacks() {
         let drained = expectation(description: "Queued coordinator callbacks drain")
         func enqueueFence(_ remaining: Int) {
@@ -923,5 +980,17 @@ private final class HeldCoordinatorProvider: MinimalPromoProvider {
         let completion = try XCTUnwrap(pendingCompletion)
         pendingCompletion = nil
         completion(result)
+    }
+}
+
+private final class AttachmentCoordinatorProvider: MinimalPromoProvider {
+    var onAttach: ((PromoView) -> Void)?
+    private(set) var attachmentCount = 0
+
+    func didMoveToPromoView(_ promoView: PromoView) {
+        attachmentCount += 1
+        let action = onAttach
+        onAttach = nil
+        action?(promoView)
     }
 }
