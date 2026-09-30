@@ -492,3 +492,45 @@ private final class ControlledResolutionProvider: NSObject, PromoProvider {
         loadedSize
     }
 }
+
+extension PromoViewResolutionTests {
+    func testInitialSizeSensitiveFetchIsReplacedWhenBoundsChange() throws {
+        let narrow = CGSize(width: 320, height: 80)
+        let wide = CGSize(width: 600, height: 80)
+        let view = PromoView(frame: CGRect(origin: .zero, size: narrow))
+        view.defaultContentPadding = .zero
+        let provider = ControlledResolutionProvider(needsReloadOnSizeChange: true)
+        let delegate = PromoViewDelegateSpy()
+        view.delegate = delegate
+        let initialStarted = expectation(description: "Initial size-sensitive request starts")
+        provider.onFetch = { initialStarted.fulfill() }
+        view.providers = [provider]
+        wait(for: [initialStarted], timeout: 1.0)
+        let obsoleteCompletion = try XCTUnwrap(provider.pendingCompletions.first)
+        provider.pendingCompletions.removeFirst()
+        provider.onFetch = nil
+
+        view.bounds.size = wide
+        let resizeProcessed = expectation(description: "Resize-triggered request can start")
+        DispatchQueue.main.async { resizeProcessed.fulfill() }
+        wait(for: [resizeProcessed], timeout: 1.0)
+        XCTAssertEqual(provider.requestedSizes, [narrow, wide],
+                       "Resizing during the first load must replace the request just as a later resize does")
+
+        obsoleteCompletion(.contentAvailable)
+        let obsoleteProcessed = expectation(description: "Obsolete response is handled")
+        DispatchQueue.main.async { obsoleteProcessed.fulfill() }
+        wait(for: [obsoleteProcessed], timeout: 1.0)
+        XCTAssertNil(view.contentView, "The response sized for the old bounds must not be displayed")
+        XCTAssertTrue(provider.displayedRequestSizes.isEmpty)
+        XCTAssertEqual(delegate.updateCount, 0)
+
+        let finalResolved = expectation(description: "The request for the new bounds resolves")
+        delegate.onResolve = { _ in finalResolved.fulfill() }
+        try completeFetch(provider, with: .contentAvailable)
+        wait(for: [finalResolved], timeout: 1.0)
+        XCTAssertEqual(provider.displayedRequestSizes, [wide])
+        XCTAssertEqual(view.sizeThatFits(CGSize(width: 1200, height: 1000)), wide)
+        XCTAssertEqual(delegate.updateCount, 1)
+    }
+}

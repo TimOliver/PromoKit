@@ -130,6 +130,7 @@ final class PromoViewSizingTests: XCTestCase {
 
         promoView.providers = [provider]
         wait(for: [initialFetchExpectation], timeout: 1.0)
+        wait(for: [delegate.updateExpectation], timeout: 1.0)
 
         promoView.frame.size = CGSize(width: 260, height: 80)
 

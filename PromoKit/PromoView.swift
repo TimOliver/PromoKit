@@ -557,13 +557,16 @@ extension PromoView {
 
     /// Refresh the current provider if needed
     private func refreshCurrentProviderIfNeeded(oldSize: CGSize) {
-        guard let currentProvider, currentProvider.needsReloadOnSizeChange ?? false else { return }
+        // The initial request already chose its size even though no provider
+        // has resolved yet. Resize that request as well as displayed content.
+        guard let provider = currentProvider ?? providerCoordinator.queryingProvider,
+              provider.needsReloadOnSizeChange ?? false else { return }
 
         // Defer to the provider when it implements `shouldReloadForSizeChange`.
         // For example, a banner provider that picks the same AdSize for two
         // different container widths returns false here, avoiding a needless
         // refetch when only the surrounding layout changed.
-        if let shouldReload = currentProvider.shouldReloadForSizeChange?(from: oldSize, to: bounds.size),
+        if let shouldReload = provider.shouldReloadForSizeChange?(from: oldSize, to: bounds.size),
            !shouldReload {
             return
         }
@@ -573,7 +576,7 @@ extension PromoView {
         // the resized frame (often the wrong size for the new bounds) until
         // the new fetch completes — fading it out wouldn't help here either,
         // because it'd still be visible (just transparent) at the wrong size.
-        providerCoordinator.fetchBestProvider(from: currentProvider) { [weak self] in
+        providerCoordinator.fetchBestProvider(from: provider) { [weak self] in
             self?.reclaimCurrentContentView(animated: false)
             self?.setIsLoading(true, animated: false)
         }
