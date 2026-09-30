@@ -733,6 +733,8 @@ extension PromoNativeAdContentViewTests {
 
     func testLayoutDetectsANewShapeEvenIfItWasAlreadyMeasured() throws {
         let adView = PromoNativeAdView()
+        adView.maximumWidth = 900
+        adView.maximumHeight = 600
         let nativeAd = FakeNativeAd(aspectRatio: 0, headline: "Creative", callToAction: "Install")
         var shapeChanges = 0
         adView.mediaAspectRatioDidChange = { shapeChanges += 1 }
@@ -917,6 +919,39 @@ extension PromoNativeAdContentViewTests {
         XCTAssertFalse(body.isHidden)
         XCTAssertTrue(body.superview === adView, "A body removed by the prior stacked layout must be reattached")
         XCTAssertEqual((adView.headlineView as? UILabel)?.textAlignment, .center)
+    }
+
+    func testSideBySideSizingRespectsDefaultAndCustomContentCaps() throws {
+        let adView = PromoNativeAdView()
+        adView.configureContentViews(with: FakeNativeAd(aspectRatio: 9.0 / 16.0,
+                                                       headline: "Portrait creative",
+                                                       callToAction: "Install"))
+        for limit in [CGSize(width: PromoNativeAdProvider.defaultMaximumContentWidth,
+                             height: PromoNativeAdProvider.defaultMaximumContentHeight),
+                      CGSize(width: 800, height: 400),
+                      CGSize(width: 320, height: 400)] {
+            adView.maximumWidth = limit.width
+            adView.maximumHeight = limit.height
+            let fitting = adView.sizeThatFits(CGSize(width: 1200, height: 1000))
+
+            XCTAssertLessThanOrEqual(fitting.width, limit.width)
+            XCTAssertLessThanOrEqual(fitting.height, limit.height)
+            adView.frame = CGRect(origin: .zero, size: fitting)
+            adView.setNeedsLayout()
+            adView.layoutIfNeeded()
+            let media = try XCTUnwrap(adView.mediaView)
+            XCTAssertGreaterThan(media.frame.height, 0)
+            XCTAssertEqual(media.frame.width / media.frame.height, 9.0 / 16.0, accuracy: 0.01)
+            let alignment: NSTextAlignment = limit.width == 800 ? .center : .left
+            XCTAssertEqual((adView.headlineView as? UILabel)?.textAlignment, alignment,
+                           "The chosen layout must fit inside the capped width")
+        }
+
+        adView.maximumWidth = 1600
+        adView.maximumHeight = 1100
+        let expanded = adView.sizeThatFits(CGSize(width: 1400, height: 1000))
+        XCTAssertGreaterThan(expanded.width, PromoNativeAdProvider.defaultMaximumContentWidth)
+        XCTAssertGreaterThan(expanded.height, PromoNativeAdProvider.defaultMaximumContentHeight)
     }
 
     func testVideoResizeMeasuresTheFontsThatWillBeDisplayed() throws {

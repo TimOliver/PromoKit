@@ -724,18 +724,25 @@ final public class PromoNativeAdView: NativeAdView {
         // Aspect ratio of the ad view
         let aspectRatio = Self.usableAspectRatio(for: nativeAd)
 
+        // Choose the arrangement using the size this card is actually allowed
+        // to occupy. Capping only the stacked branch bypasses the limits for
+        // portrait creatives and can choose a column layout that no longer fits.
+        let availableSize = CGSize(width: max(0, min(size.width - (padding * 2.0), maximumWidth)),
+                                   height: max(0, min(size.height - (padding * 2.0), maximumHeight)))
+        guard availableSize.width > 0, availableSize.height > 0 else { return .zero }
+
         // Must reach the same verdict as -layoutSubviews(for:), or the card is
         // measured for one arrangement and then drawn as the other.
-        let contentBox = CGSize(width: size.width - (padding * 2.0),
-                                height: size.height - (padding * 2.0))
+        let contentBox = CGSize(width: availableSize.width - (padding * 2.0),
+                                height: availableSize.height - (padding * 2.0))
         let isHorizontalLayout = Self.layoutFormat(containerSize: contentBox,
                                                    mediaAspectRatio: aspectRatio,
                                                    minimumTextColumnWidth: minimumTextColumnWidth,
                                                    maximumMediaWidthFraction: maximumMediaWidthFraction) == .sideBySide
         if isHorizontalLayout {
-            let height = size.height
+            let height = availableSize.height
             let mediaWidth = (height * aspectRatio) + innerMargin
-            let adjustedWidth = min(size.width, mediaWidth + 375)
+            let adjustedWidth = min(availableSize.width, mediaWidth + 375)
             return CGSize(width: adjustedWidth, height: height)
         }
 
@@ -776,9 +783,6 @@ final public class PromoNativeAdView: NativeAdView {
             if !needsCompactLayout { chrome += innerMargin + ctaButtonHeight }
             return chrome
         }
-
-        let availableSize = CGSize(width: min(size.width - (padding * 2.0), maximumWidth),
-                                   height: min(maximumHeight, size.height - (padding * 2.0)))
 
         // A wide creative's band has to be paid for out of the height the text and
         // call to action leave behind, so derive the width from that rather than
