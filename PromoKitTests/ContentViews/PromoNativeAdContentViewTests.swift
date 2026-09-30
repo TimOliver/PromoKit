@@ -884,3 +884,60 @@ extension PromoNativeAdContentViewTests {
         XCTAssertEqual(fitted.width, fitted.height, accuracy: 1.0)
     }
 }
+
+extension PromoNativeAdContentViewTests {
+    func testVideoResizeMeasuresTheFontsThatWillBeDisplayed() throws {
+        let adView = PromoNativeAdView()
+        adView.maximumWidth = 1000
+        adView.maximumHeight = 1000
+        let container = CGSize(width: 900, height: 600)
+        let still = makePromoTestImage(size: CGSize(width: 90, height: 160), color: .blue)
+        let nativeAd = FakeNativeAd(aspectRatio: 0,
+                                    headline: "A title that can change size",
+                                    body: "A body that can change size",
+                                    callToAction: "Install",
+                                    images: [NativeAdImage(image: still)])
+        adView.configureContentViews(with: nativeAd)
+        adView.frame = CGRect(origin: .zero, size: container)
+        adView.setNeedsLayout()
+        adView.layoutIfNeeded()
+        let headline = try XCTUnwrap(adView.headlineView as? UILabel)
+        let displayedFont = headline.font
+        var hostMeasurement: CGSize?
+        adView.mediaAspectRatioDidChange = { [weak adView] in
+            hostMeasurement = adView?.sizeThatFits(container)
+        }
+
+        nativeAd.reportedAspectRatio = 16.0 / 9.0
+        nativeAd.videoController.simulatePlay()
+        let measurementBeforeLayout = try XCTUnwrap(hostMeasurement)
+        XCTAssertEqual(headline.font, displayedFont, "Measurement must not change the currently displayed text")
+        adView.layoutIfNeeded()
+        let measurementAfterLayout = adView.sizeThatFits(container)
+
+        XCTAssertEqual(measurementBeforeLayout, measurementAfterLayout,
+                       "The video resize must measure the same font sizes that stacked layout displays")
+    }
+
+    func testPreferredSizeIsStableAcrossLayoutFormatChanges() throws {
+        let adView = PromoNativeAdView()
+        adView.maximumWidth = 1000
+        adView.maximumHeight = 1000
+        adView.configureContentViews(with: FakeNativeAd(aspectRatio: 0.5,
+                                                       headline: "A title that wraps at narrower widths",
+                                                       body: "Body text also changes its wrapping as the available width changes.",
+                                                       callToAction: "Install"))
+        for container in [CGSize(width: 900, height: 600),
+                          CGSize(width: 360, height: 800),
+                          CGSize(width: 900, height: 600)] {
+            let measured = adView.sizeThatFits(container)
+            adView.frame = CGRect(origin: .zero, size: measured)
+            adView.setNeedsLayout()
+            adView.layoutIfNeeded()
+
+            XCTAssertEqual(adView.sizeThatFits(container), measured)
+            let alignment: NSTextAlignment = container.width == 900 ? .center : .left
+            XCTAssertEqual((adView.headlineView as? UILabel)?.textAlignment, alignment)
+        }
+    }
+}

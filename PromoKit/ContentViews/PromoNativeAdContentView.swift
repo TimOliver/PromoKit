@@ -215,15 +215,26 @@ final public class PromoNativeAdView: NativeAdView {
     /// with 1.0, because content views are recycled — a view that grew its text beside
     /// a tall creative would otherwise keep those sizes when reused for a stacked one.
     private func applyTextFonts(scale: CGFloat) {
+        let fonts = textFonts(scale: scale)
+        headlineLabel.font = fonts.headline
+        bodyLabel.font = fonts.body
+    }
+
+    private func textFonts(scale: CGFloat) -> (headline: UIFont, body: UIFont) {
         let headline = UIFont.systemFont(ofSize: baseHeadlineFontSize * scale, weight: .bold)
-        headlineLabel.font = UIFontMetrics.default.scaledFont(for: headline)
         let body = UIFont.systemFont(ofSize: baseBodyFontSize * scale)
-        bodyLabel.font = UIFontMetrics.default.scaledFont(for: body)
+        return (UIFontMetrics.default.scaledFont(for: headline),
+                UIFontMetrics.default.scaledFont(for: body))
+    }
+
+    private func headlineStyle(indent: CGFloat) -> NSMutableParagraphStyle {
+        let style = NSMutableParagraphStyle()
+        style.firstLineHeadIndent = indent
+        return style
     }
 
     private func configureContentViews() {
-        let headlineFont = UIFont.systemFont(ofSize: baseHeadlineFontSize, weight: .bold)
-        headlineLabel.font = UIFontMetrics.default.scaledFont(for: headlineFont)
+        applyTextFonts(scale: 1.0)
         headlineLabel.numberOfLines = 2
         addSubview(headlineLabel)
 
@@ -240,8 +251,6 @@ final public class PromoNativeAdView: NativeAdView {
         adLabel.clipsToBounds = true
         addSubview(adLabel)
 
-        let bodyFont = UIFont.systemFont(ofSize: baseBodyFontSize)
-        bodyLabel.font = UIFontMetrics.default.scaledFont(for: bodyFont)
         bodyLabel.numberOfLines = 3
         if #available(iOS 13.0, *) {
             bodyLabel.textColor = .secondaryLabel
@@ -395,8 +404,6 @@ final public class PromoNativeAdView: NativeAdView {
         let remainingTextSize = CGSize(width: textContentSize.width,
                                        height: columnBottom - columnTop)
 
-        let headlineStyle = NSMutableParagraphStyle()
-        headlineStyle.firstLineHeadIndent = 0
         let bodyString = bodyText(for: nativeAd)
 
         // Measure the copy at its base sizes, then grow it into the column. Beside a
@@ -410,7 +417,7 @@ final public class PromoNativeAdView: NativeAdView {
         // measured height, so freeing the line count is what makes that measurement true.
         bodyLabel.numberOfLines = 0
         headlineLabel.attributedText = NSAttributedString(string: headlineText(for: nativeAd),
-                                                          attributes: [.paragraphStyle: headlineStyle ])
+                                                          attributes: [.paragraphStyle: headlineStyle(indent: 0)])
         bodyLabel.text = bodyString
         var naturalTextHeight = headlineLabel.sizeThatFits(remainingTextSize).height
         if !(bodyString?.isEmpty ?? true) {
@@ -521,10 +528,8 @@ final public class PromoNativeAdView: NativeAdView {
         let textWidth = size.width - (textX + googleButtonWidth + (padding * 2.0) + (needsCompactLayout ? compactActionSize.width : 0.0))
         let textFittingSize = CGSize(width: textWidth, height: .greatestFiniteMagnitude)
 
-        let headlineStyle = NSMutableParagraphStyle()
-        headlineStyle.firstLineHeadIndent = headlineIndent
         headlineLabel.attributedText = NSAttributedString(string: headlineText(for: nativeAd),
-                                                          attributes: [.paragraphStyle: headlineStyle ])
+                                                          attributes: [.paragraphStyle: headlineStyle(indent: headlineIndent)])
 
         headlineLabel.textAlignment = .left
         headlineLabel.frame.size = headlineLabel.sizeThatFits(textFittingSize)
@@ -722,12 +727,20 @@ final public class PromoNativeAdView: NativeAdView {
             iconSize = CGSize(width: iconHeight * iconAspectRatio, height: iconHeight)
         }
 
-        headlineLabel.text = headlineText(for: nativeAd)
+        // Measure the stacked style independently of the visible labels. They
+        // may still use enlarged fonts from a side-by-side still while the host
+        // is measuring the newly available video, before its next layout pass.
+        let fonts = textFonts(scale: 1.0)
+        let measuredHeadline = UILabel()
+        measuredHeadline.font = fonts.headline
+        measuredHeadline.numberOfLines = 2
+        measuredHeadline.attributedText = NSAttributedString(string: headlineText(for: nativeAd),
+                                                              attributes: [.paragraphStyle: headlineStyle(indent: headlineIndent)])
         let body = bodyText(for: nativeAd)
-        if let body {
-            bodyLabel.numberOfLines = needsCompactLayout ? 2 : 3
-            bodyLabel.text = body
-        }
+        let measuredBody = UILabel()
+        measuredBody.font = fonts.body
+        measuredBody.numberOfLines = needsCompactLayout ? 2 : 3
+        measuredBody.text = body
 
         // Everything the card owes before the media band is given any height at all.
         func chromeHeight(forWidth cardWidth: CGFloat) -> CGFloat {
@@ -735,9 +748,9 @@ final public class PromoNativeAdView: NativeAdView {
             if needsCompactLayout { textWidth -= (innerMargin + compactActionSize.width) }
             let textSize = CGSize(width: textWidth, height: .greatestFiniteMagnitude)
 
-            var textHeight = headlineLabel.sizeThatFits(textSize).height
+            var textHeight = measuredHeadline.sizeThatFits(textSize).height
             if body != nil {
-                textHeight += titleVerticalSpacing + bodyLabel.sizeThatFits(textSize).height
+                textHeight += titleVerticalSpacing + measuredBody.sizeThatFits(textSize).height
             }
 
             var chrome = (padding * 2.0) + max(textHeight, iconSize.height) + innerMargin
