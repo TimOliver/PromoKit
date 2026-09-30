@@ -236,7 +236,8 @@ private final class FakeTouch: UITouch {
 }
 
 private final class FakeMediaContent: MediaContent {
-    private let fakeAspectRatio: CGFloat
+    var fakeAspectRatio: CGFloat
+    let fakeVideoController = FakeVideoController()
 
     init(aspectRatio: CGFloat) {
         self.fakeAspectRatio = aspectRatio
@@ -244,6 +245,13 @@ private final class FakeMediaContent: MediaContent {
     }
 
     override var aspectRatio: CGFloat { fakeAspectRatio }
+    override var videoController: VideoController { fakeVideoController }
+}
+
+private final class FakeVideoController: VideoController {
+    func simulatePlay() {
+        delegate?.videoControllerDidPlayVideo?(self)
+    }
 }
 
 private final class FakeNativeAd: NativeAd {
@@ -254,7 +262,7 @@ private final class FakeNativeAd: NativeAd {
     private let fakeCallToAction: String?
     private let fakeIcon: NativeAdImage?
     private let fakeImages: [NativeAdImage]?
-    private let fakeMediaContent: MediaContent
+    private let fakeMediaContent: FakeMediaContent
 
     init(aspectRatio: CGFloat,
          headline: String?,
@@ -283,6 +291,13 @@ private final class FakeNativeAd: NativeAd {
     override var icon: NativeAdImage? { fakeIcon }
     override var images: [NativeAdImage]? { fakeImages }
     override var mediaContent: MediaContent { fakeMediaContent }
+
+    var reportedAspectRatio: CGFloat {
+        get { fakeMediaContent.fakeAspectRatio }
+        set { fakeMediaContent.fakeAspectRatio = newValue }
+    }
+
+    var videoController: FakeVideoController { fakeMediaContent.fakeVideoController }
 }
 
 
@@ -290,11 +305,14 @@ extension PromoNativeAdContentViewTests {
     func testReuseClearsGoogleNativeAdRegistration() throws {
         let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 360, height: 420))
         let content = PromoNativeAdContentView(promoView: promo)
-        content.nativeAd = FakeNativeAd(aspectRatio: 1.4, headline: "Old creative", callToAction: "Install")
+        let nativeAd = FakeNativeAd(aspectRatio: 1.4, headline: "Old creative", callToAction: "Install")
+        content.nativeAd = nativeAd
         let inner = try XCTUnwrap(content.subviews.compactMap { $0 as? PromoNativeAdView }.first)
         XCTAssertNotNil(inner.nativeAd)
+        XCTAssertTrue(nativeAd.videoController.delegate === inner)
         content.prepareForReuse()
         XCTAssertNil(inner.nativeAd, "The SDK ad registration must be cleared when returning a view to the pool")
+        XCTAssertNil(nativeAd.videoController.delegate)
     }
 }
 
@@ -623,10 +641,7 @@ extension PromoNativeAdContentViewTests {
     }
 
     func testTheStillStandsInForAnUnreportedRatio() {
-        // GADMediaContent.aspectRatio reads 0 until the media has loaded, which
-        // for a video creative lands after the card is first measured. The image
-        // asset that ships with the creative is the same shape and is there at
-        // once, so the card can be sized correctly the first time.
+        // An available still gives us an estimate when Google's ratio is unknown.
         XCTAssertEqual(PromoNativeAdView.usableAspectRatio(reported: 0.0,
                                                            stillSize: CGSize(width: 1080, height: 1920)),
                        1080.0 / 1920.0, accuracy: 0.0001)
@@ -651,13 +666,209 @@ extension PromoNativeAdContentViewTests {
                        2.0, accuracy: 0.0001)
     }
 
-    func testTheCardWaitsOnlyWhenNothingCanGiveItAShape() {
-        // The hold-back: with neither a ratio nor a still there is nothing to
-        // size against, so the card is held until Google reports one.
-        XCTAssertTrue(PromoNativeAdView.needsCreativeShape(reported: 0.0, stillSize: nil))
-        XCTAssertFalse(PromoNativeAdView.needsCreativeShape(reported: 0.0,
-                                                            stillSize: CGSize(width: 16, height: 9)))
-        XCTAssertFalse(PromoNativeAdView.needsCreativeShape(reported: 1.5, stillSize: nil))
+    func testAnUnknownShapeWithoutAnImageIsPublishedImmediately() {
+        let provider = PromoNativeAdProvider(adUnitID: "test-native")
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 360, height: 420))
+        provider.didMoveToPromoView(promo)
+        var results: [PromoProviderFetchContentResult] = []
+        provider.fetchNewContent(for: promo) { results.append($0) }
+        let loader = activeLoader(for: provider)
+        let nativeAd = FakeNativeAd(aspectRatio: 0, headline: "Unknown shape")
+
+        provider.adLoader(loader, didReceive: nativeAd)
+
+        XCTAssertEqual(results, [.contentAvailable], "An unknown ratio must not defer publication to a timer")
+        let content = provider.contentView(for: promo) as? PromoNativeAdContentView
+        XCTAssertTrue(content?.nativeAd === nativeAd)
+    }
+
+    func testNonfiniteReportedRatiosFallThroughToTheStill() {
+        for reported in [CGFloat.nan, .infinity, -.infinity] {
+            XCTAssertEqual(PromoNativeAdView.usableAspectRatio(reported: reported,
+                                                               stillSize: CGSize(width: 400, height: 200)),
+                           2.0)
+        }
+    }
+
+    func testNonfiniteStillRatiosFallBackToASquare() {
+        let stillSizes = [CGSize(width: CGFloat.infinity, height: 100),
+                          CGSize(width: 100, height: CGFloat.infinity),
+                          CGSize(width: CGFloat.nan, height: 100),
+                          CGSize(width: 100, height: CGFloat.nan),
+                          CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.leastNonzeroMagnitude)]
+        for stillSize in stillSizes {
+            XCTAssertEqual(PromoNativeAdView.usableAspectRatio(reported: 0, stillSize: stillSize), 1.0)
+        }
+    }
+
+    func testVideoPlaybackReplacesTheStillShapeInMeasurementAndLayout() throws {
+        let adView = PromoNativeAdView()
+        let still = makePromoTestImage(size: CGSize(width: 90, height: 160), color: .blue)
+        let nativeAd = FakeNativeAd(aspectRatio: 0,
+                                    headline: "Creative",
+                                    callToAction: "Install",
+                                    images: [NativeAdImage(image: still)])
+        var shapeChanges = 0
+        adView.mediaAspectRatioDidChange = { shapeChanges += 1 }
+        adView.configureContentViews(with: nativeAd)
+        let original = try geometry(of: adView)
+        XCTAssertEqual(original.mediaFrame.width / original.mediaFrame.height, 9.0 / 16.0, accuracy: 0.01)
+        XCTAssertEqual(shapeChanges, 0, "Initial configuration already uses the still's shape")
+        XCTAssertTrue(nativeAd.videoController.delegate === adView)
+
+        nativeAd.reportedAspectRatio = 16.0 / 9.0
+        nativeAd.videoController.simulatePlay()
+
+        XCTAssertEqual(shapeChanges, 1)
+        let playing = try geometry(of: adView)
+        XCTAssertNotEqual(playing.fittingSize, original.fittingSize)
+        XCTAssertNotEqual(playing.mediaContainerFrame, original.mediaContainerFrame)
+        XCTAssertNotEqual(playing.headlineFrame, original.headlineFrame)
+        XCTAssertEqual(playing.mediaFrame.width / playing.mediaFrame.height, 16.0 / 9.0, accuracy: 0.01)
+        XCTAssertEqual(shapeChanges, 1, "The subsequent layout must not notify the same change again")
+
+        nativeAd.videoController.simulatePlay()
+        XCTAssertEqual(shapeChanges, 1, "Resuming the same video does not change its shape")
+    }
+
+    func testLayoutDetectsANewShapeEvenIfItWasAlreadyMeasured() throws {
+        let adView = PromoNativeAdView()
+        let nativeAd = FakeNativeAd(aspectRatio: 0, headline: "Creative", callToAction: "Install")
+        var shapeChanges = 0
+        adView.mediaAspectRatioDidChange = { shapeChanges += 1 }
+        adView.configureContentViews(with: nativeAd)
+        let original = try geometry(of: adView)
+
+        nativeAd.reportedAspectRatio = 9.0 / 16.0
+        let measured = adView.sizeThatFits(CGSize(width: 900, height: 600))
+
+        XCTAssertNotEqual(measured, original.fittingSize)
+        XCTAssertEqual(shapeChanges, 0, "Measurement should not call into the host during its sizing pass")
+        let updated = try geometry(of: adView)
+        XCTAssertEqual(updated.mediaFrame.width / updated.mediaFrame.height, 9.0 / 16.0, accuracy: 0.01)
+        XCTAssertEqual(shapeChanges, 1, "Measurement must not consume the change before layout can notify the host")
+        _ = try geometry(of: adView)
+        XCTAssertEqual(shapeChanges, 1)
+    }
+
+    func testRepeatedUnknownRatiosDoNotNotifyShapeChanges() throws {
+        let adView = PromoNativeAdView()
+        let nativeAd = FakeNativeAd(aspectRatio: 0, headline: "Creative", callToAction: "Install")
+        var shapeChanges = 0
+        adView.mediaAspectRatioDidChange = { shapeChanges += 1 }
+        adView.configureContentViews(with: nativeAd)
+        let original = try geometry(of: adView)
+
+        for reported in [CGFloat.zero, .nan, .infinity, -1, 1] {
+            nativeAd.reportedAspectRatio = reported
+            nativeAd.videoController.simulatePlay()
+            XCTAssertEqual(try geometry(of: adView), original)
+        }
+
+        XCTAssertEqual(shapeChanges, 0, "Each unusable ratio and an explicitly square ratio share the same square geometry")
+    }
+
+    func testReplacementAndResetDetachVideoCallbacks() {
+        let adView = PromoNativeAdView()
+        let oldAd = FakeNativeAd(aspectRatio: 0, headline: "Old creative")
+        let newAd = FakeNativeAd(aspectRatio: 9.0 / 16.0, headline: "New creative")
+        var shapeChanges = 0
+        adView.mediaAspectRatioDidChange = { shapeChanges += 1 }
+        adView.configureContentViews(with: oldAd)
+        adView.configureContentViews(with: newAd)
+
+        XCTAssertNil(oldAd.videoController.delegate)
+        XCTAssertTrue(newAd.videoController.delegate === adView)
+        newAd.reportedAspectRatio = 16.0 / 9.0
+        oldAd.videoController.simulatePlay()
+        adView.videoControllerDidPlayVideo(oldAd.videoController)
+        XCTAssertEqual(shapeChanges, 0, "An old controller must not announce a change in the replacement ad")
+
+        newAd.videoController.simulatePlay()
+        XCTAssertEqual(shapeChanges, 1)
+        adView.reset()
+        XCTAssertNil(newAd.videoController.delegate)
+        newAd.reportedAspectRatio = 1
+        newAd.videoController.simulatePlay()
+        adView.videoControllerDidPlayVideo(newAd.videoController)
+        XCTAssertEqual(shapeChanges, 1, "A callback already in flight must be harmless after reset")
+    }
+
+    func testSameAdReconfigurationKeepsVideoUpdatesConnected() {
+        let adView = PromoNativeAdView()
+        let nativeAd = FakeNativeAd(aspectRatio: 0, headline: "Creative")
+        var shapeChanges = 0
+        adView.mediaAspectRatioDidChange = { shapeChanges += 1 }
+        adView.configureContentViews(with: nativeAd)
+        adView.configureContentViews(with: nativeAd)
+
+        XCTAssertEqual(shapeChanges, 0)
+        XCTAssertTrue(nativeAd.videoController.delegate === adView)
+        nativeAd.reportedAspectRatio = 16.0 / 9.0
+        nativeAd.videoController.simulatePlay()
+        XCTAssertEqual(shapeChanges, 1)
+    }
+
+    func testVideoShapeChangeNotifiesTheActiveHostWithoutReloading() throws {
+        let provider = TestPromoProvider(result: .contentAvailable)
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 900, height: 600))
+        let delegate = PromoViewDelegateSpy()
+        promo.delegate = delegate
+        promo.providers = [provider]
+        wait(for: [delegate.updateExpectation], timeout: 1.0)
+
+        let content = PromoNativeAdContentView(promoView: promo)
+        let still = makePromoTestImage(size: CGSize(width: 90, height: 160), color: .blue)
+        let nativeAd = FakeNativeAd(aspectRatio: 0,
+                                    headline: "Creative",
+                                    callToAction: "Install",
+                                    images: [NativeAdImage(image: still)])
+        content.nativeAd = nativeAd
+        promo.contentView = content
+        let adView = try XCTUnwrap(content.subviews.compactMap { $0 as? PromoNativeAdView }.first)
+        let original = try geometry(of: adView)
+        let updates = delegate.updateCount
+
+        nativeAd.reportedAspectRatio = 16.0 / 9.0
+        nativeAd.videoController.simulatePlay()
+        let playing = try geometry(of: adView)
+
+        XCTAssertEqual(delegate.updateCount, updates + 1)
+        XCTAssertTrue(delegate.updatedProvider === provider)
+        XCTAssertTrue(promo.contentView === content)
+        XCTAssertTrue(content.nativeAd === nativeAd)
+        XCTAssertEqual(provider.fetchCount, 1, "A shape change must resize the existing ad without fetching another")
+        XCTAssertNotEqual(playing.fittingSize, original.fittingSize)
+        XCTAssertEqual(playing.mediaFrame.width / playing.mediaFrame.height, 16.0 / 9.0, accuracy: 0.01)
+
+        // A pooled or replaced content view must no longer resize the current card.
+        promo.contentView = TestPromoContentView(promoView: promo)
+        nativeAd.reportedAspectRatio = 9.0 / 16.0
+        nativeAd.videoController.simulatePlay()
+        XCTAssertEqual(delegate.updateCount, updates + 1)
+        XCTAssertEqual(provider.fetchCount, 1)
+    }
+
+    private struct AdGeometry: Equatable {
+        let fittingSize: CGSize
+        let mediaFrame: CGRect
+        let mediaContainerFrame: CGRect
+        let headlineFrame: CGRect
+        let actionFrame: CGRect
+    }
+
+    private func geometry(of adView: PromoNativeAdView) throws -> AdGeometry {
+        let container = CGSize(width: 900, height: 600)
+        let fittingSize = adView.sizeThatFits(container)
+        adView.frame = CGRect(origin: .zero, size: container)
+        adView.setNeedsLayout()
+        adView.layoutIfNeeded()
+        let mediaView = try XCTUnwrap(adView.mediaView)
+        return AdGeometry(fittingSize: fittingSize,
+                          mediaFrame: mediaView.frame,
+                          mediaContainerFrame: try XCTUnwrap(mediaView.superview).frame,
+                          headlineFrame: try XCTUnwrap(adView.headlineView).frame,
+                          actionFrame: try XCTUnwrap(adView.callToActionView).frame)
     }
 
     func testAnUnknownShapeNoLongerClaimsTheWholeContainer() {

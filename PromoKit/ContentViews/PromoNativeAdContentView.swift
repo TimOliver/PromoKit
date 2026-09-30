@@ -70,6 +70,17 @@ final public class PromoNativeAdContentView: PromoContentView {
     public required init(promoView: PromoView) {
         super.init(promoView: promoView)
         addSubview(adView)
+        adView.mediaAspectRatioDidChange = { [weak self] in
+            guard let self, let promoView = self.promoView,
+                  promoView.contentView === self,
+                  let provider = promoView.currentProvider else { return }
+            self.invalidateIntrinsicContentSize()
+            self.setNeedsLayout()
+            promoView.invalidateIntrinsicContentSize()
+            promoView.setNeedsLayout()
+            // Let the host remeasure the existing card without rebinding its media.
+            promoView.delegate?.promoView?(promoView, didUpdateProvider: provider)
+        }
     }
 
     public required init?(coder: NSCoder) {
@@ -132,6 +143,12 @@ final public class PromoNativeAdView: NativeAdView {
     // If media, the content view used to show the media
     private let contentMediaView = MediaView()
 
+    // Track notifications separately from measurement, so sizeThatFits cannot
+    // consume a ratio change before the host has been told to resize the card.
+    var mediaAspectRatioDidChange: (() -> Void)?
+    private var lastNotifiedAspectRatio: CGFloat = 1.0
+    private weak var observedVideoController: VideoController?
+
     // For easier testing, remove the 'Test mode' string from the title
     private func headlineText(for nativeAd: NativeAd?) -> String {
 #if DEBUG
@@ -163,7 +180,9 @@ final public class PromoNativeAdView: NativeAdView {
     }
 
     public func reset() {
+        stopObservingVideoPlayback()
         self.nativeAd = nil
+        lastNotifiedAspectRatio = 1.0
         // Detach the views from the Google references until the next layout pass
         self.headlineView = nil
         self.bodyView = nil
@@ -256,6 +275,11 @@ final public class PromoNativeAdView: NativeAdView {
             return
         }
 
+        stopObservingVideoPlayback()
+        let videoController = nativeAd.mediaContent.videoController
+        observedVideoController = videoController
+        videoController.delegate = self
+
         iconImageView.image = nativeAd.icon?.image
 
         if let body = bodyText(for: nativeAd) {
@@ -264,6 +288,7 @@ final public class PromoNativeAdView: NativeAdView {
 
         contentMediaContainerView.image = mediaBackgroundImage
         contentMediaView.mediaContent = nativeAd.mediaContent
+        lastNotifiedAspectRatio = Self.usableAspectRatio(for: nativeAd)
 
         actionButton.title = nil
         if let cta = nativeAd.callToAction {
@@ -276,6 +301,7 @@ final public class PromoNativeAdView: NativeAdView {
 
         // Set the ad after everything else is set
         self.nativeAd = nativeAd
+        updateMediaAspectRatioIfNeeded()
     }
 
     public override func layoutSubviews() {
@@ -311,6 +337,10 @@ final public class PromoNativeAdView: NativeAdView {
         self.iconView = !iconImageView.isHidden ? iconImageView : nil
         self.mediaView = contentMediaView
         self.callToActionView = actionButton
+
+        if self.nativeAd === nativeAd {
+            updateMediaAspectRatioIfNeeded()
+        }
     }
 
     private func layoutSubviewsInLandscapeFormat(size: CGSize, nativeAd: NativeAd) {
@@ -541,7 +571,6 @@ final public class PromoNativeAdView: NativeAdView {
         }
 
         // Position the media container
-        let mediaContent = nativeAd.mediaContent
         let aspectRatio = Self.usableAspectRatio(for: nativeAd)
         let actionButtonY = (actionButton.superview != nil && !needsCompactLayout) ? (actionButton.frame.minY - innerMargin) : size.height
         let mediaContainerSize = CGSize(width: size.width, height: actionButtonY - origin.y)
@@ -581,6 +610,26 @@ final public class PromoNativeAdView: NativeAdView {
     }
 
     // MARK: - Sizing
+
+    private func stopObservingVideoPlayback() {
+        if observedVideoController?.delegate === self {
+            observedVideoController?.delegate = nil
+        }
+        observedVideoController = nil
+    }
+
+    /// A still supplies the initial shape; SDK media dimensions take over when
+    /// available. Playback and layout are opportunities to discover that change,
+    /// since Google provides no dedicated media-metadata readiness callback.
+    private func updateMediaAspectRatioIfNeeded() {
+        guard let nativeAd else { return }
+        let aspectRatio = Self.usableAspectRatio(for: nativeAd)
+        guard aspectRatio != lastNotifiedAspectRatio else { return }
+        lastNotifiedAspectRatio = aspectRatio
+        invalidateIntrinsicContentSize()
+        setNeedsLayout()
+        mediaAspectRatioDidChange?()
+    }
 
     // Static sizing values
     private var needsCompactLayout: Bool { traitCollection.verticalSizeClass == .compact }
@@ -726,6 +775,16 @@ final public class PromoNativeAdView: NativeAdView {
     }
 }
 
+// MARK: - Video Playback
+
+extension PromoNativeAdView: VideoControllerDelegate {
+    public func videoControllerDidPlayVideo(_ videoController: VideoController) {
+        guard observedVideoController === videoController,
+              nativeAd?.mediaContent.videoController === videoController else { return }
+        updateMediaAspectRatioIfNeeded()
+    }
+}
+
 // MARK: - Layout Geometry
 
 extension PromoNativeAdView {
@@ -752,10 +811,8 @@ extension PromoNativeAdView {
                              mediaAspectRatio: CGFloat,
                              minimumTextColumnWidth: CGFloat,
                              maximumMediaWidthFraction: CGFloat) -> LayoutFormat {
-        // A wide creative already fills the card's width with nothing left over, and
-        // an unresolved one — Google reports an aspect ratio of 0 until the media
-        // content loads — has no shape to reason about. Both belong in the layout
-        // that doesn't need to know.
+        // A wide creative already fills the card's width with nothing left over.
+        // An unknown ratio also belongs in the layout that doesn't need its shape.
         guard mediaAspectRatio > 0, mediaAspectRatio < 1.0 else { return .stacked }
 
         let media = mediaSize(fitting: containerSize,
@@ -777,40 +834,19 @@ extension PromoNativeAdView {
         return min(maximumScale, max(1.0, (availableHeight * targetFill) / naturalHeight))
     }
 
-    /// The size a creative renders at inside a media band, preserving its shape.
+    /// A usable layout ratio, preferring SDK metadata, then a still, then a square.
     ///
-    /// The previous version pinned a wide creative's width to the band and scaled only
-    /// its height, which produced a media view wider than the creative. Google's
-    /// `MediaView` then pillarboxed the creative inside it, and the gap read as grey
-    /// wings either side of the video. Scaling both axes by the same factor is the
-    /// whole fix; the scale is capped at 1 so a roomy band leaves space rather than
-    /// blowing the creative up past its natural size.
-    /// The creative's shape, from the best source that can answer.
-    ///
-    /// `mediaContent.aspectRatio` is documented as 0 "when the media content
-    /// aspect ratio is unknown", which for a video creative lasts until the media
-    /// loads — well after the card is first measured. Used raw, that 0 reaches
-    /// `width / aspectRatio` in `sizeThatFits` and the card claims the entire
-    /// container, then snaps down to the creative the moment the real shape
-    /// arrives. The still that ships with the creative is the same shape and is
-    /// there immediately, so it stands in and the card is sized right the first
-    /// time. Every read goes through here, so measurement and layout can't hold
-    /// different opinions about it either.
+    /// Google's ratio can be zero when unknown or when there is no media. Neither
+    /// a later update nor a still matching the video's shape is guaranteed.
     static func usableAspectRatio(reported: CGFloat, stillSize: CGSize?) -> CGFloat {
-        if reported > 0.0 { return reported }
-        if let stillSize, stillSize.width > 0.0, stillSize.height > 0.0 {
-            return stillSize.width / stillSize.height
+        if reported.isFinite, reported > 0.0 { return reported }
+        if let stillSize,
+           stillSize.width.isFinite, stillSize.width > 0.0,
+           stillSize.height.isFinite, stillSize.height > 0.0 {
+            let ratio = stillSize.width / stillSize.height
+            if ratio.isFinite, ratio > 0.0 { return ratio }
         }
         return 1.0
-    }
-
-    /// Whether nothing available can say what shape the creative is, so the card
-    /// has nothing honest to size against and should be held back until Google
-    /// reports one.
-    static func needsCreativeShape(reported: CGFloat, stillSize: CGSize?) -> Bool {
-        if reported > 0.0 { return false }
-        guard let stillSize else { return true }
-        return !(stillSize.width > 0.0 && stillSize.height > 0.0)
     }
 
     /// The creative's own still, if one shipped with the ad. `mainImage` covers
@@ -824,6 +860,7 @@ extension PromoNativeAdView {
         usableAspectRatio(reported: nativeAd.mediaContent.aspectRatio, stillSize: stillSize(for: nativeAd))
     }
 
+    /// Fit the creative inside the media band while preserving its layout ratio.
     static func fittedMediaSize(containerSize: CGSize, aspectRatio: CGFloat) -> CGSize {
         guard aspectRatio > 0, containerSize.width > 0, containerSize.height > 0 else { return .zero }
 

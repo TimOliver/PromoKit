@@ -46,11 +46,11 @@ public protocol PromoViewDelegate: NSObjectProtocol {
     /// - Parameter promoView: The promo view that ran the reload
     @objc optional func promoViewDidFailToResolveProvider(_ promoView: PromoView)
 
-    /// Called when a new provider has successfully been fetched and is now displaying
-    /// its content. This can be used to trigger new layout passes if needed.
+    /// Called when a provider is displaying its content, including when that
+    /// content's preferred size changes. Use this to remeasure and lay out the promo.
     /// - Parameters:
     ///   - promoView: The promo view hosting the provider
-    ///   - provider: The provider that was successfully loaded
+    ///   - provider: The provider displaying content
     @objc optional func promoView(_ promoView: PromoView, didUpdateProvider provider: PromoProvider)
 
     /// A fetch completely failed and there is no content to display.
