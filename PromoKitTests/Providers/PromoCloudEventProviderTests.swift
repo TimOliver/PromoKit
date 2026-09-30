@@ -22,12 +22,7 @@ final class PromoCloudEventProviderTests: XCTestCase {
         XCTAssertTrue(PromoCloudEventProvider.isVersionEligible("2.0.0", minVersion: " ", maxVersion: "\n"))
     }
 
-    func testCloudEventQueryPredicateAllowsRecordsWithoutExpirationDate() {
-        // Asserting on the predicate's behavior rather than its `predicateFormat` string —
-        // NSPredicate normalizes the format differently across iOS versions (NULL → nil,
-        // for example), so format matching becomes brittle without adding any safety.
-        let predicate = PromoCloudEventProvider.eventQueryPredicate(eventType: "app-update")
-
+    func testCloudEventQueryPredicateFiltersOnlyEventTypeWithSupportedOperators() {
         let recordWithoutExpiry: NSDictionary = ["type": "app-update"]
         let recordWithFutureExpiry: NSDictionary = [
             "type": "app-update",
@@ -39,14 +34,16 @@ final class PromoCloudEventProviderTests: XCTestCase {
         ]
         let recordWithMismatchedType: NSDictionary = ["type": "other"]
 
-        XCTAssertTrue(predicate.evaluate(with: recordWithoutExpiry),
-                      "Records without an expirationDate should remain eligible")
-        XCTAssertTrue(predicate.evaluate(with: recordWithFutureExpiry),
-                      "Records with a future expirationDate should be eligible")
-        XCTAssertFalse(predicate.evaluate(with: recordWithPastExpiry),
-                       "Records past their expirationDate should be filtered out")
-        XCTAssertFalse(predicate.evaluate(with: recordWithMismatchedType),
-                       "Records of a different type should be filtered out")
+        for eventType in [nil, "", "app-update"] {
+            let predicate = PromoCloudEventProvider.eventQueryPredicate(eventType: eventType)
+            XCTAssertFalse(predicate.predicateFormat.contains(" OR "),
+                           "CloudKit rejects OR even though NSPredicate can evaluate it locally")
+            XCTAssertTrue(predicate.evaluate(with: recordWithoutExpiry))
+            XCTAssertTrue(predicate.evaluate(with: recordWithFutureExpiry))
+            XCTAssertTrue(predicate.evaluate(with: recordWithPastExpiry),
+                          "Expiration is filtered by the provider after fetching metadata")
+            XCTAssertEqual(predicate.evaluate(with: recordWithMismatchedType), eventType != "app-update")
+        }
     }
 
     func testCloudEventRecordPreferencePrefersExpiringRecords() {
@@ -104,6 +101,74 @@ final class PromoCloudEventProviderTests: XCTestCase {
         XCTAssertEqual(result, .contentAvailable)
         XCTAssertEqual(dataSource.queryCallCount, 1)
         XCTAssertEqual(dataSource.fetchCallCount, 1)
+    }
+
+    func testCloudEventProviderRejectsExpiredQueryRecords() {
+        let dataSource = StubCloudEventDataSource()
+        let expired = CKRecord(recordType: "PromoEvent")
+        expired["title"] = "Expired announcement"
+        expired["expirationDate"] = Date.distantPast as NSDate
+        dataSource.queryRecords = [expired]
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: dataSource)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .noContentAvailable)
+        XCTAssertEqual(dataSource.fetchCallCount, 0, "Expired records must not trigger an asset download")
+        XCTAssertNil(provider.currentRecordName)
+    }
+
+    func testCloudEventProviderPrefersSoonestValidExpiryAmongQueryRecords() {
+        let dataSource = StubCloudEventDataSource()
+        let expired = CKRecord(recordType: "PromoEvent")
+        expired["expirationDate"] = Date.distantPast as NSDate
+        let nonExpiring = CKRecord(recordType: "PromoEvent")
+        let later = CKRecord(recordType: "PromoEvent")
+        later["expirationDate"] = Date().addingTimeInterval(7_200) as NSDate
+        let sooner = CKRecord(recordType: "PromoEvent")
+        sooner["title"] = "Current announcement"
+        sooner["expirationDate"] = Date().addingTimeInterval(3_600) as NSDate
+        dataSource.queryRecords = [later, expired, nonExpiring, sooner]
+        dataSource.fetchRecord = sooner
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: dataSource)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .contentAvailable)
+        XCTAssertEqual(dataSource.lastFetchedRecordID, sooner.recordID)
+        XCTAssertEqual(provider.currentRecordName, sooner.recordID.recordName)
+    }
+
+    func testCloudEventProviderSelectsNonExpiringRecordWhenOthersHaveExpired() {
+        let dataSource = StubCloudEventDataSource()
+        let expired = CKRecord(recordType: "PromoEvent")
+        expired["expirationDate"] = Date.distantPast as NSDate
+        let nonExpiring = CKRecord(recordType: "PromoEvent")
+        nonExpiring["title"] = "Ongoing announcement"
+        dataSource.queryRecords = [expired, nonExpiring]
+        dataSource.fetchRecord = nonExpiring
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: "app-update", dataSource: dataSource)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .contentAvailable)
+        XCTAssertEqual(dataSource.lastFetchedRecordID, nonExpiring.recordID)
+        XCTAssertEqual(provider.currentRecordName, nonExpiring.recordID.recordName)
+    }
+
+    func testCloudEventProviderRechecksExpirationAfterFullFetch() {
+        let dataSource = StubCloudEventDataSource()
+        let queryRecord = CKRecord(recordType: "PromoEvent")
+        queryRecord["title"] = "Announcement"
+        queryRecord["expirationDate"] = Date().addingTimeInterval(3_600) as NSDate
+        let fullRecord = CKRecord(recordType: "PromoEvent", recordID: queryRecord.recordID)
+        fullRecord["title"] = "Withdrawn announcement"
+        fullRecord["expirationDate"] = Date.distantPast as NSDate
+        dataSource.queryRecords = [queryRecord]
+        dataSource.fetchRecord = fullRecord
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: dataSource)
+        let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .noContentAvailable)
+        XCTAssertEqual(dataSource.fetchCallCount, 1)
+        XCTAssertNil(provider.currentRecordName)
     }
 
     func testCloudEventContentViewConfiguresTableListContent() throws {

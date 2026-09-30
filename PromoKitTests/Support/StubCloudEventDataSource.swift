@@ -13,6 +13,7 @@ final class StubCloudEventDataSource: PromoCloudEventDataSource {
     private(set) var queryCallCount = 0
     private(set) var fetchCallCount = 0
     private(set) var lastQuery: CKQuery?
+    private(set) var lastFetchedRecordID: CKRecord.ID?
 
     func performQuery(_ query: CKQuery,
                       desiredKeys: [String],
@@ -30,6 +31,7 @@ final class StubCloudEventDataSource: PromoCloudEventDataSource {
     func fetchRecord(withID recordID: CKRecord.ID,
                      completion: @escaping (CKRecord?, Error?) -> Void) {
         fetchCallCount += 1
+        lastFetchedRecordID = recordID
         callbackQueue.async {
             completion(self.fetchRecord, self.fetchError)
         }

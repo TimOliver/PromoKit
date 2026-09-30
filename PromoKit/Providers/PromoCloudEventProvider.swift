@@ -176,7 +176,8 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         // Capture the token for this fetch so callbacks from a previous fetch are ignored
         let token = fetchToken
 
-        // Create the query, searching for records that either haven't expired yet, or never expire.
+        // CloudKit does not support OR predicates. Query the event category and
+        // check expiration locally so records without an expiration date remain eligible.
         let predicate = Self.eventQueryPredicate(eventType: eventType)
         let query = CKQuery(recordType: recordType, predicate: predicate)
         query.sortDescriptors = [NSSortDescriptor(key: Constants.expirationDate, ascending: true)]
@@ -208,6 +209,8 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// - Parameter record: The record to display
     /// - Returns: Whether the object is eligible or not
     private func isRecordEligibleForDisplay(_ record: CKRecord) -> Bool {
+        guard isRecordUnexpired(record) else { return false }
+
         // Host-hidden notices never display again.
         guard !hiddenRecordNamesStorage.contains(record.recordID.recordName) else { return false }
 
@@ -237,6 +240,11 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
             .timeIntervalSinceReferenceDate
 
         return referenceDate < localExpirationReferenceDate
+    }
+
+    private func isRecordUnexpired(_ record: CKRecord) -> Bool {
+        guard let expirationDate = record[Constants.expirationDate] as? Date else { return true }
+        return expirationDate > Date()
     }
 
     /// Returns whether the current app version satisfies the min/max version constraints stored in the record.
@@ -310,17 +318,19 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
             self?.stateQueue.async { [weak self] in
                 guard let self, self.fetchToken == token else { return }
 
-                guard let record, error == nil else {
-                    if let record = self.record {
-                        self.loadThumbnailFromCache(record: record)
-                    }
-                    self.handleResult(.contentAvailable)
+                let fetchedRecord = error == nil ? record : nil
+                guard let displayRecord = fetchedRecord ?? self.record,
+                      self.isRecordUnexpired(displayRecord) else {
+                    self.record = nil
+                    self.handleResult(.noContentAvailable)
                     return
                 }
 
-                self.record = record
-                self.saveThumbnailToCache(record: record)
-                self.loadThumbnailFromCache(record: record)
+                self.record = displayRecord
+                if fetchedRecord != nil {
+                    self.saveThumbnailToCache(record: displayRecord)
+                }
+                self.loadThumbnailFromCache(record: displayRecord)
                 self.handleResult(.contentAvailable)
             }
         }
@@ -374,11 +384,10 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 extension PromoCloudEventProvider {
 
     static func eventQueryPredicate(eventType: String?) -> NSPredicate {
-        var predicates = [NSPredicate(format: "\(Constants.expirationDate) > now() OR \(Constants.expirationDate) == NULL")]
         if let eventType, !eventType.isEmpty {
-            predicates.append(NSPredicate(format: "type == %@", eventType))
+            return NSPredicate(format: "type == %@", eventType)
         }
-        return NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+        return NSPredicate(format: "TRUEPREDICATE")
     }
 
     static func isRecordPreferred(_ record: CKRecord, over currentRecord: CKRecord?) -> Bool {
