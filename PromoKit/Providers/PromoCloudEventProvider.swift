@@ -344,6 +344,13 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
             self?.stateQueue.async { [weak self] in
                 guard let self, self.fetchToken == token else { return }
 
+                // A deleted record cannot use the stale query snapshot as a fallback.
+                if let cloudError = error as? CKError, cloudError.code == .unknownItem {
+                    self.record = nil
+                    self.handleResult(.noContentAvailable)
+                    return
+                }
+
                 let fetchedRecord = error == nil ? record : nil
                 guard let displayRecord = fetchedRecord ?? self.record,
                       self.isRecordEligibleForDisplay(displayRecord) else {

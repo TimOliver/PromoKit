@@ -652,3 +652,40 @@ private final class CloudEventDataSourceWithFetchHook: PromoCloudEventDataSource
         }
     }
 }
+
+extension PromoCloudEventProviderTests {
+    func testServerDeletedNoticeIsNotDisplayedFromQuerySnapshot() {
+        let source = StubCloudEventDataSource()
+        let queryRecord = CKRecord(recordType: "PromoEvent")
+        queryRecord["title"] = "Deleted announcement"
+        source.queryRecords = [queryRecord]
+        source.fetchError = NSError(domain: CKErrorDomain, code: CKError.unknownItem.rawValue)
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: source)
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .noContentAvailable,
+                       "A permanent missing-record result must not fall back to stale metadata")
+        XCTAssertNil(provider.currentRecordName)
+    }
+
+    func testTransientFullFetchFailurePreservesQueriedContentAndCachedThumbnail() throws {
+        let source = StubCloudEventDataSource()
+        let queryRecord = CKRecord(recordType: "PromoEvent")
+        queryRecord["title"] = "Current announcement"
+        queryRecord["type"] = "app-update"
+        source.queryRecords = [queryRecord]
+        source.fetchError = NSError(domain: CKErrorDomain, code: CKError.networkFailure.rawValue)
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: "app-update", dataSource: source)
+        let image = makePromoTestImage(size: CGSize(width: 8, height: 8), color: .orange)
+        try PromoCache().setFileData(try XCTUnwrap(image.pngData()),
+                                    forKey: queryRecord.recordID.recordName, fromObject: provider)
+        defer { removeCachedFile(for: queryRecord.recordID.recordName, provider: provider) }
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        let content = try XCTUnwrap(provider.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertEqual(content.label.attributedText?.string, "Current announcement")
+        XCTAssertNotNil(content.imageView.image)
+        XCTAssertFalse(content.imageView.isHidden)
+    }
+}
