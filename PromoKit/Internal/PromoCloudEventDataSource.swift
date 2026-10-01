@@ -26,6 +26,9 @@ import CloudKit
 /// Abstraction over the CloudKit operations used by `PromoCloudEventProvider`. Lets tests
 /// substitute a stub instead of going through `CKDatabase`, which can't be exercised offline.
 internal protocol PromoCloudEventDataSource: AnyObject {
+    /// The resolved container identifier, including when the app's default container is used.
+    var containerIdentifier: String? { get }
+
     /// Performs a record query, calling `recordHandler` for each fetched record and
     /// `completion` once the query finishes.
     func performQuery(_ query: CKQuery,

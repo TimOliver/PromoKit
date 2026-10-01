@@ -25,14 +25,18 @@ import CloudKit
 
 /// Default `PromoCloudEventDataSource` backed by a real `CKDatabase`.
 internal final class PromoCloudKitDataSource: PromoCloudEventDataSource {
+    let containerIdentifier: String?
     private let database: CKDatabase
 
     init(containerIdentifier: String?) {
+        let container: CKContainer
         if let containerIdentifier {
-            self.database = CKContainer(identifier: containerIdentifier).publicCloudDatabase
+            container = CKContainer(identifier: containerIdentifier)
         } else {
-            self.database = CKContainer.default().publicCloudDatabase
+            container = CKContainer.default()
         }
+        self.containerIdentifier = container.containerIdentifier ?? containerIdentifier
+        self.database = container.publicCloudDatabase
     }
 
     func performQuery(_ query: CKQuery,

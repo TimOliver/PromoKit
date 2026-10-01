@@ -5,6 +5,7 @@ import CloudKit
 /// `PromoCloudEventDataSource` stub that vends canned records and errors to exercise
 /// `PromoCloudEventProvider`'s fetch logic without touching CloudKit.
 final class StubCloudEventDataSource: PromoCloudEventDataSource {
+    var containerIdentifier: String? = "iCloud.dev.tim.promokit.tests"
     var callbackQueue = DispatchQueue.main
     var queryRecords: [CKRecord] = []
     var queryError: Error?

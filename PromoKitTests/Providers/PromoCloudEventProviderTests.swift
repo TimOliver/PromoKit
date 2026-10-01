@@ -268,7 +268,7 @@ final class PromoCloudEventProviderTests: XCTestCase {
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
 
         XCTAssertEqual(waitForFetch(provider: provider, promoView: promoView), .contentAvailable)
-        XCTAssertNotNil(cache.date(forKey: recordName, fromObject: provider))
+        XCTAssertNotNil(cache.date(forKey: provider.cacheKey(for: record.recordID), fromObject: provider))
         XCTAssertEqual(dataSource.fetchCallCount, 1)
     }
 
@@ -285,7 +285,8 @@ final class PromoCloudEventProviderTests: XCTestCase {
                                                dataSource: dataSource)
         let cache = PromoCache()
         cache.clearValues(forObject: provider)
-        cache.setDate(Date().addingTimeInterval(-2 * 60 * 60), forKey: recordName, fromObject: provider)
+        cache.setDate(Date().addingTimeInterval(-2 * 60 * 60),
+                      forKey: provider.cacheKey(for: record.recordID), fromObject: provider)
         defer { cache.clearValues(forObject: provider) }
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
 
@@ -388,7 +389,8 @@ final class PromoCloudEventProviderTests: XCTestCase {
     }
 
     private func removeCachedFile(for recordName: String, provider: PromoCloudEventProvider) {
-        let cacheURL = PromoCache().fileURL(forKey: recordName, fromObject: provider)
+        let key = provider.cacheKey(for: CKRecord.ID(recordName: recordName))
+        let cacheURL = PromoCache().fileURL(forKey: key, fromObject: provider)
         try? FileManager.default.removeItem(at: cacheURL)
     }
 }
@@ -629,6 +631,7 @@ extension PromoCloudEventProviderTests {
 }
 
 private final class CloudEventDataSourceWithFetchHook: PromoCloudEventDataSource {
+    let containerIdentifier: String? = "iCloud.dev.tim.promokit.tests"
     let record: CKRecord
     private(set) var desiredKeys: [String] = []
     var beforeFullFetchCompletion: (() -> Void)?
@@ -678,7 +681,7 @@ extension PromoCloudEventProviderTests {
         let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: "app-update", dataSource: source)
         let image = makePromoTestImage(size: CGSize(width: 8, height: 8), color: .orange)
         try PromoCache().setFileData(try XCTUnwrap(image.pngData()),
-                                    forKey: queryRecord.recordID.recordName, fromObject: provider)
+                                    forKey: provider.cacheKey(for: queryRecord.recordID), fromObject: provider)
         defer { removeCachedFile(for: queryRecord.recordID.recordName, provider: provider) }
         let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
 
@@ -687,5 +690,157 @@ extension PromoCloudEventProviderTests {
         XCTAssertEqual(content.label.attributedText?.string, "Current announcement")
         XCTAssertNotNil(content.imageView.image)
         XCTAssertFalse(content.imageView.isHidden)
+    }
+}
+
+extension PromoCloudEventProviderTests {
+    func testContainerCachesKeepAccessDatesAndThumbnailsSeparateAcrossProviderInstances() throws {
+        let recordID = CKRecord.ID(recordName: UUID().uuidString)
+        let firstRecord = CKRecord(recordType: "PromoEvent", recordID: recordID)
+        firstRecord["title"] = "First container"
+        firstRecord["localDuration"] = NSNumber(value: 1)
+        let firstImageURL = try temporaryPNGURL(color: .orange)
+        let firstImageData = try XCTUnwrap(UIImage(contentsOfFile: firstImageURL.path)?.pngData())
+        firstRecord["thumbnail"] = CKAsset(fileURL: firstImageURL)
+        let firstSource = StubCloudEventDataSource()
+        firstSource.containerIdentifier = "iCloud.tests.first"
+        firstSource.queryRecords = [firstRecord]
+        firstSource.fetchRecord = firstRecord
+        let firstProvider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: firstSource)
+
+        let secondRecord = CKRecord(recordType: "PromoEvent", recordID: recordID)
+        secondRecord["title"] = "Second container"
+        secondRecord["localDuration"] = NSNumber(value: 1)
+        let secondImageURL = try temporaryPNGURL(color: .blue)
+        let secondImageData = try XCTUnwrap(UIImage(contentsOfFile: secondImageURL.path)?.pngData())
+        secondRecord["thumbnail"] = CKAsset(fileURL: secondImageURL)
+        let secondSource = StubCloudEventDataSource()
+        secondSource.containerIdentifier = "iCloud.tests.second"
+        secondSource.queryRecords = [secondRecord]
+        secondSource.fetchError = NSError(domain: CKErrorDomain, code: CKError.networkFailure.rawValue)
+        let secondProvider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: secondSource)
+        let cache = PromoCache()
+        let firstKey = firstProvider.cacheKey(for: recordID)
+        let secondKey = secondProvider.cacheKey(for: recordID)
+        defer {
+            cache.setDate(nil, forKey: firstKey, fromObject: firstProvider)
+            cache.setDate(nil, forKey: secondKey, fromObject: secondProvider)
+            removeCachedFile(for: recordID.recordName, provider: firstProvider)
+            removeCachedFile(for: recordID.recordName, provider: secondProvider)
+            try? FileManager.default.removeItem(at: firstImageURL)
+            try? FileManager.default.removeItem(at: secondImageURL)
+        }
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: firstProvider, promoView: view), .contentAvailable)
+        let firstAccessDate = try XCTUnwrap(cache.date(forKey: firstKey, fromObject: firstProvider))
+        let expiredAccessDate = Date().addingTimeInterval(-2 * 60 * 60)
+        cache.setDate(expiredAccessDate, forKey: firstKey, fromObject: firstProvider)
+
+        XCTAssertEqual(waitForFetch(provider: secondProvider, promoView: view), .contentAvailable,
+                       "A locally expired record in another container must not suppress this notice")
+        let secondContent = try XCTUnwrap(secondProvider.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertEqual(secondContent.label.attributedText?.string, "Second container")
+        XCTAssertNil(secondContent.imageView.image,
+                     "A transient asset fetch failure must not borrow the other container's thumbnail")
+        let secondAccessDate = try XCTUnwrap(cache.date(forKey: secondKey, fromObject: secondProvider))
+        XCTAssertGreaterThan(secondAccessDate, expiredAccessDate)
+        XCTAssertEqual(cache.date(forKey: firstKey, fromObject: firstProvider), expiredAccessDate)
+
+        secondSource.fetchError = nil
+        secondSource.fetchRecord = secondRecord
+        XCTAssertEqual(waitForFetch(provider: secondProvider, promoView: view), .contentAvailable)
+        let loadedSecondContent = try XCTUnwrap(secondProvider.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertEqual(loadedSecondContent.imageView.image?.pngData(), secondImageData)
+
+        firstSource.fetchRecord = nil
+        firstSource.fetchError = NSError(domain: CKErrorDomain, code: CKError.networkFailure.rawValue)
+        let recreatedFirst = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: firstSource)
+        XCTAssertEqual(waitForFetch(provider: recreatedFirst, promoView: view), .noContentAvailable,
+                       "Recreating a provider must preserve its container's local expiry")
+        cache.setDate(firstAccessDate, forKey: firstKey, fromObject: firstProvider)
+        XCTAssertEqual(waitForFetch(provider: recreatedFirst, promoView: view), .contentAvailable)
+        let restoredFirstContent = try XCTUnwrap(recreatedFirst.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertEqual(restoredFirstContent.imageView.image?.pngData(), firstImageData,
+                       "Saving the second container's image must not overwrite the first")
+
+        secondSource.fetchRecord = nil
+        secondSource.fetchError = NSError(domain: CKErrorDomain, code: CKError.networkFailure.rawValue)
+        let recreatedSecond = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: secondSource)
+        XCTAssertEqual(waitForFetch(provider: recreatedSecond, promoView: view), .contentAvailable)
+        let restoredSecondContent = try XCTUnwrap(recreatedSecond.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertEqual(restoredSecondContent.imageView.image?.pngData(), secondImageData)
+        XCTAssertEqual(cache.date(forKey: secondKey, fromObject: recreatedSecond), secondAccessDate)
+    }
+
+    func testDefaultAndExplicitContainerIdentitySharePersistentRecordCache() throws {
+        let defaultDataSource = PromoCloudKitDataSource(containerIdentifier: nil)
+        let resolvedIdentifier = try XCTUnwrap(defaultDataSource.containerIdentifier)
+        let explicitDataSource = PromoCloudKitDataSource(containerIdentifier: resolvedIdentifier)
+        XCTAssertEqual(explicitDataSource.containerIdentifier, defaultDataSource.containerIdentifier)
+
+        let record = CKRecord(recordType: "PromoEvent")
+        record["title"] = "Default container notice"
+        record["localDuration"] = NSNumber(value: 1)
+        let imageURL = try temporaryPNGURL(color: .green)
+        let imageData = try XCTUnwrap(UIImage(contentsOfFile: imageURL.path)?.pngData())
+        record["thumbnail"] = CKAsset(fileURL: imageURL)
+        let initialSource = StubCloudEventDataSource()
+        initialSource.containerIdentifier = defaultDataSource.containerIdentifier
+        initialSource.queryRecords = [record]
+        initialSource.fetchRecord = record
+        let initialProvider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: initialSource)
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let cache = PromoCache()
+        let key = initialProvider.cacheKey(for: record.recordID)
+        defer {
+            cache.setDate(nil, forKey: key, fromObject: initialProvider)
+            removeCachedFile(for: record.recordID.recordName, provider: initialProvider)
+            try? FileManager.default.removeItem(at: imageURL)
+        }
+        XCTAssertEqual(waitForFetch(provider: initialProvider, promoView: view), .contentAvailable)
+        let accessDate = try XCTUnwrap(cache.date(forKey: key, fromObject: initialProvider))
+
+        let restoredSource = StubCloudEventDataSource()
+        restoredSource.containerIdentifier = explicitDataSource.containerIdentifier
+        restoredSource.queryRecords = [record]
+        restoredSource.fetchError = NSError(domain: CKErrorDomain, code: CKError.networkFailure.rawValue)
+        let restoredProvider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: restoredSource)
+        XCTAssertEqual(waitForFetch(provider: restoredProvider, promoView: view), .contentAvailable)
+        let content = try XCTUnwrap(restoredProvider.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertEqual(content.imageView.image?.pngData(), imageData)
+        XCTAssertEqual(cache.date(forKey: restoredProvider.cacheKey(for: record.recordID), fromObject: restoredProvider), accessDate)
+
+        cache.setDate(Date().addingTimeInterval(-2 * 60 * 60), forKey: key, fromObject: restoredProvider)
+        let nextProvider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: initialSource)
+        XCTAssertEqual(waitForFetch(provider: nextProvider, promoView: view), .noContentAvailable,
+                       "Changing between explicit and default container access must not restart the display period")
+    }
+
+    func testUnscopedLegacyCacheDoesNotLeakIntoContainerScopedFetch() throws {
+        let record = CKRecord(recordType: "PromoEvent")
+        record["title"] = "Scoped notice"
+        record["localDuration"] = NSNumber(value: 1)
+        let source = StubCloudEventDataSource()
+        source.queryRecords = [record]
+        source.fetchError = NSError(domain: CKErrorDomain, code: CKError.networkFailure.rawValue)
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: source)
+        let cache = PromoCache()
+        let legacyKey = record.recordID.recordName
+        let scopedKey = provider.cacheKey(for: record.recordID)
+        cache.setDate(.distantPast, forKey: legacyKey, fromObject: provider)
+        let image = makePromoTestImage(size: CGSize(width: 8, height: 8), color: .red)
+        try cache.setFileData(try XCTUnwrap(image.pngData()), forKey: legacyKey, fromObject: provider)
+        defer {
+            cache.setDate(nil, forKey: legacyKey, fromObject: provider)
+            cache.setDate(nil, forKey: scopedKey, fromObject: provider)
+            try? FileManager.default.removeItem(at: cache.fileURL(forKey: legacyKey, fromObject: provider))
+        }
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        let content = try XCTUnwrap(provider.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertNil(content.imageView.image, "Legacy data has no trustworthy container identity")
+        XCTAssertNotNil(cache.date(forKey: scopedKey, fromObject: provider))
     }
 }

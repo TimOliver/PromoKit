@@ -22,6 +22,7 @@
 
 import Foundation
 import CloudKit
+import CryptoKit
 import UIKit
 
 /// Displays an eligible announcement from the app's public CloudKit database.
@@ -80,6 +81,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     // A cache for persisting record access dates and thumbnail images between sessions
     private let cache = PromoCache()
+    private let cacheContainerIdentifier: String
 
     // All mutable provider state belongs to this queue. UIKit composition remains on the caller's main thread.
     private let stateQueue = DispatchQueue(label: "dev.tim.PromoKit.CloudEventState")
@@ -142,6 +144,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         self.recordType = recordType
         self.eventType = eventType
         self.dataSource = dataSource
+        self.cacheContainerIdentifier = dataSource.containerIdentifier ?? "<default>"
         self.openURL = openURL
     }
 
@@ -251,14 +254,13 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
             return true
         }
 
-        // Track first access by the CloudKit record name.
-        let recordName = record.recordID.recordName
+        let key = cacheKey(for: record.recordID)
 
         // Check if we've gone past the local display period for this record
-        var firstAccessDate = cache.date(forKey: recordName, fromObject: self)
+        var firstAccessDate = cache.date(forKey: key, fromObject: self)
         if firstAccessDate == nil {
             firstAccessDate = Date()
-            cache.setDate(firstAccessDate, forKey: recordName, fromObject: self)
+            cache.setDate(firstAccessDate, forKey: key, fromObject: self)
         }
 
         guard let firstAccessDate else { return true }
@@ -375,7 +377,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// Moves the downloaded thumbnail asset from CloudKit's temporary location into the app's cache directory.
     /// Any existing cached asset for this record is replaced, and removed if the record no longer has a thumbnail.
     private func saveThumbnailToCache(record: CKRecord) {
-        let cacheURL = cache.fileURL(forKey: record.recordID.recordName, fromObject: self)
+        let cacheURL = cache.fileURL(forKey: cacheKey(for: record.recordID), fromObject: self)
         let thumbnailAsset = record[Constants.thumbnail] as? CKAsset
         let thumbnailURL = thumbnailAsset?.fileURL
         Self.replaceCachedFile(at: cacheURL, with: thumbnailURL)
@@ -385,7 +387,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     /// - Returns: Returns false if no cached thumbnail was found
     @discardableResult private func loadThumbnailFromCache(record: CKRecord) -> Bool {
         // Check to see if we have a cached thumbnail for this record
-        let fileURL = cache.fileURL(forKey: record.recordID.recordName, fromObject: self)
+        let fileURL = cache.fileURL(forKey: cacheKey(for: record.recordID), fromObject: self)
         if FileManager.default.fileExists(atPath: fileURL.path) {
             self.thumbnail = UIImage(contentsOfFile: fileURL.path)
         }
@@ -419,6 +421,17 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 }
 
 extension PromoCloudEventProvider {
+
+    /// Record names are unique only within a container and zone. Use a stable,
+    /// file-safe key for both access dates and assets across provider instances.
+    func cacheKey(for recordID: CKRecord.ID) -> String {
+        let components = [cacheContainerIdentifier, "public", recordID.zoneID.ownerName,
+                          recordID.zoneID.zoneName, recordID.recordName]
+        let identity = components.map { "\($0.utf8.count):\($0)" }.joined()
+        let digest = SHA256.hash(data: Data(identity.utf8)).map { String(format: "%02x", $0) }.joined()
+        // Unscoped legacy entries have no reliable container identity and are not reused.
+        return "CloudKit.\(digest)"
+    }
 
     static func eventQueryPredicate(eventType: String?) -> NSPredicate {
         if let eventType, !eventType.isEmpty {
