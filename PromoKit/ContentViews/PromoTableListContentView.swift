@@ -23,7 +23,7 @@
 import UIKit
 
 /// A table-style content view with a title, optional detail text and footnote,
-/// and an optional image on the left.
+/// and an optional image on the leading side.
 @objc(PMKPromoTableListContentView)
 final public class PromoTableListContentView: PromoContentView {
     // MARK: - Public Properties
@@ -34,7 +34,7 @@ final public class PromoTableListContentView: PromoContentView {
     /// A label that displays an optional footnote below the title and detail text.
     public let footnoteLabel = UILabel()
 
-    /// An optional image displayed on the left side of the view.
+    /// An optional image displayed on the leading side of the view.
     public let imageView = UIImageView()
 
     /// Spacing between the main text and footnote.
@@ -95,7 +95,7 @@ final public class PromoTableListContentView: PromoContentView {
     ///   - title: The text that will be displayed as the main title.
     ///   - detailText: The text optionally shown below the main title.
     ///   - footnote: The text optionally shown below the title and detail text.
-    ///   - image: The image optionally shown to the left of the text.
+    ///   - image: The image optionally shown before the text.
     public func configure(title: String, detailText: String? = nil, footnote: String? = nil, image: UIImage? = nil) {
         configuredTitle = title
         configuredDetailText = detailText
@@ -163,6 +163,8 @@ final public class PromoTableListContentView: PromoContentView {
 // MARK: - Layout
 extension PromoTableListContentView {
 
+    private var isRightToLeft: Bool { effectiveUserInterfaceLayoutDirection == .rightToLeft }
+
     private func imageSpacing(forWidth width: CGFloat) -> CGFloat {
         guard let promoView else { return 0 }
         var padding = promoView.contentPadding
@@ -170,7 +172,7 @@ extension PromoTableListContentView {
             // A new or reused card can be measured before the host assigns its current frame.
             padding = promoView.currentProvider?.contentPadding?(for: promoView) ?? promoView.defaultContentPadding
         }
-        return min(max(0, padding.left), width)
+        return min(max(0, isRightToLeft ? padding.right : padding.left), width)
     }
 
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
@@ -201,21 +203,25 @@ extension PromoTableListContentView {
 
         let size = bounds.size
         let imageSpacing = imageSpacing(forWidth: size.width)
-        var xOffset = imageSpacing
+        var leadingInset = imageSpacing
         let imageFrameSize = thumbnailSize(fitting: size, spacing: imageSpacing)
         if imageFrameSize != .zero {
-            imageView.frame = CGRect(x: 0, y: (size.height - imageFrameSize.height) * 0.5,
+            imageView.frame = CGRect(x: isRightToLeft ? size.width - imageFrameSize.width : 0,
+                                     y: (size.height - imageFrameSize.height) * 0.5,
                                      width: imageFrameSize.width, height: imageFrameSize.height)
             if let promoView = self.promoView {
                 let radius = promoView.cornerRadius - promoView.contentPadding.top
                 imageView.layer.cornerRadius = max(0, radius)
             }
-            xOffset = imageView.frame.maxX + imageSpacing
+            leadingInset += imageFrameSize.width
         } else {
             imageView.frame = .zero
         }
 
-        let textWidth = max(0, size.width - xOffset)
+        label.textAlignment = isRightToLeft ? .right : .left
+        footnoteLabel.textAlignment = label.textAlignment
+        let textX = isRightToLeft ? 0 : leadingInset
+        let textWidth = max(0, size.width - leadingInset)
         let hasFootnote = !(footnoteLabel.text?.isEmpty ?? true)
         footnoteLabel.isHidden = !hasFootnote
         var footnoteHeight = 0.0
@@ -231,10 +237,10 @@ extension PromoTableListContentView {
         let labelHeight = min(fittingSize.height, label.sizeThatFits(fittingSize).height)
         let height = labelHeight + footnoteHeight + footnoteSpacing
 
-        label.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),
+        label.frame = CGRect(origin: CGPoint(x: textX, y: (size.height - height) * 0.5),
                              size: CGSize(width: fittingSize.width, height: labelHeight))
         footnoteLabel.frame = hasFootnote
-            ? CGRect(x: xOffset, y: label.frame.maxY + footnoteSpacing, width: textWidth, height: footnoteHeight)
+            ? CGRect(x: textX, y: label.frame.maxY + footnoteSpacing, width: textWidth, height: footnoteHeight)
             : .zero
     }
 }

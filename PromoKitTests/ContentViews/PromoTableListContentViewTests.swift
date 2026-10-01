@@ -300,3 +300,127 @@ extension PromoTableListContentViewTests {
         XCTAssertEqual(content.label.text, "Replacement")
     }
 }
+
+extension PromoTableListContentViewTests {
+    func testTableThumbnailAndCopyFollowLeadingPaddingAcrossDirectionChangesAndReuse() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 600, height: 800))
+        let controller = UIViewController()
+        window.rootViewController = controller
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 360, height: 140))
+        controller.view.addSubview(promo)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let content = PromoTableListContentView(promoView: promo)
+        promo.addSubview(content)
+        promo.contentView = content
+        let padding = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 32)
+        let image = makePromoTestImage(size: CGSize(width: 60, height: 60), color: .blue)
+        content.configure(title: "إعلان جديد", detailText: "اكتشف أحدث المزايا", footnote: "example.com", image: image)
+        var originalFrames: [CGRect]?
+
+        for semantic in [UISemanticContentAttribute.forceLeftToRight, .forceRightToLeft, .forceLeftToRight] {
+            promo.semanticContentAttribute = semantic
+            controller.traitOverrides.layoutDirection = semantic == .forceRightToLeft ? .rightToLeft : .leftToRight
+            window.layoutIfNeeded()
+            content.frame = promo.bounds.inset(by: padding)
+            content.setNeedsLayout()
+            content.layoutIfNeeded()
+
+            let rtl = semantic == .forceRightToLeft
+            XCTAssertEqual(content.effectiveUserInterfaceLayoutDirection, rtl ? .rightToLeft : .leftToRight)
+            XCTAssertEqual(content.label.textAlignment, rtl ? .right : .left)
+            XCTAssertEqual(content.footnoteLabel.textAlignment, content.label.textAlignment)
+            XCTAssertEqual(content.footnoteLabel.frame.minX, content.label.frame.minX)
+            XCTAssertEqual(content.footnoteLabel.frame.maxX, content.label.frame.maxX)
+            if rtl {
+                XCTAssertEqual(content.imageView.frame.maxX, content.bounds.maxX, accuracy: 0.01)
+                XCTAssertEqual(content.imageView.frame.minX - content.label.frame.maxX, padding.right, accuracy: 0.01)
+            } else {
+                XCTAssertEqual(content.imageView.frame.minX, 0)
+                XCTAssertEqual(content.label.frame.minX - content.imageView.frame.maxX, padding.left, accuracy: 0.01)
+                let frames = [content.imageView.frame, content.label.frame, content.footnoteLabel.frame]
+                if let originalFrames {
+                    XCTAssertEqual(frames, originalFrames)
+                } else {
+                    originalFrames = frames
+                }
+            }
+        }
+
+        content.prepareForReuse()
+        promo.semanticContentAttribute = .forceRightToLeft
+        controller.traitOverrides.layoutDirection = .rightToLeft
+        window.layoutIfNeeded()
+        content.frame = promo.bounds.inset(by: padding)
+        content.configure(title: "إعلان بدون صورة", footnote: "example.com")
+        content.setNeedsLayout()
+        content.layoutIfNeeded()
+        XCTAssertEqual(content.imageView.frame, .zero)
+        XCTAssertEqual(content.label.frame.minX, 0)
+        XCTAssertEqual(content.bounds.maxX - content.label.frame.maxX, padding.right, accuracy: 0.01)
+        XCTAssertEqual(content.label.textAlignment, .right)
+    }
+
+    func testTableMeasurementUsesTheSameLeadingSpacingAsLayout() {
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 360, height: 900))
+        let content = PromoTableListContentView(promoView: promo)
+        promo.contentView = content
+        let image = makePromoTestImage(size: CGSize(width: 40, height: 40), color: .green)
+        content.preferredSize = CGSize(width: 500, height: 40)
+        content.configure(title: "A long announcement that wraps to several lines in its text column",
+                          detailText: "More information about the latest application features and improvements.",
+                          footnote: "example.com", image: image)
+        var leftToRightSize: CGSize?
+
+        for semantic in [UISemanticContentAttribute.forceLeftToRight, .forceRightToLeft] {
+            content.semanticContentAttribute = semantic
+            let rtl = semantic == .forceRightToLeft
+            let padding = UIEdgeInsets(top: 8, left: rtl ? 8 : 80, bottom: 8, right: rtl ? 80 : 8)
+            content.frame = promo.bounds.inset(by: padding)
+            let measured = content.sizeThatFits(CGSize(width: content.bounds.width, height: 900))
+            content.frame.size = measured
+            content.setNeedsLayout()
+            content.layoutIfNeeded()
+
+            let imageGap = rtl ? content.imageView.frame.minX - content.label.frame.maxX
+                : content.label.frame.minX - content.imageView.frame.maxX
+            XCTAssertEqual(imageGap, 80, accuracy: 0.01)
+            XCTAssertGreaterThanOrEqual(content.label.frame.height,
+                                        content.label.sizeThatFits(CGSize(width: content.label.frame.width,
+                                                                         height: .greatestFiniteMagnitude)).height)
+            if let leftToRightSize {
+                XCTAssertEqual(measured, leftToRightSize, "Mirrored padding should leave identical room for wrapped text")
+            } else {
+                leftToRightSize = measured
+            }
+        }
+    }
+
+    func testActiveTableMeasurementUsesConfiguredPaddingBeforeItsNewOrReusedFrameIsAssigned() {
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 360, height: 900))
+        promo.defaultContentPadding = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 48)
+        promo.currentProvider = TestPromoProvider(result: .contentAvailable)
+        let content = PromoTableListContentView(promoView: promo)
+        promo.contentView = content
+        let fittingSize = CGSize(width: 296, height: 900)
+
+        for semantic in [UISemanticContentAttribute.forceLeftToRight, .forceRightToLeft] {
+            content.semanticContentAttribute = semantic
+            for oldFrame in [CGRect.zero, CGRect(x: 5, y: 5, width: 100, height: 80)] {
+                content.prepareForReuse()
+                content.preferredSize = CGSize(width: 500, height: 40)
+                content.configure(title: "A long announcement that needs its final text width before measurement",
+                                  detailText: "The content should have the same preferred height before and after layout.")
+                content.frame = oldFrame
+                let beforeLayout = content.sizeThatFits(fittingSize)
+                content.frame = CGRect(origin: CGPoint(x: 16, y: 8), size: beforeLayout)
+                content.setNeedsLayout()
+                content.layoutIfNeeded()
+
+                XCTAssertEqual(content.sizeThatFits(fittingSize), beforeLayout)
+                let leadingPadding: CGFloat = semantic == .forceRightToLeft ? 48 : 16
+                XCTAssertEqual(content.label.frame.width, beforeLayout.width - leadingPadding, accuracy: 0.01)
+            }
+        }
+    }
+}

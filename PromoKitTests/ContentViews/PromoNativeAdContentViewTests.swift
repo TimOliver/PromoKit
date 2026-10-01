@@ -1118,3 +1118,158 @@ extension PromoNativeAdContentViewTests {
                                 "The combined icon and text block must fit above the call to action")
     }
 }
+
+extension PromoNativeAdContentViewTests {
+    func testStackedNativeCopyAndBadgeFollowLayoutDirectionAcrossReuse() throws {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 600, height: 800))
+        let controller = UIViewController()
+        window.rootViewController = controller
+        let container = UIView(frame: CGRect(x: 0, y: 0, width: 400, height: 440))
+        controller.view.addSubview(container)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let adView = PromoNativeAdView()
+        container.addSubview(adView)
+        let iconImage = makePromoTestImage(size: CGSize(width: 64, height: 64), color: .green)
+        let ad = FakeNativeAd(aspectRatio: 16.0 / 9.0,
+                              headline: "اكتشف تطبيقك الجديد",
+                              body: "جرّب المزايا الجديدة كل يوم",
+                              callToAction: "تثبيت",
+                              icon: NativeAdImage(image: iconImage))
+        adView.configureContentViews(with: ad)
+
+        for (semantic, reuse) in [(UISemanticContentAttribute.forceLeftToRight, false),
+                                  (.forceRightToLeft, false),
+                                  (.forceLeftToRight, true),
+                                  (.forceRightToLeft, true)] {
+            container.semanticContentAttribute = semantic
+            controller.traitOverrides.layoutDirection = semantic == .forceRightToLeft ? .rightToLeft : .leftToRight
+            window.layoutIfNeeded()
+            if reuse {
+                adView.reset()
+                adView.configureContentViews(with: ad)
+            }
+            adView.frame = container.bounds
+            let preferred = adView.sizeThatFits(container.bounds.size)
+            adView.setNeedsLayout()
+            adView.layoutIfNeeded()
+
+            let isRTL = semantic == .forceRightToLeft
+            XCTAssertEqual(adView.effectiveUserInterfaceLayoutDirection, isRTL ? .rightToLeft : .leftToRight)
+            let headline = try XCTUnwrap(adView.headlineView as? UILabel)
+            let body = try XCTUnwrap(adView.bodyView as? UILabel)
+            let icon = try XCTUnwrap(adView.iconView)
+            let badge = try XCTUnwrap(adView.subviews.compactMap { $0 as? UILabel }.first { $0.text == "Ad" })
+            let paragraph = try XCTUnwrap(headline.attributedText?.attribute(.paragraphStyle,
+                                                                            at: 0,
+                                                                            effectiveRange: nil) as? NSParagraphStyle)
+            XCTAssertEqual(headline.textAlignment, isRTL ? .right : .left)
+            XCTAssertEqual(body.textAlignment, isRTL ? .right : .left)
+            XCTAssertEqual(paragraph.baseWritingDirection, isRTL ? .rightToLeft : .leftToRight)
+            XCTAssertGreaterThan(paragraph.firstLineHeadIndent, badge.frame.width)
+            if isRTL {
+                XCTAssertGreaterThanOrEqual(icon.frame.minX, headline.frame.maxX)
+                XCTAssertEqual(badge.frame.maxX, headline.frame.maxX, accuracy: 0.01)
+                XCTAssertEqual(body.frame.maxX, headline.frame.maxX, accuracy: 0.01)
+                XCTAssertLessThanOrEqual(icon.frame.maxX, adView.bounds.width - 20,
+                                         "Keep the SDK's physical top-right AdChoices area clear")
+            } else {
+                XCTAssertLessThanOrEqual(icon.frame.maxX, headline.frame.minX)
+                XCTAssertEqual(badge.frame.minX, headline.frame.minX, accuracy: 0.01)
+                XCTAssertEqual(body.frame.minX, headline.frame.minX, accuracy: 0.01)
+            }
+            XCTAssertEqual(adView.sizeThatFits(container.bounds.size), preferred)
+        }
+    }
+
+    func testSideBySideNativeLayoutMirrorsAssetsWithoutFlippingMediaOrSDKSubviews() throws {
+        let adView = PromoNativeAdView()
+        adView.maximumWidth = 1000
+        adView.maximumHeight = 1000
+        let adChoices = AdChoicesView(frame: CGRect(x: 780, y: 0, width: 20, height: 20))
+        adView.addSubview(adChoices)
+        adView.adChoicesView = adChoices
+        let adChoicesFrame = adChoices.frame
+        let iconImage = makePromoTestImage(size: CGSize(width: 64, height: 64), color: .green)
+        adView.configureContentViews(with: FakeNativeAd(aspectRatio: 0.5,
+                                                       headline: "اكتشف تطبيقك الجديد",
+                                                       body: "جرّب المزايا الجديدة كل يوم",
+                                                       callToAction: "تثبيت",
+                                                       icon: NativeAdImage(image: iconImage)))
+        var leftToRightFrames: [CGRect]?
+
+        for semantic in [UISemanticContentAttribute.forceLeftToRight, .forceRightToLeft, .forceLeftToRight] {
+            adView.semanticContentAttribute = semantic
+            adView.frame = CGRect(x: 0, y: 0, width: 800, height: 400)
+            adView.setNeedsLayout()
+            adView.layoutIfNeeded()
+
+            let headline = try XCTUnwrap(adView.headlineView as? UILabel)
+            let body = try XCTUnwrap(adView.bodyView)
+            let icon = try XCTUnwrap(adView.iconView)
+            let action = try XCTUnwrap(adView.callToActionView)
+            let media = try XCTUnwrap(adView.mediaView)
+            let mediaContainer = try XCTUnwrap(media.superview)
+            let badge = try XCTUnwrap(adView.subviews.compactMap { $0 as? UILabel }.first { $0.text == "Ad" })
+            XCTAssertEqual(headline.textAlignment, .center)
+            XCTAssertEqual(media.frame.width / media.frame.height, 0.5, accuracy: 0.01)
+            XCTAssertEqual(adView.transform, .identity)
+            XCTAssertEqual(media.transform, .identity, "Mirror asset positions, not the creative itself")
+            XCTAssertEqual(adChoices.frame, adChoicesFrame, "AdChoices must stay at the physical top-right corner")
+            XCTAssertTrue(adView.adChoicesView === adChoices)
+            let frames = [headline, body, icon, action, badge, mediaContainer].map(\.frame)
+            if semantic == .forceRightToLeft {
+                XCTAssertLessThanOrEqual(mediaContainer.frame.maxX, headline.frame.minX)
+                XCTAssertLessThanOrEqual(mediaContainer.frame.maxX, action.frame.minX)
+                XCTAssertGreaterThan(badge.frame.midX, adView.bounds.midX)
+                XCTAssertFalse(badge.frame.intersects(adChoicesFrame))
+            } else {
+                XCTAssertGreaterThanOrEqual(mediaContainer.frame.minX, headline.frame.maxX)
+                XCTAssertLessThan(badge.frame.midX, adView.bounds.midX)
+                if let originalFrames = leftToRightFrames {
+                    XCTAssertEqual(frames, originalFrames, "Changing direction back must not accumulate mirroring")
+                } else {
+                    leftToRightFrames = frames
+                }
+            }
+        }
+    }
+
+    func testCompactRTLNativeLayoutKeepsActionSeparateFromCopyAndMedia() throws {
+        guard #available(iOS 17.0, *) else {
+            throw XCTSkip("Trait overrides require iOS 17")
+        }
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 700, height: 300))
+        let controller = UIViewController()
+        window.rootViewController = controller
+        let adView = PromoNativeAdView()
+        controller.view.addSubview(adView)
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        adView.semanticContentAttribute = .forceRightToLeft
+        adView.traitOverrides.verticalSizeClass = .compact
+        window.layoutIfNeeded()
+        let iconImage = makePromoTestImage(size: CGSize(width: 64, height: 64), color: .green)
+        adView.configureContentViews(with: FakeNativeAd(aspectRatio: 16.0 / 9.0,
+                                                       headline: "اكتشف تطبيقك الجديد",
+                                                       body: "جرّب المزايا الجديدة كل يوم",
+                                                       callToAction: "تثبيت",
+                                                       icon: NativeAdImage(image: iconImage)))
+        let preferred = adView.sizeThatFits(window.bounds.size)
+        adView.frame = CGRect(origin: .zero, size: preferred)
+        adView.setNeedsLayout()
+        adView.layoutIfNeeded()
+
+        let headline = try XCTUnwrap(adView.headlineView)
+        let body = try XCTUnwrap(adView.bodyView)
+        let action = try XCTUnwrap(adView.callToActionView)
+        let media = try XCTUnwrap(adView.mediaView)
+        let mediaContainer = try XCTUnwrap(media.superview)
+        XCTAssertEqual(adView.traitCollection.verticalSizeClass, .compact)
+        XCTAssertLessThanOrEqual(action.frame.maxX, headline.frame.minX)
+        XCTAssertLessThanOrEqual(action.frame.maxX, body.frame.minX)
+        XCTAssertLessThanOrEqual(action.frame.maxY, mediaContainer.frame.minY)
+        XCTAssertEqual(adView.sizeThatFits(window.bounds.size), preferred,
+                       "RTL layout must retain the preferred size measured before layout")
+    }
+}

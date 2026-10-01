@@ -217,8 +217,11 @@ final public class PromoNativeAdView: NativeAdView {
     private func headlineStyle(indent: CGFloat) -> NSMutableParagraphStyle {
         let style = NSMutableParagraphStyle()
         style.firstLineHeadIndent = indent
+        style.baseWritingDirection = isRightToLeft ? .rightToLeft : .leftToRight
         return style
     }
+
+    private var isRightToLeft: Bool { effectiveUserInterfaceLayoutDirection == .rightToLeft }
 
     private func configureContentViews() {
         applyTextFonts(scale: 1.0)
@@ -311,14 +314,19 @@ final public class PromoNativeAdView: NativeAdView {
         let size = frame.insetBy(dx: padding, dy: padding).size
         let aspectRatio = Self.usableAspectRatio(for: nativeAd)
 
-        switch Self.layoutFormat(containerSize: size,
-                                 mediaAspectRatio: aspectRatio,
-                                 minimumTextColumnWidth: minimumTextColumnWidth,
-                                 maximumMediaWidthFraction: maximumMediaWidthFraction) {
+        let format = Self.layoutFormat(containerSize: size,
+                                       mediaAspectRatio: aspectRatio,
+                                       minimumTextColumnWidth: minimumTextColumnWidth,
+                                       maximumMediaWidthFraction: maximumMediaWidthFraction)
+        switch format {
         case .sideBySide:
             layoutSubviewsInLandscapeFormat(size: size, nativeAd: nativeAd)
         case .stacked:
             layoutSubviewsInPortraitFormat(size: size, nativeAd: nativeAd)
+        }
+
+        if isRightToLeft {
+            mirrorContent(for: format, size: size)
         }
 
         // Register asset views after layout so SDK validation sees their final frames.
@@ -330,6 +338,20 @@ final public class PromoNativeAdView: NativeAdView {
 
         if self.nativeAd === nativeAd {
             updateMediaAspectRatioIfNeeded()
+        }
+    }
+
+    private func mirrorContent(for format: LayoutFormat, size: CGSize) {
+        // AdChoices stays at the SDK's physical top-right corner. Mirror only
+        // our asset frames within the width left beside that reservation.
+        var mirroredViews: [UIView] = [headlineLabel, bodyLabel, adLabel, iconImageView]
+        if format == .sideBySide {
+            mirroredViews += [actionButton, contentMediaContainerView]
+        } else if needsCompactLayout, !actionButton.isHidden {
+            actionButton.frame.origin.x = size.width - actionButton.frame.maxX
+        }
+        for view in mirroredViews where !view.isHidden && view.superview === self {
+            view.frame.origin.x = size.width - googleButtonWidth - view.frame.maxX
         }
     }
 
@@ -511,7 +533,7 @@ final public class PromoNativeAdView: NativeAdView {
         headlineLabel.attributedText = NSAttributedString(string: headlineText(for: nativeAd),
                                                           attributes: [.paragraphStyle: headlineStyle(indent: headlineIndent)])
 
-        headlineLabel.textAlignment = .left
+        headlineLabel.textAlignment = isRightToLeft ? .right : .left
         headlineLabel.frame.size = headlineLabel.sizeThatFits(textFittingSize)
         bodyLabel.frame.size = bodyLabel.isHidden ? .zero : bodyLabel.sizeThatFits(textFittingSize)
         let totalTextHeight = headlineLabel.frame.height + titleVerticalSpacing + bodyLabel.frame.height
@@ -529,7 +551,7 @@ final public class PromoNativeAdView: NativeAdView {
             if bodyLabel.superview == nil { addSubview(bodyLabel) }
             let textY = headlineLabel.frame.maxY + titleVerticalSpacing
             bodyLabel.frame.origin = CGPoint(x: textX, y: textY)
-            bodyLabel.textAlignment = .left
+            bodyLabel.textAlignment = isRightToLeft ? .right : .left
         } else {
             bodyLabel.frame = .zero
             bodyLabel.removeFromSuperview()
