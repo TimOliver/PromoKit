@@ -88,6 +88,7 @@ public class PromoAppRaterProvider: NSObject, PromoProvider {
             title = "Hope you're enjoying \(appName)!"
         }
         let view = promoView.dequeueContentView(for: PromoTableListContentView.self)
+        view.preferredSize = maximumSize
         view.configure(title: title,
                        detailText: "If you are, please consider rating it on the App Store!",
                        image: appIcon)

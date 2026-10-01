@@ -172,6 +172,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
             return (self.record, self.thumbnail, displayedURL)
         }
         let contentView = promoView.dequeueContentView(for: PromoTableListContentView.self)
+        contentView.preferredSize = maximumSize
 
         if let heading = record?[Constants.title] as? String {
             let byline = record?[Constants.subtitle] as? String

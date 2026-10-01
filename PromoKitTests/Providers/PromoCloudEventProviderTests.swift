@@ -910,3 +910,35 @@ extension PromoCloudEventProviderTests {
         XCTAssertNotNil(cache.date(forKey: scopedKey, fromObject: provider))
     }
 }
+
+extension PromoCloudEventProviderTests {
+    func testCloudNoticeUsesItsWidthCapAndAllowsLargerTextToIncreaseHeight() throws {
+        let dataSource = StubCloudEventDataSource()
+        let record = CKRecord(recordType: "PromoEvent", recordID: CKRecord.ID(recordName: UUID().uuidString))
+        record["title"] = "An important announcement"
+        record["subtitle"] = "Please read these details about the latest update to this application."
+        dataSource.queryRecords = [record]
+        dataSource.fetchRecord = record
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: dataSource)
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 500, height: 100))
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: promo), .contentAvailable)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 600, height: 900))
+        let controller = UIViewController()
+        window.rootViewController = controller
+        controller.traitOverrides.preferredContentSizeCategory = .large
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        controller.view.addSubview(promo)
+        let content = try XCTUnwrap(provider.contentView(for: promo) as? PromoTableListContentView)
+        promo.addSubview(content)
+        window.layoutIfNeeded()
+        let normalSize = content.sizeThatFits(CGSize(width: 600, height: 900))
+        controller.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        window.layoutIfNeeded()
+        let largeSize = content.sizeThatFits(CGSize(width: 600, height: 900))
+        XCTAssertTrue(content.wantsSizingControl)
+        XCTAssertEqual(largeSize.width, 450)
+        XCTAssertGreaterThan(largeSize.height, normalSize.height)
+        XCTAssertEqual(dataSource.queryCallCount, 1)
+    }
+}

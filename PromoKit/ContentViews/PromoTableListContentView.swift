@@ -40,17 +40,24 @@ final public class PromoTableListContentView: PromoContentView {
     /// Spacing between the main text and footnote.
     private let labelSpacing = 6.0
 
+    /// Built-in providers supply their normal card size so larger text can request more height.
+    var preferredSize: CGSize?
+    private var configuredTitle: String?
+    private var configuredDetailText: String?
+    private var sizingUpdateToken: UUID?
+
+    public override var wantsSizingControl: Bool { preferredSize != nil }
+
     /// Creates a new instance of a list content view.
     /// - Parameter promoView: The promo view that owns this content view.
     public required init(promoView: PromoView) {
         super.init(promoView: promoView)
 
-        label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.5
         label.numberOfLines = 0
         addSubview(label)
 
-        footnoteLabel.font = UIFont.systemFont(ofSize: 13.0, weight: .medium)
+        updateTextFonts()
         if #available(iOS 13.0, *) {
             footnoteLabel.textColor = .secondaryLabel
         } else {
@@ -72,6 +79,10 @@ final public class PromoTableListContentView: PromoContentView {
 
     /// Clears displayed text and images before reuse.
     public override func prepareForReuse() {
+        configuredTitle = nil
+        configuredDetailText = nil
+        preferredSize = nil
+        sizingUpdateToken = nil
         label.text = nil
         footnoteLabel.text = nil
         footnoteLabel.frame = .zero
@@ -86,53 +97,113 @@ final public class PromoTableListContentView: PromoContentView {
     ///   - footnote: The text optionally shown below the title and detail text.
     ///   - image: The image optionally shown to the left of the text.
     public func configure(title: String, detailText: String? = nil, footnote: String? = nil, image: UIImage? = nil) {
+        configuredTitle = title
+        configuredDetailText = detailText
         footnoteLabel.text = footnote
-
-        let string = NSMutableAttributedString()
-
-        // Title text
-        let titleFont = UIFont.systemFont(ofSize: 17.0, weight: .bold)
-        string.append(NSMutableAttributedString(string: title, attributes: [.font: titleFont]))
-
-        // Detail text
-        if let detailText {
-            var detailColor = UIColor.black
-            if #available(iOS 13.0, *) {
-                detailColor = .label
-            }
-            let detailFont = UIFont.systemFont(ofSize: 15.0, weight: .regular)
-            string.append(NSAttributedString(string: "\n"))
-            string.append(NSAttributedString(string: detailText,
-                                             attributes: [.font: detailFont, .foregroundColor: detailColor]))
-        }
-
-        label.attributedText = string
+        updateTextFonts()
 
         imageView.image = image
         imageView.isHidden = (image == nil)
 
         setNeedsLayout()
     }
+
+    private func updateTextFonts() {
+        label.adjustsFontSizeToFitWidth = preferredSize == nil
+            && UIFontMetrics(forTextStyle: .body).scaledValue(for: 1, compatibleWith: traitCollection) <= 1
+        footnoteLabel.font = UIFontMetrics(forTextStyle: .footnote).scaledFont(
+            for: .systemFont(ofSize: 13.0, weight: .medium), compatibleWith: traitCollection)
+        guard let title = configuredTitle else { return }
+
+        let string = NSMutableAttributedString()
+
+        let titleFont = UIFontMetrics(forTextStyle: .headline).scaledFont(
+            for: .systemFont(ofSize: 17.0, weight: .bold), compatibleWith: traitCollection)
+        string.append(NSMutableAttributedString(string: title, attributes: [.font: titleFont]))
+
+        if let detailText = configuredDetailText {
+            var detailColor = UIColor.black
+            if #available(iOS 13.0, *) {
+                detailColor = .label
+            }
+            let detailFont = UIFontMetrics(forTextStyle: .subheadline).scaledFont(
+                for: .systemFont(ofSize: 15.0, weight: .regular), compatibleWith: traitCollection)
+            string.append(NSAttributedString(string: "\n"))
+            string.append(NSAttributedString(string: detailText,
+                                             attributes: [.font: detailFont, .foregroundColor: detailColor]))
+        }
+
+        label.attributedText = string
+    }
+
+    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard previousTraitCollection?.preferredContentSizeCategory != traitCollection.preferredContentSizeCategory else {
+            return
+        }
+        updateTextFonts()
+        invalidateIntrinsicContentSize()
+        setNeedsLayout()
+        guard sizingUpdateToken == nil, promoView?.contentView === self else { return }
+        let token = UUID()
+        sizingUpdateToken = token
+        // Insertion can change traits before the host finishes displaying this card.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.sizingUpdateToken == token else { return }
+            self.sizingUpdateToken = nil
+            guard let promoView = self.promoView, promoView.contentView === self,
+                  let provider = promoView.currentProvider else { return }
+            promoView.invalidateIntrinsicContentSize()
+            promoView.setNeedsLayout()
+            promoView.delegate?.promoView?(promoView, didUpdateProvider: provider)
+        }
+    }
 }
 
 // MARK: - Layout
 extension PromoTableListContentView {
 
+    private func imageSpacing(forWidth width: CGFloat) -> CGFloat {
+        guard let promoView else { return 0 }
+        var padding = promoView.contentPadding
+        if promoView.contentView === self, promoView.currentProvider != nil || bounds.width == 0 {
+            // A new or reused card can be measured before the host assigns its current frame.
+            padding = promoView.currentProvider?.contentPadding?(for: promoView) ?? promoView.defaultContentPadding
+        }
+        return min(max(0, padding.left), width)
+    }
+
+    public override func sizeThatFits(_ size: CGSize) -> CGSize {
+        guard let preferredSize else { return super.sizeThatFits(size) }
+        let width = max(0, min(preferredSize.width, size.width))
+        let spacing = imageSpacing(forWidth: width)
+        let thumbnail = thumbnailSize(fitting: CGSize(width: width, height: .greatestFiniteMagnitude), spacing: spacing)
+        let textWidth = max(0, width - thumbnail.width - spacing)
+        let textHeight = label.sizeThatFits(CGSize(width: textWidth, height: .greatestFiniteMagnitude)).height
+        let footnoteHeight = (footnoteLabel.text?.isEmpty ?? true) ? 0
+            : footnoteLabel.sizeThatFits(CGSize(width: textWidth, height: .greatestFiniteMagnitude)).height
+        let contentHeight = max(thumbnail.height, textHeight + footnoteHeight + (footnoteHeight > 0 ? labelSpacing : 0))
+        return CGSize(width: width, height: max(0, min(size.height, max(preferredSize.height, ceil(contentHeight)))))
+    }
+
+    private func thumbnailSize(fitting size: CGSize, spacing: CGFloat) -> CGSize {
+        guard !imageView.isHidden, let imageSize = imageView.image?.size,
+              imageSize.width > 0, imageSize.height > 0 else { return .zero }
+        // Enlarging text should not also enlarge a small cached thumbnail.
+        let height = max(0, min(size.height, preferredSize?.height ?? size.height))
+        let width = min(height, max(0, size.width - spacing) * 0.5)
+        let scale = min(width / imageSize.width, height / imageSize.height)
+        return CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+    }
+
     public override func layoutSubviews() {
         super.layoutSubviews()
 
         let size = bounds.size
-        let imageSpacing = min(max(0, promoView?.contentPadding.left ?? 0), size.width)
+        let imageSpacing = imageSpacing(forWidth: size.width)
         var xOffset = imageSpacing
-        if !imageView.isHidden,
-           let imageSize = imageView.image?.size,
-           imageSize.width > 0, imageSize.height > 0 {
-            // Keep the thumbnail within a row-height square and reserve at least
-            // half of the available column width for the title and detail text.
-            let maximumImageWidth = min(size.height, max(0, size.width - imageSpacing) * 0.5)
-            let scale = min(maximumImageWidth / imageSize.width, size.height / imageSize.height)
-            let imageFrameSize = CGSize(width: imageSize.width * scale,
-                                        height: imageSize.height * scale)
+        let imageFrameSize = thumbnailSize(fitting: size, spacing: imageSpacing)
+        if imageFrameSize != .zero {
             imageView.frame = CGRect(x: 0, y: (size.height - imageFrameSize.height) * 0.5,
                                      width: imageFrameSize.width, height: imageFrameSize.height)
             if let promoView = self.promoView {
@@ -157,8 +228,7 @@ extension PromoTableListContentView {
 
         let fittingSize = CGSize(width: textWidth,
                                  height: max(0, size.height - footnoteHeight - footnoteSpacing))
-        let labelHeight = min(fittingSize.height, label.textRect(forBounds: CGRect(origin: .zero, size: fittingSize),
-                                                               limitedToNumberOfLines: 4).height)
+        let labelHeight = min(fittingSize.height, label.sizeThatFits(fittingSize).height)
         let height = labelHeight + footnoteHeight + footnoteSpacing
 
         label.frame = CGRect(origin: CGPoint(x: xOffset, y: (size.height - height) * 0.5),

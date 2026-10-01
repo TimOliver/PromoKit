@@ -184,3 +184,119 @@ final class PromoTableListContentViewTests: XCTestCase {
         XCTAssertGreaterThan(contentView.footnoteLabel.frame.height, 0)
     }
 }
+
+extension PromoTableListContentViewTests {
+    func testTableFontsAndPreferredHeightRespondToContentSizeChanges() throws {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 500, height: 900))
+        let controller = UIViewController()
+        window.rootViewController = controller
+        controller.traitOverrides.preferredContentSizeCategory = .large
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 100))
+        controller.view.addSubview(promo)
+        let provider = PromoAppRaterProvider()
+        let content = try XCTUnwrap(provider.contentView(for: promo) as? PromoTableListContentView)
+        promo.addSubview(content)
+        content.configure(title: "Title", detailText: "Detail", footnote: "Footnote",
+                          image: makePromoTestImage(size: CGSize(width: 60, height: 60), color: .blue))
+        window.layoutIfNeeded()
+
+        func fontSizes() throws -> [CGFloat] {
+            let text = try XCTUnwrap(content.label.attributedText)
+            return [try XCTUnwrap(text.attribute(.font, at: 0, effectiveRange: nil) as? UIFont).pointSize,
+                    try XCTUnwrap(text.attribute(.font, at: 6, effectiveRange: nil) as? UIFont).pointSize,
+                    content.footnoteLabel.font.pointSize]
+        }
+        let fittingSize = CGSize(width: 320, height: 900)
+        let normalFonts = try fontSizes()
+        let normalSize = content.sizeThatFits(fittingSize)
+        controller.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        window.layoutIfNeeded()
+        XCTAssertEqual(content.traitCollection.preferredContentSizeCategory, .accessibilityExtraExtraExtraLarge)
+        for (normal, accessible) in zip(normalFonts, try fontSizes()) {
+            XCTAssertGreaterThan(accessible, normal)
+        }
+        let accessibleSize = content.sizeThatFits(fittingSize)
+        XCTAssertGreaterThan(accessibleSize.height, normalSize.height)
+        XCTAssertEqual(accessibleSize.width, normalSize.width)
+        XCTAssertFalse(content.label.adjustsFontSizeToFitWidth)
+        content.frame = CGRect(origin: .zero, size: accessibleSize)
+        content.layoutIfNeeded()
+        XCTAssertLessThanOrEqual(content.imageView.frame.height, 75)
+        XCTAssertGreaterThanOrEqual(content.label.frame.height,
+                                    content.label.sizeThatFits(CGSize(width: content.label.frame.width,
+                                                                     height: .greatestFiniteMagnitude)).height)
+        XCTAssertLessThanOrEqual(content.footnoteLabel.frame.maxY, content.bounds.maxY)
+        let capped = content.sizeThatFits(CGSize(width: 100, height: 40))
+        XCTAssertEqual(capped.width, 100)
+        XCTAssertLessThanOrEqual(capped.height, 40)
+
+        controller.traitOverrides.preferredContentSizeCategory = .large
+        window.layoutIfNeeded()
+        XCTAssertEqual(try fontSizes(), normalFonts)
+        XCTAssertEqual(content.sizeThatFits(fittingSize), normalSize)
+        content.prepareForReuse()
+        XCTAssertFalse(content.wantsSizingControl)
+        controller.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        window.layoutIfNeeded()
+        XCTAssertNil(content.label.attributedText)
+    }
+
+    func testContentSizeChangeNotifiesTheActiveHostWithoutRefetching() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 500, height: 900))
+        let controller = UIViewController()
+        window.rootViewController = controller
+        controller.traitOverrides.preferredContentSizeCategory = .large
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 100))
+        controller.view.addSubview(promo)
+        let content = PromoTableListContentView(promoView: promo)
+        content.preferredSize = CGSize(width: 450, height: 75)
+        promo.addSubview(content)
+        content.configure(title: "Announcement", detailText: "Please read these details")
+        window.layoutIfNeeded()
+        let provider = TestPromoProvider(result: .contentAvailable)
+        let delegate = PromoViewDelegateSpy()
+        promo.currentProvider = provider
+        promo.contentView = content
+        promo.delegate = delegate
+
+        controller.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        window.layoutIfNeeded()
+        wait(for: [delegate.updateExpectation], timeout: 1)
+        XCTAssertEqual(delegate.updateCount, 1)
+        XCTAssertEqual(provider.fetchCount, 0)
+        XCTAssertTrue(promo.contentView === content)
+        XCTAssertGreaterThan(promo.sizeThatFits(CGSize(width: 320, height: 900)).height, 100)
+    }
+
+    func testReusingATableCancelsItsPendingSizingNotification() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 500, height: 900))
+        let controller = UIViewController()
+        window.rootViewController = controller
+        controller.traitOverrides.preferredContentSizeCategory = .large
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 100))
+        controller.view.addSubview(promo)
+        let content = PromoTableListContentView(promoView: promo)
+        promo.addSubview(content)
+        content.configure(title: "Old announcement")
+        window.layoutIfNeeded()
+        let delegate = PromoViewDelegateSpy()
+        promo.delegate = delegate
+        promo.currentProvider = TestPromoProvider(result: .contentAvailable)
+        promo.contentView = content
+        controller.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+        window.layoutIfNeeded()
+        content.prepareForReuse()
+        content.configure(title: "Replacement")
+        let drained = expectation(description: "Pending sizing notification drains")
+        DispatchQueue.main.async { drained.fulfill() }
+        wait(for: [drained], timeout: 1)
+        XCTAssertEqual(delegate.updateCount, 0)
+        XCTAssertEqual(content.label.text, "Replacement")
+    }
+}
