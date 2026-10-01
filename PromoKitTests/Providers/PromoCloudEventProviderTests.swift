@@ -72,6 +72,7 @@ final class PromoCloudEventProviderTests: XCTestCase {
         let temporaryDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
 
         let cacheURL = temporaryDirectory.appendingPathComponent("thumbnail.cache")
         let sourceURL = temporaryDirectory.appendingPathComponent("thumbnail.new")
@@ -392,6 +393,71 @@ final class PromoCloudEventProviderTests: XCTestCase {
         let key = provider.cacheKey(for: CKRecord.ID(recordName: recordName))
         let cacheURL = PromoCache().fileURL(forKey: key, fromObject: provider)
         try? FileManager.default.removeItem(at: cacheURL)
+    }
+}
+
+extension PromoCloudEventProviderTests {
+    func testFailedThumbnailReplacementKeepsLastGoodImageUntilExplicitRemoval() throws {
+        let record = CKRecord(recordType: "PromoEvent")
+        record["title"] = "Announcement"
+        let originalURL = try temporaryPNGURL(color: .orange)
+        let originalImage = try XCTUnwrap(UIImage(contentsOfFile: originalURL.path)?.pngData())
+        record["thumbnail"] = CKAsset(fileURL: originalURL)
+        let source = StubCloudEventDataSource()
+        source.queryRecords = [record]
+        source.fetchRecord = record
+        let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: source)
+        let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+        let missingReplacementURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let replacementURL = try temporaryPNGURL(color: .blue)
+        let replacementImage = try XCTUnwrap(UIImage(contentsOfFile: replacementURL.path)?.pngData())
+        defer {
+            removeCachedFile(for: record.recordID.recordName, provider: provider)
+            try? FileManager.default.removeItem(at: originalURL)
+            try? FileManager.default.removeItem(at: replacementURL)
+        }
+
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        let initialContent = try XCTUnwrap(provider.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertEqual(initialContent.imageView.image?.pngData(), originalImage)
+
+        record["thumbnail"] = CKAsset(fileURL: missingReplacementURL)
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        let contentAfterFailure = try XCTUnwrap(provider.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertEqual(contentAfterFailure.imageView.image?.pngData(), originalImage,
+                       "An unavailable replacement asset must not destroy the last successfully cached image")
+
+        record["thumbnail"] = CKAsset(fileURL: replacementURL)
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        let replacementContent = try XCTUnwrap(provider.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertEqual(replacementContent.imageView.image?.pngData(), replacementImage)
+
+        record["thumbnail"] = nil
+        XCTAssertEqual(waitForFetch(provider: provider, promoView: view), .contentAvailable)
+        let contentAfterRemoval = try XCTUnwrap(provider.contentView(for: view) as? PromoTableListContentView)
+        XCTAssertNil(contentAfterRemoval.imageView.image)
+        XCTAssertTrue(contentAfterRemoval.imageView.isHidden)
+        let cacheURL = PromoCache().fileURL(forKey: provider.cacheKey(for: record.recordID), fromObject: provider)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cacheURL.path))
+    }
+
+    func testCachedFileReplacementFailurePreservesExistingFileAndSource() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let cacheURL = directory.appendingPathComponent("thumbnail.cache")
+        let unreadableSource = directory.appendingPathComponent("directory-instead-of-image")
+        try FileManager.default.createDirectory(at: unreadableSource, withIntermediateDirectories: false)
+        try Data("existing".utf8).write(to: cacheURL)
+
+        PromoCloudEventProvider.replaceCachedFile(at: cacheURL, with: unreadableSource)
+
+        XCTAssertEqual(try Data(contentsOf: cacheURL), Data("existing".utf8))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: unreadableSource.path))
+
+        PromoCloudEventProvider.replaceCachedFile(at: cacheURL, with: cacheURL)
+        XCTAssertEqual(try Data(contentsOf: cacheURL), Data("existing".utf8),
+                       "Using the existing cache file as the source must not delete it")
     }
 }
 

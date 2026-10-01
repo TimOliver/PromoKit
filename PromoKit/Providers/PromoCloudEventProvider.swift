@@ -374,8 +374,8 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
         }
     }
 
-    /// Moves the downloaded thumbnail asset from CloudKit's temporary location into the app's cache directory.
-    /// Any existing cached asset for this record is replaced, and removed if the record no longer has a thumbnail.
+    /// Saves the downloaded thumbnail without discarding a cached image if the replacement fails.
+    /// A record without a thumbnail explicitly removes its cached asset.
     private func saveThumbnailToCache(record: CKRecord) {
         let cacheURL = cache.fileURL(forKey: cacheKey(for: record.recordID), fromObject: self)
         let thumbnailAsset = record[Constants.thumbnail] as? CKAsset
@@ -469,11 +469,18 @@ extension PromoCloudEventProvider {
 
     static func replaceCachedFile(at cacheURL: URL, with sourceURL: URL?) {
         let fileManager = FileManager.default
-        if fileManager.fileExists(atPath: cacheURL.path) {
+        guard let sourceURL else {
             try? fileManager.removeItem(at: cacheURL)
+            return
         }
+        guard sourceURL.standardizedFileURL != cacheURL.standardizedFileURL else { return }
 
-        guard let sourceURL else { return }
-        try? fileManager.moveItem(at: sourceURL, to: cacheURL)
+        do {
+            let data = try Data(contentsOf: sourceURL)
+            try data.write(to: cacheURL, options: .atomic)
+            try? fileManager.removeItem(at: sourceURL)
+        } catch {
+            // A failed read or replacement leaves the previous cached image available.
+        }
     }
 }
