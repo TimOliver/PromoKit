@@ -26,6 +26,10 @@ import Foundation
 /// Namespaces are shared by objects of the same class; `objectType` can distinguish defaults namespaces.
 public class PromoCache {
 
+    // Defaults namespaces are shared across cache instances, so their dictionary
+    // updates need one shared lock. Allow defaults observers to reenter the cache.
+    private static let defaultsLock = NSRecursiveLock()
+
     public init() {}
 
     // MARK: - File Management
@@ -96,6 +100,9 @@ public class PromoCache {
     ///   - objectType: An additional optional string to identify unique copies of the hosting object
     public func setValue(_ value: Any?, forKey key: String, fromObject object: AnyObject, objectType: String? = nil) {
         let userDefaultsKey = userDefaultsKey(fromObject: object, objectType: objectType)
+        Self.defaultsLock.lock()
+        defer { Self.defaultsLock.unlock() }
+
         var settings = UserDefaults.standard.dictionary(forKey: userDefaultsKey) ?? [String: Any]()
         settings[key] = value
         UserDefaults.standard.set(settings, forKey: userDefaultsKey)
@@ -109,6 +116,9 @@ public class PromoCache {
     /// - Returns: The value if any, or nil otherwise
     public func value(forKey key: String, fromObject object: AnyObject, objectType: String? = nil) -> Any? {
         let userDefaultsKey = userDefaultsKey(fromObject: object, objectType: objectType)
+        Self.defaultsLock.lock()
+        defer { Self.defaultsLock.unlock() }
+
         guard let settings = UserDefaults.standard.dictionary(forKey: userDefaultsKey) else { return nil }
         return settings[key]
     }
@@ -119,6 +129,9 @@ public class PromoCache {
     ///   - objectType: An additional optional string to identify unique copies of the hosting object
     public func clearValues(forObject object: AnyObject, objectType: String? = nil) {
         let userDefaultsKey = userDefaultsKey(fromObject: object, objectType: objectType)
+        Self.defaultsLock.lock()
+        defer { Self.defaultsLock.unlock() }
+
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
     }
 

@@ -4,23 +4,50 @@ import XCTest
 @MainActor
 final class PromoCacheTests: XCTestCase {
 
-    func testCacheRoundTripsStringDateAndClearsAllValues() {
+    func testCacheRoundTripsStringDateAndClearsAllValuesAcrossInstances() {
         let cache = PromoCache()
+        let otherCache = PromoCache()
         let owner = NSObject()
-        defer { cache.clearValues(forObject: owner) }
+        let namespace = UUID().uuidString
+        defer { cache.clearValues(forObject: owner, objectType: namespace) }
         let date = Date(timeIntervalSinceReferenceDate: 600_000)
 
-        cache.setString("hello", forKey: "greeting", fromObject: owner)
-        cache.setDate(date, forKey: "stamp", fromObject: owner)
+        cache.setString("hello", forKey: "greeting", fromObject: owner, objectType: namespace)
+        cache.setDate(date, forKey: "stamp", fromObject: owner, objectType: namespace)
 
-        XCTAssertEqual(cache.string(forKey: "greeting", fromObject: owner), "hello")
-        XCTAssertEqual(cache.date(forKey: "stamp", fromObject: owner), date)
-        XCTAssertNil(cache.string(forKey: "missing", fromObject: owner),
+        XCTAssertEqual(otherCache.string(forKey: "greeting", fromObject: owner, objectType: namespace), "hello")
+        XCTAssertEqual(otherCache.date(forKey: "stamp", fromObject: owner, objectType: namespace), date)
+        XCTAssertNil(otherCache.string(forKey: "missing", fromObject: owner, objectType: namespace),
                      "Unset keys should read back as nil")
 
-        cache.clearValues(forObject: owner)
-        XCTAssertNil(cache.string(forKey: "greeting", fromObject: owner))
-        XCTAssertNil(cache.date(forKey: "stamp", fromObject: owner))
+        otherCache.clearValues(forObject: owner, objectType: namespace)
+        XCTAssertNil(cache.string(forKey: "greeting", fromObject: owner, objectType: namespace))
+        XCTAssertNil(cache.date(forKey: "stamp", fromObject: owner, objectType: namespace))
+    }
+
+    func testConcurrentCacheWritesPreserveAllIndependentKeysAcrossInstances() {
+        let cache = PromoCache()
+        let owner = NSObject()
+        let namespace = UUID().uuidString
+        defer { cache.clearValues(forObject: owner, objectType: namespace) }
+        let workerCount = 8
+        let writesPerWorker = 64
+
+        // Each worker models a separate provider and cache instance. Independent
+        // keys in their shared namespace must not overwrite each other's updates.
+        DispatchQueue.concurrentPerform(iterations: workerCount) { worker in
+            let workerCache = PromoCache()
+            let workerOwner = NSObject()
+            for index in 0..<writesPerWorker {
+                let key = "worker-\(worker)-record-\(index)"
+                workerCache.setString(key, forKey: key, fromObject: workerOwner, objectType: namespace)
+            }
+        }
+
+        let defaultsKey = cache.userDefaultsKey(fromObject: owner, objectType: namespace)
+        let stored = UserDefaults.standard.dictionary(forKey: defaultsKey) ?? [:]
+        XCTAssertEqual(stored.count, workerCount * writesPerWorker,
+                       "Independent concurrent writes lost \(workerCount * writesPerWorker - stored.count) cache entries")
     }
 
     func testCacheFileDataRoundTripsThroughTemporaryDirectory() throws {
