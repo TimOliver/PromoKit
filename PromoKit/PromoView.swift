@@ -29,20 +29,19 @@ public enum PromoViewCloseButtonSize: Int {
     case large  /// A large `xmark.circle.fill` icon (17pt)
 }
 
-/// A delegate object that external objects can use to receive updates from this promo view.
+/// Receives provider resolution, display, and interaction updates from a promo view.
 @objc(PMKPromoViewDelegate)
 public protocol PromoViewDelegate: NSObjectProtocol {
 
-    /// Called when a reload has resolved to a provider with valid content available, before
-    /// that content has been added to the view. Use this to decide whether to add the promo
-    /// view to its parent hierarchy when you only want it visible if a real ad is available.
+    /// Called when a reload finds content, before that content is added to the view.
+    /// Use this to decide whether to attach a promo view that was loaded while detached.
     /// - Parameters:
     ///   - promoView: The promo view that ran the reload
     ///   - provider: The provider that was resolved
     @objc optional func promoView(_ promoView: PromoView, didResolveProvider provider: PromoProvider)
 
-    /// Called when a reload finished without resolving a provider with content to display.
-    /// Hosts that conditionally attach the promo view should leave it detached on this callback.
+    /// Called when a reload finds no replacement content.
+    /// A failed refresh can retain previously displayed content; inspect `contentView` before hiding the view.
     /// - Parameter promoView: The promo view that ran the reload
     @objc optional func promoViewDidFailToResolveProvider(_ promoView: PromoView)
 
@@ -53,8 +52,8 @@ public protocol PromoViewDelegate: NSObjectProtocol {
     ///   - provider: The provider displaying content
     @objc optional func promoView(_ promoView: PromoView, didUpdateProvider provider: PromoProvider)
 
-    /// A fetch completely failed and there is no content to display.
-    /// Use this method to hide the promo view if needed.
+    /// Called after `promoViewDidFailToResolveProvider` when a reload finds no replacement content.
+    /// Previously displayed content may remain available in `contentView`.
     /// - Parameter promoView: The promo view in which the failure occurred
     @objc optional func promoViewProviderFetchFailed(_ promoView: PromoView)
 
@@ -64,15 +63,12 @@ public protocol PromoViewDelegate: NSObjectProtocol {
     @objc optional func promoViewProviderDidTapCloseButton(_ promoView: PromoView)
 }
 
-/// A UI component for displaying promotional or advertising content from a variety of sources,
-/// determined and updated dynamically at runtime.
-/// It can be used to show a regular set of content, such as ads, but allow for higher priority
-/// content, such as app news announcements to automatically override and display instead.
-/// It also has fallback mechanisms for displaying alternative content if there is no internet connection.
+/// Displays content from providers in priority order, falling back when a provider
+/// has no content or cannot be fetched under the current network conditions.
 @objc(PMKPromoView)
 public class PromoView: UIControl {
 
-    // MARK: - Public Properties -
+    // MARK: - Public Properties
 
     /// The delegate for this promo view
     @objc public weak var delegate: PromoViewDelegate?
@@ -80,10 +76,11 @@ public class PromoView: UIControl {
     /// The view controller hosting this promo view
     @objc public weak var rootViewController: UIViewController?
 
-    /// The content view from the currently active promo provider
+    /// The displayed content view, or `nil` when no content is currently installed.
     public var contentView: PromoContentView?
 
-    /// The corner radius of the promo view (Default is 20.0)
+    /// The currently applied corner radius. Assigning sets the fallback used when providers do not override it.
+    /// The default fallback is 20 points.
     public var cornerRadius: CGFloat {
         get { backgroundView.layer.cornerRadius }
         set {
@@ -93,8 +90,8 @@ public class PromoView: UIControl {
     }
     private var defaultCornerRadius: CGFloat = 20.0
 
-    /// Whether a close button is shown on the trailing side of the ad view (Default is false).
-    /// Note: This property requires iOS 13.0 or later. On earlier versions, setting this has no effect.
+    /// Whether a close button is shown to the right of the promo, or above when space is limited.
+    /// Defaults to `false`.
     @objc public var showCloseButton: Bool = false {
         didSet {
             guard #available(iOS 13.0, *) else { return }
@@ -117,21 +114,20 @@ public class PromoView: UIControl {
     private var defaultBackgroundColor: UIColor?
     private var appliedProviderBackgroundColor: UIColor?
 
-    /// When providers don't specify their own insetting, the content insetting of the promo view is used instead
-    /// The default value is the view's `layoutMargins`
+    /// The padding used when the provider does not supply its own.
+    /// Initialized from the view's `layoutMargins`.
     public var defaultContentPadding: UIEdgeInsets = .zero
 
-    /// The current content padding, whether it's the default value, or the current one specified by the content view
+    /// The padding measured from the current content view's frame, or zero when no content view is installed.
     public var contentPadding: UIEdgeInsets {
         guard let contentFrame = contentView?.frame else { return .zero }
         return UIEdgeInsets(top: contentFrame.minY, left: contentFrame.minX,
                             bottom: frame.height - contentFrame.maxY, right: frame.width - contentFrame.maxX)
     }
 
-    /// The promo providers currently assigned to this promo view, sorted in order of priority.
+    /// The promo providers in caller-specified priority order, highest priority first.
     /// Assigning a new value triggers `reload()` automatically when `reloadsAutomatically` is `true`.
-    /// If the previously-resolved provider isn't in the new list, it is cleared immediately
-    /// (along with its on-screen content) rather than lingering as placeholder content.
+    /// Removing the selected provider also removes its displayed content.
     @objc public var providers: [PromoProvider]? {
         get { providerCoordinator.providers }
         set {
@@ -152,23 +148,19 @@ public class PromoView: UIControl {
         }
     }
 
-    /// When `true` (the default), assigning `providers` immediately starts a reload so the view
-    /// behaves as a drop-in fire-and-forget component. Set to `false` when you need to inspect
-    /// the reload result before attaching the view to a hierarchy — assign `providers`, then call
-    /// `reload()` yourself and react via the delegate's `didResolveProvider` / `didFailToResolveProvider`.
+    /// Whether assigning `providers` starts a reload. Defaults to `true`.
+    /// Set to `false` to configure providers before calling `reload()` explicitly.
     @objc public var reloadsAutomatically: Bool = true
 
-    /// The current provider being displayed by this view. Externally read-only — the
-    /// resolution pipeline owns this value, and assigning from outside would skip the
-    /// content-view swap, leaving the on-screen state out of sync with the new provider.
-    /// `@objc` with an `internal` setter exposes this to Objective-C hosts as a
-    /// read-only property; only Swift code inside this module can assign it.
+    /// The most recently selected provider, read-only to hosts.
+    /// It remains selected while a size refresh replaces its content.
     @objc public internal(set) var currentProvider: PromoProvider? {
         get { providerCoordinator.currentProvider }
         set { providerCoordinator.currentProvider = newValue }
     }
 
-    /// The retry interval to wait between failed online provider fetches (Default is 30 seconds)
+    /// The minimum retry interval after a failed provider fetch. Defaults to 30 seconds.
+    /// Calling `reload()` clears the fetch history used to enforce this interval.
     public var providerRetryInterval: TimeInterval {
         get { providerCoordinator.retryInterval }
         set { providerCoordinator.retryInterval = newValue }
@@ -186,20 +178,12 @@ public class PromoView: UIControl {
         PromoView.sharedBackgroundQueue
     }
 
-    /// Whether the loading placeholder animates into view the first time this
-    /// promo view is attached to a superview.
-    ///
-    /// Leave this on for a promo view that appears in response to something the
-    /// user did — the animation marks its arrival. Turn it off for one that is
-    /// part of the screen from the moment it opens: there is no previous state
-    /// to transition away from, so animating makes the placeholder itself read
-    /// as an event, the spinner scaling up into an empty card during launch.
-    ///
-    /// Only the initial appearance is affected. Transitions between the loading
-    /// state and real content always animate.
+    /// Whether the first loading transition may animate when animation is requested.
+    /// Set to `false` to show the initial placeholder immediately. Later transitions
+    /// follow the `animated` argument passed to `setIsLoading`.
     @objc public var animatesInitialLoadingState: Bool = true
 
-    /// Shows a loading spinner view. This is used as a placeholder whenever a provider isn't being shown.
+    /// Whether the loading spinner is shown. Assigning changes its visibility without animation.
     public var isLoading: Bool {
         get { _isLoading }
         set { setIsLoading(newValue, animated: false) }
@@ -212,17 +196,15 @@ public class PromoView: UIControl {
         didSet { setNeedsLayout() }
     }
 
-    /// The size of the close button and its spacing relative to the promo view
-    /// Use this to add to any sizing calculations to shrink the promo view if needed.
+    /// The close button's size plus its spacing, or zero when the button is hidden.
     public var closeButtonOffset: CGSize {
         guard let closeButton, showCloseButton else { return .zero }
         return CGSize(width: closeButtonSpacing.width + closeButton.frame.width,
                       height: closeButtonSpacing.height + closeButton.frame.height)
     }
 
-    /// The total size of the promo view, including the close button if it is visible.
-    /// The close button shouldn't normally be included in layout calculations unless
-    /// it is necessary to fit the whole view on screen.
+    /// The promo's bounds size plus `closeButtonOffset` in both dimensions.
+    /// This reserves space for either placement of the visible close button.
     public var totalBoundsSize: CGSize {
         guard let closeButton, showCloseButton else { return bounds.size }
         return CGSize(width: bounds.width + closeButtonSpacing.width + closeButton.frame.width,
@@ -257,13 +239,13 @@ public class PromoView: UIControl {
 
     // MARK: - Private Properties
 
-    /// Track if a tap animation was invalid at the start to prevent it from starting mid-way
+    /// Whether the current press permits the interaction animation.
     private var canPlayTapAnimation: Bool = true
 
     /// Track if the view is zoomed to avoid doubling up on animations
     private var isZoomed: Bool = false
 
-    /// Track if an in-progress gesture has been manually canceled
+    /// Whether the current press has been canceled by the provider or a content replacement.
     private var isInteractionCancelled: Bool = false
 
     /// A press belongs to the provider that received its touch-down.
@@ -282,10 +264,7 @@ public class PromoView: UIControl {
         let operationQueue = OperationQueue()
         operationQueue.name = "dev.tim.PromoKit.MediaQueue"
         operationQueue.maxConcurrentOperationCount = 1
-        // .utility, not .userInitiated: nothing on this queue is what the user is
-        // waiting for frame by frame, and at .userInitiated its work competes with
-        // the main thread for CPU — which showed up as a dropped frame when a
-        // native ad resolved mid-swipe.
+        // Keep media processing from competing with main-thread interactions.
         operationQueue.qualityOfService = .utility
         return operationQueue
     }()
@@ -336,19 +315,15 @@ public class PromoView: UIControl {
         providerCoordinator.providerUpdatedHandler = { [weak self] provider in
             guard let self else { return }
             let generation = self.providerCoordinator.fetchGeneration
-            // Report the resolution outcome before content is composed so hosts can decide
-            // whether to attach the view (or keep it attached) before `didUpdateProvider`.
+            // Let hosts decide whether to attach the view before composing content.
             if let provider {
                 self.delegate?.promoView?(self, didResolveProvider: provider)
             } else {
-                // Finish removing the old card before the host can react by
-                // starting another reload from either failure callback.
+                // Finish cleanup before a failure callback can start another reload.
                 self.setIsLoading(false)
                 self.providerDidChange(nil)
                 guard self.providerCoordinator.fetchGeneration == generation else { return }
-                // Empty/ineligible providers also count as a fetch failure for hosts that
-                // listen on the older callback — keep both failure paths emitting the same
-                // pair of signals so callers don't have to special-case the early-exit case.
+                // Empty or ineligible provider lists use the same failure callbacks as exhausted fetches.
                 self.delegate?.promoViewDidFailToResolveProvider?(self)
                 self.delegate?.promoViewProviderFetchFailed?(self)
                 return
@@ -379,46 +354,34 @@ public class PromoView: UIControl {
 
 extension PromoView {
 
-    /// When the view moves to the superview, the loading spinner will be visible by default.
-    /// This shows some placeholder content while giving the hosting app time to determine which providers it wishes to show.
+    /// Shows an initial placeholder when attached without selected content or an active fetch.
     public override func didMoveToSuperview() {
         super.didMoveToSuperview()
         guard superview != nil else { return }
 
-        // Only flip into the loading-spinner state when there isn't already
-        // a fetched provider on screen. A view that was preloaded headlessly
-        // (no superview during fetch) and then attached to a real hierarchy
-        // shouldn't briefly cover its loaded content with a spinner.
+        // Preserve content and loading state established before attachment.
         if currentProvider == nil && !providerCoordinator.isFetching {
             setIsLoading(true, animated: true)
         }
     }
 
-    /// Returns the most appropriate size this view should be when fitting into the provided container size.
-    /// This will then be passed to the current provider object that can calculate the size itself, or forward it to a content view.
-    /// - Parameter size: The size of the outer container that this promo view should size itself to fit (Including inset padding).
-    /// - Returns: The most appropriate size this view should be to fit the container view
+    /// Returns the selected provider's preferred size, including content padding.
+    /// Before resolution, uses the first declared provider; without providers, returns the current frame size.
+    /// - Parameter size: The available outer size, including content padding.
+    /// - Returns: The preferred outer size.
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
-        // Prefer whatever the coordinator has settled on; before the first
-        // fetch completes, fall back to the first declared provider so
-        // callers get an accurate preferred size immediately rather than a
-        // placeholder that snaps to the real size on ad load.
         guard let provider = currentProvider ?? providers?.first else {
             return frame.size
         }
         return sizeThatFits(size, for: provider)
     }
 
-    /// For cases where a single provider is representing a statically sized UI element (ie a fixed ad banner),
-    /// this method may be used to forward all the sizing requests to that provider, with the expectation that the other
-    /// providers will be able to dynamically size themselves to fit.
+    /// Measures using the first provider whose concrete class matches `providerClass`.
+    /// Falls back to `sizeThatFits(_:)` when the class is omitted or no provider matches.
     /// - Parameters:
     ///   - size: The size of the outer container in which this view needs to fit.
     ///   - providerClass: The class type of the provider in the list of active providers to use.
     public func sizeThatFits(_ size: CGSize, providerClass: AnyClass?) -> CGSize {
-        // If a specific class is requested, resolve it through the coordinator.
-        // Fall back to the default path when the class isn't given so callers
-        // don't have to special-case a nil argument.
         if let providerClass,
            let provider = providerCoordinator.providerForClass(providerClass) {
             return sizeThatFits(size, for: provider)
@@ -426,9 +389,7 @@ extension PromoView {
         return sizeThatFits(size)
     }
 
-    /// Shared implementation backing both public `sizeThatFits` overloads.
-    /// Works with the provider directly (no class-based lookup) so it returns
-    /// the right preferred size even before a fetch has resolved `currentProvider`.
+    /// Measures a provider or its displayed content view, adding the host padding.
     private func sizeThatFits(_ size: CGSize, for provider: PromoProvider) -> CGSize {
         // Remove the padding from fitting size to calculate the frame size
         var contentSize = size
@@ -465,7 +426,7 @@ extension PromoView {
         // Update the corner radius
         updateCornerRadius()
 
-        // Layout the spinner view if the promo view is currently loading
+        // Update the spinner's layout and appearance.
         refreshSpinnerView()
 
         // Layout the close button
@@ -482,7 +443,7 @@ extension PromoView {
         return contentPadding
     }
 
-    /// Applies the corner radius from the given provider, or the view's own `cornerRadius` if the provider doesn't override it.
+    /// Applies the provider's corner radius or the host's configured fallback.
     private func updateCornerRadius(for provider: PromoProvider? = nil) {
         let provider = provider ?? currentProvider ?? nil
         let contentPadding = contentPadding(for: provider)
@@ -498,17 +459,12 @@ extension PromoView {
 
 extension PromoView {
 
-    /// Clears all state and starts reloading the highest-priority provider from scratch.
-    /// If a reload is already in progress it's cancelled first — callers (including the
-    /// `providers` setter when `reloadsAutomatically` is `true`) expect `reload()` to restart
-    /// the pipeline, not silently no-op.
+    /// Cancels pending resolution, clears fetch history, and starts from the highest-priority eligible provider.
+    /// Existing content can remain visible until a replacement is selected. Providers' own state is not reset.
     ///
-    /// The view does not need to be in a window or even attached to a superview to start
-    /// reloading — providers only require the view to have non-empty bounds (so size-sensitive
-    /// providers like banner ads can pick a variant) and a `rootViewController` if they need
-    /// to present click handlers. Hosts that want to confirm a real provider was found before
-    /// attaching the view can set `reloadsAutomatically = false`, assign `providers`, call this
-    /// directly, and react via `promoView(_:didResolveProvider:)` / `promoViewDidFailToResolveProvider(_:)`.
+    /// The view may be detached while loading. Set its bounds before fetching size-sensitive content,
+    /// and supply `rootViewController` for providers that present UI. Use the resolution callbacks
+    /// to decide whether to attach the view after loading.
     @objc public func reload() {
         if providerCoordinator.isFetching {
             providerCoordinator.cancelFetch()
@@ -529,8 +485,7 @@ extension PromoView {
         reload()
     }
 
-    /// Reloads the content view for the current provider. Providers may explicitly
-    /// call this themselves if they detect their state changed, and the view needs to be reloaded.
+    /// Replaces the current provider's content view using its existing data, without fetching again.
     public func reloadContentView() {
         providerDidChange(currentProvider)
     }
@@ -555,27 +510,20 @@ extension PromoView {
         }
     }
 
-    /// Refresh the current provider if needed
+    /// Refreshes size-sensitive content, including an initial request still in flight.
     private func refreshCurrentProviderIfNeeded(oldSize: CGSize) {
-        // The initial request already chose its size even though no provider
-        // has resolved yet. Resize that request as well as displayed content.
+        // Before the first resolution, resize the pending request instead.
         guard let provider = currentProvider ?? providerCoordinator.queryingProvider,
               provider.needsReloadOnSizeChange ?? false else { return }
 
-        // Defer to the provider when it implements `shouldReloadForSizeChange`.
-        // For example, a banner provider that picks the same AdSize for two
-        // different container widths returns false here, avoiding a needless
-        // refetch when only the surrounding layout changed.
+        // Providers can keep their content when the size change does not affect it.
         if let shouldReload = provider.shouldReloadForSizeChange?(from: oldSize, to: bounds.size),
            !shouldReload {
             return
         }
 
-        // Drop the stale content view immediately and surface the loading
-        // spinner. Without this, the previous ad continues to render inside
-        // the resized frame (often the wrong size for the new bounds) until
-        // the new fetch completes — fading it out wouldn't help here either,
-        // because it'd still be visible (just transparent) at the wrong size.
+        // Remove stale content only when a new fetch starts; a throttled refresh keeps it.
+        // Size-invalid content disappears immediately without a fade.
         providerCoordinator.fetchBestProvider(from: provider) { [weak self] in
             self?.reclaimCurrentContentView(animated: false)
             self?.setIsLoading(true, animated: false)
@@ -587,8 +535,7 @@ extension PromoView {
 
 extension PromoView {
 
-    /// Dequeues and returns a previously created content view with the same identifier,
-    /// if available.
+    /// Returns a pooled content view of the requested class, or creates one for this host.
     public func dequeueContentView<T: PromoContentView>(for contentViewClass: T.Type) -> T {
         // Fetch the first available content view from the store
         let contentViewIdentifier = ObjectIdentifier(contentViewClass)
@@ -603,15 +550,12 @@ extension PromoView {
         return contentViewClass.init(promoView: self)
     }
 
-    /// Fades out and removes the current content view, returning it to the recycling pool.
+    /// Removes and resets the current content view, optionally fading a snapshot while the view is pooled.
     private func reclaimCurrentContentView(animated: Bool = true) {
         if interactionProvider != nil { cancelTapInteraction() }
         guard let contentView else { return }
 
-        // Fade the current content view out (when animated). For abrupt
-        // refreshes — e.g. a bounds change that invalidates the current ad
-        // size — callers can pass `animated: false` so the stale content
-        // disappears immediately rather than lingering during a 0.25s fade.
+        // Animate a snapshot so the content view can be reused immediately.
         if animated, let snapshot = contentView.snapshotView(afterScreenUpdates: false) {
             snapshot.frame = contentView.frame
             containerView.addSubview(snapshot)
@@ -675,8 +619,7 @@ extension PromoView {
     /// The height the promo view needs to exceed before it'll swap to the large spinner
     static private let largeSpinnerRequiredHeight = 100.0
 
-    /// Hides the content view and shows a loading spinner.
-    /// The spinner can optionally transition in and out with an animation
+    /// Shows or hides the loading spinner without removing the current content view.
     /// - Parameters:
     ///   - isLoading: Whether the spinner should be visible or not.
     ///   - animated: Whether the loading animation is animated or not.
@@ -696,7 +639,7 @@ extension PromoView {
             spinnerView?.startAnimating()
         }
 
-        // Capture a local instance of the spinner we can use for the blocks to retain
+        // Keep the animation closures bound to this spinner instance.
         guard let spinnerView = self.spinnerView else { return }
 
         // Define closures that will either animate or occur instantly
@@ -714,8 +657,7 @@ extension PromoView {
             spinnerView.isHidden = !isLoading
         }
 
-        // Apply the pre-animation state outside of any ambient animation context (e.g. a device
-        // rotation wrapping this call in UIView.animate) so those writes aren't implicitly animated.
+        // Set the initial state without inheriting an enclosing animation, such as rotation.
         UIView.performWithoutAnimation {
             spinnerView.isHidden = false
             spinnerView.layer.removeAllAnimations()
@@ -731,7 +673,7 @@ extension PromoView {
             return
         }
 
-        // Call the animation blocks
+        // Set the animation's starting values without implicit animations.
         UIView.performWithoutAnimation {
             spinnerView.transform = isLoading ? .identity.rotated(by: .pi).scaledBy(x: 0.01, y: 0.01) : .identity
             spinnerView.alpha = isLoading ? 0.0 : 1.0
@@ -767,16 +709,11 @@ extension PromoView {
             }
         }
 
-        // Apply style/size changes outside any ambient animation context, so a layout pass
-        // triggered mid-rotation doesn't implicitly animate the spinner's bounds.
-        // The center update is deliberately left outside this block so that, during a device
-        // rotation, the spinner smoothly re-centers along with the rotation animation.
+        // Change style and size immediately, while allowing the center to animate during rotation.
         UIView.performWithoutAnimation {
             spinnerView.color = isDarkMode ? .white : .gray
 
-            // Update the style based on how large the promo view is
-            // Only do this when we're loading (ie, we're going *into* a fetch cycle)
-            // so the size doesn't randomly change as we're winding down
+            // Keep the existing size while the spinner is disappearing.
             if isLoading {
                 let useLargeSize = frame.height > PromoView.largeSpinnerRequiredHeight
                 spinnerView.style = useLargeSize ? .large : .medium
@@ -853,7 +790,7 @@ extension PromoView {
             // Position above the view, aligned with the promo view's right edge
             var xPosition = bounds.maxX - (buttonSize.width + (cornerRadius * 0.4))
 
-            // Check if this position would cause the button to be clipped by the side of the superview still
+            // Keep the button within the superview's right edge.
             if let superview = superview {
                 let buttonRightEdgeInSuperview = frame.minX + xPosition + buttonSize.width
                 if buttonRightEdgeInSuperview > superview.bounds.width {
@@ -861,7 +798,7 @@ extension PromoView {
                     xPosition -= (overflow + 8)
                 }
             }
-            
+
             closeButton.frame.origin = CGPoint(x: xPosition,
                                                y: -buttonSize.height - spacing.height)
         }
@@ -899,9 +836,10 @@ extension PromoView {
 
 extension PromoView {
 
-    /// If necessary, providers can short-circuit and cancel any in-progress
-    /// tap/dragging interactions if they determine their content became non-interactive in the meantime.
-    /// - Parameter animated: Whether the cancel event is animated or not.
+    /// Cancels the current press and removes its interaction animation.
+    /// Further drag and activation callbacks are suppressed. The original provider receives
+    /// `didCancelTap` when the touch ends or UIKit cancels it.
+    /// - Parameter animated: Whether to animate the return to the unpressed appearance.
     public func cancelTapInteraction(animated: Bool = false) {
         setZoomed(false, animated: animated)
         isInteractionCancelled = true
@@ -911,7 +849,7 @@ extension PromoView {
         super.touchesBegan(touches, with: event)
         interactionProvider = nil
         canPlayTapAnimation = true
-        // Disable the animation while we're showing a spinner
+        // Loading views do not start provider interactions.
         if isLoading {
             canPlayTapAnimation = false
             isInteractionCancelled = true

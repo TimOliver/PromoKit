@@ -22,9 +22,8 @@
 
 import UIKit
 
-/// A default content view that can present promo content in a similar display style to UITableView cells.
-/// It consists of a title label, a detail label positioned below it, and an optional image positioned
-/// against the leading edge.
+/// A table-style content view with a title, optional detail text and footnote,
+/// and an optional image on the left.
 @objc(PMKPromoTableListContentView)
 final public class PromoTableListContentView: PromoContentView {
     // MARK: - Public Properties
@@ -32,17 +31,17 @@ final public class PromoTableListContentView: PromoContentView {
     /// A label that displays the title and subtitle text
     public let label = UILabel()
 
-    /// A label that displays a footnote at the top
+    /// A label that displays an optional footnote below the title and detail text.
     public let footnoteLabel = UILabel()
 
-    /// An optional image displayed horizontally along the leading edge of the view
+    /// An optional image displayed on the left side of the view.
     public let imageView = UIImageView()
 
-    /// Spacing between headnote and text
+    /// Spacing between the main text and footnote.
     private let labelSpacing = 6.0
 
     /// Creates a new instance of a list content view.
-    /// - Parameter reuseIdentifier: The reuse identifier used to fetch this instance from the promo view
+    /// - Parameter promoView: The promo view that owns this content view.
     public required init(promoView: PromoView) {
         super.init(promoView: promoView)
 
@@ -71,10 +70,8 @@ final public class PromoTableListContentView: PromoContentView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// Reset all of the view state when the content view is being recycled
+    /// Clears displayed text and images before reuse.
     public override func prepareForReuse() {
-        // It is best practice to nil out all view content since these can contribute to
-        // the overall memory footprint
         label.text = nil
         footnoteLabel.text = nil
         footnoteLabel.frame = .zero
@@ -86,9 +83,9 @@ final public class PromoTableListContentView: PromoContentView {
     /// - Parameters:
     ///   - title: The text that will be displayed as the main title.
     ///   - detailText: The text optionally shown below the main title.
-    ///   - image: The image optionally shown leading into the title.
+    ///   - footnote: The text optionally shown below the title and detail text.
+    ///   - image: The image optionally shown to the left of the text.
     public func configure(title: String, detailText: String? = nil, footnote: String? = nil, image: UIImage? = nil) {
-        // Headnote
         footnoteLabel.text = footnote
 
         let string = NSMutableAttributedString()
@@ -101,7 +98,6 @@ final public class PromoTableListContentView: PromoContentView {
         if let detailText {
             var detailColor = UIColor.black
             if #available(iOS 13.0, *) {
-                // Use a manual color here to make it darker on the background
                 detailColor = .label
             }
             let detailFont = UIFont.systemFont(ofSize: 15.0, weight: .regular)
@@ -119,7 +115,7 @@ final public class PromoTableListContentView: PromoContentView {
     }
 }
 
-/// Layout
+// MARK: - Layout
 extension PromoTableListContentView {
 
     public override func layoutSubviews() {

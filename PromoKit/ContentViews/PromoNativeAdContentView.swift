@@ -35,29 +35,27 @@ final public class PromoNativeAdContentView: PromoContentView {
         didSet { adView.configureContentViews(with: nativeAd) }
     }
 
-    /// A blurred image of the video thumbnail to be used as a backdrop
-    /// against the video
+    /// A blurred still image used behind the ad's media.
     public var mediaBackgroundImage: UIImage? {
         set { adView.mediaBackgroundImage = newValue }
         get { adView.mediaBackgroundImage }
     }
 
-    /// Fetch the frame for the Ad Choices view (The small info button in the top corner)
+    /// The frame of the AdChoices info button, or zero if it is unavailable.
     public var adChoicesViewFrame: CGRect {
-        // Find the object named GADNativeAdAttributionView and return its frame if found
         adView.subviews.first(where: {
             NSStringFromClass(type(of: $0)).contains("GADNativeAdAttributionView")
         })?.frame ?? .zero
     }
 
-    /// The widest the ad's card may be laid out, independent of the space offered.
+    /// Maximum preferred card width.
     /// Forwarded from the provider; see `PromoNativeAdProvider.maximumContentWidth`.
     public var maximumContentWidth: CGFloat {
         set { adView.maximumWidth = newValue }
         get { adView.maximumWidth }
     }
 
-    /// The tallest the ad's card may be laid out, independent of the space offered.
+    /// Maximum preferred card height.
     /// Forwarded from the provider; see `PromoNativeAdProvider.maximumContentHeight`.
     public var maximumContentHeight: CGFloat {
         set { adView.maximumHeight = newValue }
@@ -110,37 +108,22 @@ final public class PromoNativeAdContentView: PromoContentView {
 
 // MARK: - PromoNativeAdView
 
-/// The inner ad view view that is managed by `PromoNativeAdContentView`.
-/// It is a subclass of `GADNativeAdView` and manages all of the UI configuration
-/// and events between PromoKit and Google AdMob.
+/// The inner `NativeAdView` that manages layout and Google AdMob events
+/// for `PromoNativeAdContentView`.
 final public class PromoNativeAdView: NativeAdView {
 
-    // A generated blurred image placed behind the ad when the aspect ratio
-    // doesn't align
+    /// A blurred backdrop visible where the media does not fill its container.
     public var mediaBackgroundImage: UIImage? {
         set { contentMediaContainerView.image = newValue }
         get { contentMediaContainerView.image }
     }
 
-    // Main, bold headline title shown at the top
     private let headlineLabel = UILabel()
-
-    // Any auxiliary body text
     private let bodyLabel = UILabel()
-
-    // An ad badge label
     private let adLabel = UILabel()
-
-    // A large call-to-action button shown at the bottom
     private let actionButton = PromoNativeAdActionButton()
-
-    // An icon image view optionally shown next to the headline
     private let iconImageView = UIImageView()
-
-    // A container view hosting the media view
     private let contentMediaContainerView = UIImageView()
-
-    // If media, the content view used to show the media
     private let contentMediaView = MediaView()
 
     // Track notifications separately from measurement, so sizeThatFits cannot
@@ -149,7 +132,7 @@ final public class PromoNativeAdView: NativeAdView {
     private var lastNotifiedAspectRatio: CGFloat = 1.0
     private weak var observedVideoController: VideoController?
 
-    // For easier testing, remove the 'Test mode' string from the title
+    // Hide the SDK's test prefix in debug builds.
     private func headlineText(for nativeAd: NativeAd?) -> String {
 #if DEBUG
         nativeAd?.headline?.replacingOccurrences(of: "Test mode: ", with: "") ?? ""
@@ -158,8 +141,7 @@ final public class PromoNativeAdView: NativeAdView {
 #endif
     }
 
-    // If a body string was supplied, show that. If not, show the name of the store,
-    // and the price as a string instead
+    // Fall back to the store and price when the ad has no body.
     private func bodyText(for nativeAd: NativeAd?) -> String? {
         if let body = nativeAd?.body {
             return body
@@ -207,20 +189,18 @@ final public class PromoNativeAdView: NativeAdView {
         actionButton.isHidden = true
     }
 
-    /// Base point sizes for the copy. The side-by-side layout scales up from these
-    /// when the column has room; everything else uses them as-is.
+    /// Base point sizes before Dynamic Type and side-by-side fitting adjustments.
     private var baseHeadlineFontSize: CGFloat { 21.0 }
     private var baseBodyFontSize: CGFloat { 16.0 }
 
     /// The share of the text column the copy aims to occupy once grown.
     private var textColumnTargetFill: CGFloat { 0.5 }
 
-    /// How far the copy may grow. Past this the headline stops reading as a headline.
+    /// Maximum scale applied when growing copy into the text column.
     private var maximumTextScale: CGFloat { 1.8 }
 
-    /// Re-applies the copy's fonts at `scale`. Called on every layout pass, including
-    /// with 1.0, because content views are recycled — a view that grew its text beside
-    /// a tall creative would otherwise keep those sizes when reused for a stacked one.
+    /// Reapplies fonts on each layout pass so reuse and layout changes cannot retain
+    /// a previous arrangement's text scale.
     private func applyTextFonts(scale: CGFloat) {
         let fonts = textFonts(scale: scale)
         headlineLabel.font = fonts.headline
@@ -282,7 +262,6 @@ final public class PromoNativeAdView: NativeAdView {
         contentMediaView.isUserInteractionEnabled = true
         contentMediaView.frame.size = CGSize(width: 120, height: 120)
         contentMediaContainerView.addSubview(contentMediaView)
-
     }
 
     public func configureContentViews(with nativeAd: NativeAd?) {
@@ -311,11 +290,10 @@ final public class PromoNativeAdView: NativeAdView {
             actionButton.title = cta.capitalized
         }
 
-        // Force a layout to ensure the elements are appropriately sized
+        // Size and arrange asset views before registering the ad with the SDK.
         frame.size = sizeThatFits(CGSize(width: 1000, height: 1000), nativeAd: nativeAd)
         layoutSubviews(for: nativeAd)
 
-        // Set the ad after everything else is set
         self.nativeAd = nativeAd
         updateMediaAspectRatioIfNeeded()
     }
@@ -328,13 +306,11 @@ final public class PromoNativeAdView: NativeAdView {
     public func layoutSubviews(for nativeAd: NativeAd?) {
         super.layoutSubviews()
 
-        // Skip layout if we don't have an ad yet
         guard let nativeAd else { return }
 
         let size = frame.insetBy(dx: padding, dy: padding).size
         let aspectRatio = Self.usableAspectRatio(for: nativeAd)
 
-        // Set the creative beside its text whenever the box leaves room for both.
         switch Self.layoutFormat(containerSize: size,
                                  mediaAspectRatio: aspectRatio,
                                  minimumTextColumnWidth: minimumTextColumnWidth,
@@ -345,9 +321,7 @@ final public class PromoNativeAdView: NativeAdView {
             layoutSubviewsInPortraitFormat(size: size, nativeAd: nativeAd)
         }
 
-        // Once all the views are configured, connect them to Google's references.
-        // We defer them this late since it seems Google's validator occurs when they are
-        // connected, so they must be in their final resting position by then
+        // Register asset views after layout so SDK validation sees their final frames.
         self.headlineView = headlineLabel
         self.bodyView = !bodyLabel.isHidden ? bodyLabel : nil
         self.iconView = !iconImageView.isHidden ? iconImageView : nil
@@ -360,12 +334,8 @@ final public class PromoNativeAdView: NativeAdView {
     }
 
     private func layoutSubviewsInLandscapeFormat(size: CGSize, nativeAd: NativeAd) {
-        // Lay out the ad view on the right hand side
         let aspectRatio = Self.usableAspectRatio(for: nativeAd)
-        // The creative takes the full height until that would claim more than
-        // `maximumMediaWidthFraction` of the card. Past that it yields — shrinking
-        // and picking up vertical letterboxing — so the text column keeps its width
-        // and the text never has to scale down to fit beside it.
+        // Reserve text-column width by limiting the media's share of the card.
         let mediaBox = CGSize(width: size.width, height: size.height - (padding * 2.0))
         let media = Self.mediaSize(fitting: mediaBox,
                                    aspectRatio: aspectRatio,
@@ -378,13 +348,11 @@ final public class PromoNativeAdView: NativeAdView {
         contentMediaView.frame = contentMediaContainerView.bounds
         contentMediaContainerView.layer.cornerRadius = 15.0
 
-        // With the media view laid out, work out the remaning space we have
         let mediaTotalWidth = (mediaWidth + googleButtonWidth + padding + innerMargin)
         let textContentSize = CGSize(width: size.width - mediaTotalWidth,
                                      height: size.height)
 
-        // The icon is sized and placed further down, with the copy: it belongs to the
-        // same block rather than floating at a fixed fraction of the column's height.
+        // The icon is sized with the copy below.
         iconImageView.isHidden = (iconImageView.image == nil)
         if iconImageView.isHidden {
             iconImageView.frame = .zero
@@ -393,7 +361,6 @@ final public class PromoNativeAdView: NativeAdView {
             addSubview(iconImageView)
         }
 
-        // Layout the action button at the bottom
         actionButton.isHidden = actionButton.title?.isEmpty ?? true
         if !actionButton.isHidden {
             actionButton.tintColor = self.tintColor
@@ -415,15 +382,9 @@ final public class PromoNativeAdView: NativeAdView {
 
         let bodyString = bodyText(for: nativeAd)
 
-        // Measure the copy at its base sizes, then grow it into the column. Beside a
-        // tall creative the column is far taller than two lines of headline and three
-        // of body need, which left the copy stranded at the top with the button at the
-        // foot and most of the column empty. A short column scales by 1 and is unchanged.
+        // Measure at the base fonts before growing into available space or shrinking to fit.
         applyTextFonts(scale: 1.0)
-        // The column is tall, so let the body wrap as far as it needs. Capped at three
-        // lines it ran out of lines rather than space once grown, and truncated with an
-        // ellipsis while the space below it went unused. The scale is derived from the
-        // measured height, so freeing the line count is what makes that measurement true.
+        // Measure all body lines; the column's height constrains the final layout.
         bodyLabel.numberOfLines = 0
         headlineLabel.attributedText = NSAttributedString(string: headlineText(for: nativeAd),
                                                           attributes: [.paragraphStyle: headlineStyle(indent: 0)])
@@ -439,11 +400,9 @@ final public class PromoNativeAdView: NativeAdView {
                                       maximumScale: maximumTextScale)
         applyTextFonts(scale: textScale)
 
-        // Lay out the title
         headlineLabel.textAlignment = .center
         headlineLabel.frame.size = headlineLabel.sizeThatFits(remainingTextSize)
 
-        // Lay out the ad label
         adLabel.frame.size = adLabelSize
         adLabel.frame.origin = CGPoint(x: 7, y: 3)
         adLabel.textColor = backgroundColor
@@ -458,8 +417,7 @@ final public class PromoNativeAdView: NativeAdView {
             bodyLabel.removeFromSuperview()
         }
 
-        // The icon and copy share one column. Shrinking only the copy against
-        // the full column leaves no budget for the icon above it on short cards.
+        // Fit the icon and copy together above the call to action.
         let naturalSpacing = (bodyLabel.isHidden ? 0 : titleVerticalSpacing)
             + (iconImageView.isHidden ? 0 : titleVerticalSpacing)
         let naturalBlockHeight = headlineLabel.frame.height
@@ -498,8 +456,7 @@ final public class PromoNativeAdView: NativeAdView {
             iconSize = CGSize(width: scaledHeight * iconAspectRatio, height: scaledHeight)
         }
 
-        // Icon, headline and body are one block, centred together. Whatever slack the
-        // growth cap leaves sits either side of that block, not between its parts.
+        // Centre the icon and copy as one block, keeping extra space outside it.
         var blockHeight = copyHeight
         if iconSize.height > 0 { blockHeight += iconSize.height + titleVerticalSpacing }
 
@@ -519,23 +476,18 @@ final public class PromoNativeAdView: NativeAdView {
         headlineLabel.frame.origin = CGPoint(x: (remainingTextSize.width - headlineLabel.frame.width) * 0.5,
                                              y: blockOriginY)
 
-        // We're done if the label is hidden
         if bodyLabel.isHidden { return }
 
-        // Lay out the subtitle
         bodyLabel.frame.origin = CGPoint(x: (remainingTextSize.width - bodyLabel.frame.width) * 0.5,
                                          y: headlineLabel.frame.maxY + bodySpacing)
-
     }
 
     private func layoutSubviewsInPortraitFormat(size: CGSize, nativeAd: NativeAd) {
-        // Recycled views may arrive with the side-by-side layout's grown fonts and its
-        // unbounded line count.
+        // Reset fonts and line limits after reuse or a side-by-side layout.
         applyTextFonts(scale: 1.0)
         bodyLabel.numberOfLines = needsCompactLayout ? 2 : 3
         var origin = CGPoint(x: padding, y: padding)
 
-        // Lay out the icon view
         var iconSize = CGSize.zero
         iconImageView.isHidden = iconImageView.image == nil
         if !iconImageView.isHidden, let icon = nativeAd.icon?.image {
@@ -549,11 +501,9 @@ final public class PromoNativeAdView: NativeAdView {
             iconImageView.removeFromSuperview()
         }
 
-        // Hide the body if we don't have any text
         bodyLabel.text = bodyText(for: nativeAd)
         bodyLabel.isHidden = bodyLabel.text?.isEmpty ?? true
 
-        // Position the title text
         let textX = iconImageView.isHidden ? padding : iconSize.width + innerMargin
         let textWidth = size.width - (textX + googleButtonWidth + (padding * 2.0) + (needsCompactLayout ? compactActionSize.width : 0.0))
         let textFittingSize = CGSize(width: textWidth, height: .greatestFiniteMagnitude)
@@ -569,13 +519,12 @@ final public class PromoNativeAdView: NativeAdView {
         let textY = totalTextHeight < iconSize.height ? (iconSize.height - totalTextHeight) / 2.0 : padding
         headlineLabel.frame.origin = CGPoint(x: textX, y: textY)
 
-        // Lay out the ad label at the start of the title label
+        // Place the badge in the headline's first-line indent.
         adLabel.frame.size = adLabelSize
         adLabel.frame.origin = CGPoint(x: headlineLabel.frame.minX,
                                        y: headlineLabel.frame.minY + adLabelOffset)
         adLabel.textColor = backgroundColor
 
-        // Position the body text
         if !bodyLabel.isHidden {
             if bodyLabel.superview == nil { addSubview(bodyLabel) }
             let textY = headlineLabel.frame.maxY + titleVerticalSpacing
@@ -614,7 +563,6 @@ final public class PromoNativeAdView: NativeAdView {
             origin.y = max(origin.y, actionButton.frame.maxY + innerMargin)
         }
 
-        // Position the media container
         let aspectRatio = Self.usableAspectRatio(for: nativeAd)
         let actionButtonY = (actionButton.superview != nil && !needsCompactLayout) ? (actionButton.frame.minY - innerMargin) : size.height
         let mediaContainerSize = CGSize(width: size.width, height: actionButtonY - origin.y)
@@ -623,17 +571,12 @@ final public class PromoNativeAdView: NativeAdView {
         contentMediaContainerView.layer.cornerRadius = 15.0
         updateMediaViewBackgroundColor()
 
-        // Fit the media inside the container, keeping the creative's shape.
-        // Centring halves an odd remainder, so an un-snapped media view lands on a
-        // half-pixel and the container's tint bleeds through as a hairline sliver
-        // down one edge. Snap by edges so a media view that should span the
-        // container's full width reaches both sides exactly.
+        // Preserve the media's ratio and snap its edges to avoid hairline gaps.
         let fittedSize = Self.fittedMediaSize(containerSize: mediaContainerSize, aspectRatio: aspectRatio)
         contentMediaView.frame = pixelAligned(CGRect(x: (mediaContainerSize.width - fittedSize.width) * 0.5,
                                                      y: (mediaContainerSize.height - fittedSize.height) * 0.5,
                                                      width: fittedSize.width,
                                                      height: fittedSize.height))
-
     }
 
     private func updateMediaViewBackgroundColor() {
@@ -648,9 +591,9 @@ final public class PromoNativeAdView: NativeAdView {
         guard let color, color.getHue(&h, saturation: &s, brightness: &b, alpha: &a) else { return }
 
         contentMediaContainerView.backgroundColor = UIColor(hue: h,
-                                                   saturation: max(s - 0.1, 0.0),
-                                                   brightness: min(b + 0.05, 1.0),
-                                                   alpha: a)
+                                                            saturation: max(s - 0.1, 0.0),
+                                                            brightness: min(b + 0.05, 1.0),
+                                                            alpha: a)
     }
 
     // MARK: - Sizing
@@ -675,7 +618,7 @@ final public class PromoNativeAdView: NativeAdView {
         mediaAspectRatioDidChange?()
     }
 
-    // Static sizing values
+    // Layout dimensions and limits.
     private var needsCompactLayout: Bool { traitCollection.verticalSizeClass == .compact }
     var maximumWidth: CGFloat = PromoNativeAdProvider.defaultMaximumContentWidth
     private var minimumWidth: CGFloat { 340 }
@@ -696,42 +639,32 @@ final public class PromoNativeAdView: NativeAdView {
         (value * displayScale).rounded() / displayScale
     }
 
-    /// Snaps a rect to the pixel grid by its EDGES rather than its origin and size.
-    ///
-    /// Rounding origin and size separately is what produces hairline seams: each is
-    /// rounded independently, so the resulting trailing edge can land up to a whole
-    /// pixel away from where it should, and whatever sits behind shows through the
-    /// gap. Rounding the edges keeps a view that should meet its container's edge
-    /// actually meeting it.
+    /// Rounds edges independently so adjoining views meet without pixel gaps.
     private func pixelAligned(_ rect: CGRect) -> CGRect {
         let minX = pixelAligned(rect.minX), minY = pixelAligned(rect.minY)
         let maxX = pixelAligned(rect.maxX), maxY = pixelAligned(rect.maxY)
         return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
+
     private var iconHeight: CGFloat { 64.0 }
-    /// The compact call to action, sized to its own text. A fixed width fitted some
-    /// of Google's calls to action and clipped others — "Install" and
-    /// "今すぐダウンロード" are not the same size, and shrink-to-fit only rescues the
-    /// near misses. Floored at the original width so short ones keep their shape, and
-    /// capped so a long one cannot crowd the copy out of an already compact card.
+
+    /// Fits localized button text within a 120–200-point width to preserve room for copy.
     private var compactActionSize: CGSize {
         let height: CGFloat = 40
         return CGSize(width: min(max(120, actionButton.widthThatFits(height: height)), 200),
                       height: height)
     }
 
-    /// How far the copy may shrink to fit its column before losing a line is the
-    /// better trade.
+    /// Minimum fitting scale before truncating copy to the available height.
     private var minimumTextShrink: CGFloat { 0.6 }
 
-    /// The narrowest column of text worth setting beside a creative. Below this the
-    /// headline wraps to a word or two a line, and stacking reads better.
+    /// Minimum text-column width required for a side-by-side layout.
     private var minimumTextColumnWidth: CGFloat { 240.0 }
 
     /// The most of the card's width a creative may claim when set beside its text.
     private var maximumMediaWidthFraction: CGFloat { 0.55 }
 
-    /// Given an outer size, work out the most appropriate size this view should be
+    /// Measures the ad within the supplied size and configured limits.
     /// - Parameter size: Size constraining the ad view
     /// - Returns: Resulting size of the ad view
     public override func sizeThatFits(_ size: CGSize) -> CGSize {
@@ -741,18 +674,14 @@ final public class PromoNativeAdView: NativeAdView {
     private func sizeThatFits(_ size: CGSize, nativeAd: NativeAd?) -> CGSize {
         guard let nativeAd else { return .zero }
 
-        // Aspect ratio of the ad view
         let aspectRatio = Self.usableAspectRatio(for: nativeAd)
 
-        // Choose the arrangement using the size this card is actually allowed
-        // to occupy. Capping only the stacked branch bypasses the limits for
-        // portrait creatives and can choose a column layout that no longer fits.
+        // Apply size limits before selecting the layout arrangement.
         let availableSize = CGSize(width: max(0, min(size.width - (padding * 2.0), maximumWidth)),
                                    height: max(0, min(size.height - (padding * 2.0), maximumHeight)))
         guard availableSize.width > 0, availableSize.height > 0 else { return .zero }
 
-        // Must reach the same verdict as -layoutSubviews(for:), or the card is
-        // measured for one arrangement and then drawn as the other.
+        // Measurement and layout must select the same arrangement.
         let contentBox = CGSize(width: availableSize.width - (padding * 2.0),
                                 height: availableSize.height - (padding * 2.0))
         let isHorizontalLayout = Self.layoutFormat(containerSize: contentBox,
@@ -766,29 +695,27 @@ final public class PromoNativeAdView: NativeAdView {
             return CGSize(width: adjustedWidth, height: height)
         }
 
-        // Line out the elements vertically
         var iconSize = CGSize.zero
         if let icon = nativeAd.icon?.image {
             let iconAspectRatio = icon.size.width / icon.size.height
             iconSize = CGSize(width: iconHeight * iconAspectRatio, height: iconHeight)
         }
 
-        // Measure the stacked style independently of the visible labels. They
-        // may still use enlarged fonts from a side-by-side still while the host
-        // is measuring the newly available video, before its next layout pass.
+        // Visible labels may retain another arrangement's fonts until the next
+        // layout pass, so measure the stacked style independently.
         let fonts = textFonts(scale: 1.0)
         let measuredHeadline = UILabel()
         measuredHeadline.font = fonts.headline
         measuredHeadline.numberOfLines = 2
         measuredHeadline.attributedText = NSAttributedString(string: headlineText(for: nativeAd),
-                                                              attributes: [.paragraphStyle: headlineStyle(indent: headlineIndent)])
+                                                             attributes: [.paragraphStyle: headlineStyle(indent: headlineIndent)])
         let body = bodyText(for: nativeAd)
         let measuredBody = UILabel()
         measuredBody.font = fonts.body
         measuredBody.numberOfLines = needsCompactLayout ? 2 : 3
         measuredBody.text = body
 
-        // Everything the card owes before the media band is given any height at all.
+        // Height reserved for text, icon, call to action, and spacing.
         func chromeHeight(forWidth cardWidth: CGFloat) -> CGFloat {
             var textWidth = cardWidth - ((iconSize.width > 0.0 ? innerMargin + iconSize.width : 0.0) + googleButtonWidth)
             if needsCompactLayout { textWidth -= (innerMargin + compactActionSize.width) }
@@ -801,8 +728,7 @@ final public class PromoNativeAdView: NativeAdView {
 
             var headerHeight = max(textHeight, iconSize.height)
             if needsCompactLayout, !(nativeAd.callToAction?.isEmpty ?? true) {
-                // The inline button sits below AdChoices even when the title
-                // is only one line. The media must also pay for that height.
+                // Reserve the inline button's height below AdChoices.
                 headerHeight = max(headerHeight,
                                    googleButtonWidth + titleVerticalSpacing + compactActionSize.height)
             }
@@ -811,13 +737,8 @@ final public class PromoNativeAdView: NativeAdView {
             return chrome
         }
 
-        // A wide creative's band has to be paid for out of the height the text and
-        // call to action leave behind, so derive the width from that rather than
-        // measuring the two independently — budgeting the band at one width and then
-        // drawing it at another is what left it too short for its own shape, and
-        // pillarboxed the creative inside it. A tall creative is already fitted by
-        // height into whatever band remains, so narrowing the card would only squeeze
-        // its text for no gain.
+        // Wide media constrains the card width through its available height.
+        // Tall media fits within the remaining band without narrowing the text.
         let width: CGFloat
         if aspectRatio >= 1.0 {
             // Narrowing the card re-wraps the text, so measure again at the width we land on.
@@ -854,28 +775,19 @@ extension PromoNativeAdView {
 
     /// How the ad arranges its creative against its text.
     enum LayoutFormat {
-        /// Text above, creative below, call to action at the foot. The media
-        /// container spans the card, so a creative narrower than the card sits on
-        /// blurred backdrop.
+        /// Text above the media, with the call to action below or inline in compact height.
         case stacked
-        /// The creative hugging its own aspect ratio on the trailing side, with the
-        /// icon, headline, body and call to action stacked in the column beside it.
+        /// Media on the right, with icon, copy, and call to action beside it.
         case sideBySide
     }
 
-    /// Whether a creative can be set beside its text rather than above it.
-    ///
-    /// This asks about the box, not the device. Its predecessor checked
-    /// `verticalSizeClass == .compact` — true of a phone in landscape and never of an
-    /// iPad, which is always regular height. So an iPad went on stacking portrait
-    /// creatives however much width was going spare, and the surplus became blurred
-    /// backdrop: on a landscape iPad, roughly two thirds of the media area.
+    /// Selects a side-by-side layout for portrait media when the container leaves
+    /// enough width for the text column, independently of device size classes.
     static func layoutFormat(containerSize: CGSize,
                              mediaAspectRatio: CGFloat,
                              minimumTextColumnWidth: CGFloat,
                              maximumMediaWidthFraction: CGFloat) -> LayoutFormat {
-        // A wide creative already fills the card's width with nothing left over.
-        // An unknown ratio also belongs in the layout that doesn't need its shape.
+        // Square, wide, and unknown media ratios use the stacked layout.
         guard mediaAspectRatio > 0, mediaAspectRatio < 1.0 else { return .stacked }
 
         let media = mediaSize(fitting: containerSize,
@@ -884,11 +796,8 @@ extension PromoNativeAdView {
         return (containerSize.width - media.width) >= minimumTextColumnWidth ? .sideBySide : .stacked
     }
 
-    /// How much to grow the copy so it occupies `targetFill` of the column it sits in.
-    ///
-    /// Only ever grows. Overflow is already handled by a shrink-to-fit pass further
-    /// down, and having two mechanisms pulling in opposite directions would make the
-    /// result depend on which ran last.
+    /// Grows copy toward `targetFill`, up to `maximumScale`.
+    /// Layout handles overflow separately after measuring the scaled fonts.
     static func textScale(availableHeight: CGFloat,
                           naturalHeight: CGFloat,
                           targetFill: CGFloat,
@@ -912,9 +821,7 @@ extension PromoNativeAdView {
         return 1.0
     }
 
-    /// The creative's own still, if one shipped with the ad. `mainImage` covers
-    /// image creatives; `images` is the asset a video creative is served with,
-    /// and is already what the blurred backdrop is built from.
+    /// Prefers the media's main image, falling back to the first supplied still.
     static func stillSize(for nativeAd: NativeAd) -> CGSize? {
         nativeAd.mediaContent.mainImage?.size ?? nativeAd.images?.first?.image?.size
     }
@@ -932,13 +839,8 @@ extension PromoNativeAdView {
         return CGSize(width: natural.width * scale, height: natural.height * scale)
     }
 
-    /// The width the card should take, given that its media band has to be paid for
-    /// out of the height left over once the text and call to action have had theirs.
-    ///
-    /// Measuring width and height independently is what let the two disagree: the band
-    /// was budgeted at `width / aspectRatio` for one width and then drawn at another,
-    /// leaving it too short for its own shape. Deriving the width from the height the
-    /// band can actually have keeps the two in step.
+    /// Derives card width from the height available to media after reserving the
+    /// text and controls, keeping media measurement consistent with its aspect ratio.
     static func contentWidth(fitting containerSize: CGSize,
                              aspectRatio: CGFloat,
                              chromeHeight: CGFloat,
@@ -950,12 +852,8 @@ extension PromoNativeAdView {
         return min(containerSize.width, maximumWidth, bandHeight * aspectRatio)
     }
 
-    /// The size a creative renders at when set beside its text.
-    ///
-    /// It takes the container's full height until doing so would claim more than
-    /// `maximumWidthFraction` of the card's width. Past that the creative yields
-    /// rather than the text: it shrinks and gains vertical letterboxing, so the text
-    /// column keeps its width and the text itself never scales down to fit.
+    /// Fits media to the container height, capped at `maximumWidthFraction` of its
+    /// width, preserving both the media ratio and space for the text column.
     static func mediaSize(fitting containerSize: CGSize,
                           aspectRatio: CGFloat,
                           maximumWidthFraction: CGFloat) -> CGSize {

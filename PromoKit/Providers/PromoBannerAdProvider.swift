@@ -32,20 +32,16 @@ public enum PromoBannerAdSize: Int {
     case full     // Full iPad size: 468x60
 }
 
-/// A promo provider for vending Google ad banners.
-/// It is capable of vending iPhone and iPad appropriate banner sizes, with
-/// the ability to switch between the two on the fly.
+/// A provider for Google ad banners that switches sizes as the available width changes.
 @objc(PMKPromoBannerAdProvider)
 public class PromoBannerAdProvider: NSObject, PromoProvider {
 
-    /// The banner sizes this provider is permitted to serve.
-    /// When both are present, the larger `.full` size is preferred on wider views (> 468pt).
+    /// Banner size preferences. Uses `.full` when included and the content width is
+    /// at least 468 points; otherwise, falls back to the standard 320×50 banner.
     public var supportedBannerSizes: [PromoBannerAdSize] = [.standard, .full]
 
-    /// Convenience hook for Obj-C callers that want to lock the provider to
-    /// the smaller 320×50 banner, independent of the hosting view's width.
-    /// Swift arrays of `@objc` enums can't be bridged directly, so this
-    /// method configures @c supportedBannerSizes on the caller's behalf.
+    /// Restricts banners to 320×50 points regardless of the hosting view's width.
+    /// Exposed to Objective-C because `supportedBannerSizes` cannot be bridged directly.
     @objc public func restrictToStandardBannerSize() {
         supportedBannerSizes = [.standard]
     }
@@ -58,19 +54,16 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     private var hostingPadding = UIEdgeInsets.zero
     private weak var promoView: PromoView?
 
-    // Store the result handler so we can call it when the ad has returned a value
+    // Completed by the banner view's load delegate.
     private var resultHandler: PromoProviderContentFetchHandler?
 
-    /// Create new instance of a Google ad banner provider
+    /// Creates a Google ad banner provider.
     /// - Parameter adUnitID: The Google ad unit ID for this banner
     @objc public init(adUnitID: String) {
         self.adUnitID = adUnitID
     }
 
     deinit {
-        // Drop any in-flight fetch handler so a late AdMob delegate callback doesn't
-        // keep the coordinator's closure chain (and whatever it retains) alive past
-        // this provider's lifetime.
         resultHandler = nil
     }
 
@@ -78,11 +71,8 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     public var showsLoadingIndicatorDuringFetch: Bool { true }
     public var needsReloadOnSizeChange: Bool { true }
 
-    /// Only refetch when the size transition crosses a banner-size bucket.
-    /// Resizing the container within the same bucket (e.g. iPad split-view
-    /// between half and two-thirds while both stay above 468pt) shouldn't
-    /// invalidate the current ad. `AdSize` isn't `Equatable`, so compare
-    /// the underlying `size` (which uniquely identifies banner buckets).
+    /// Refetches only when the available content width selects a different banner size.
+    /// Compares the underlying sizes because `AdSize` is not `Equatable`.
     public func shouldReloadForSizeChange(from oldSize: CGSize, to newSize: CGSize) -> Bool {
         let oldContentSize = CGRect(origin: .zero, size: oldSize).inset(by: hostingPadding).size
         let newContentSize = CGRect(origin: .zero, size: newSize).inset(by: hostingPadding).size
@@ -93,12 +83,8 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
                                 with resultHandler: @escaping ((PromoProviderFetchContentResult) -> Void)) {
         self.promoView = promoView
         self.resultHandler = resultHandler
-        // Hide the ad view during the fetch. AdMob updates the adView's rendering to the new
-        // ad synchronously just before firing its load-success callback, so if it were visible
-        // the user would see the new banner "snap in" inside the old content view before our
-        // fade-in animation gets a chance to run. Keeping it hidden until `contentView(for:)`
-        // re-adds it to a fresh (alpha-0) container ensures the fade-in is the first time the
-        // new creative becomes visible.
+        // AdMob updates the creative before its success callback. Hide it until
+        // contentView(for:) places it in the container that PromoView fades in.
         adView.isHidden = true
         adView.adUnitID = adUnitID
         adView.delegate = self
@@ -119,13 +105,12 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     public func contentView(for promoView: PromoView) -> PromoContentView {
         let containerView = promoView.dequeueContentView(for: PromoContainerContentView.self)
         containerView.addSubview(adView)
-        // Unhide — the container is given alpha 0 by PromoView and fades in, so the ad view
-        // becoming visible is already gated by the fade-in animation.
+        // PromoView controls visibility through the container's fade-in.
         adView.isHidden = false
         return containerView
     }
 
-    /// Calls the pending result handler with the ad load outcome and then clears it.
+    /// Clears the pending handler before invoking it, allowing reentrant fetches.
     private func didReceiveResult(_ result: Result<Void, Error>) {
         guard let handler = resultHandler else { return }
         resultHandler = nil
@@ -138,19 +123,14 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
                let contentView = promoView.contentView, adView.superview === contentView {
                 adView.isHidden = false
             }
-            // `.fetchRequestFailed` tells the host a provider lost, not why. Every
-            // ad-serving cause — no fill, an ad unit that belongs to a different
-            // app's bundle id, an account still in review — collapses into that one
-            // case, so the host silently falls through to the next provider with no
-            // way to tell a real outage from normal no-fill. Log the underlying
-            // error, which is the only place the reason exists.
+            // Preserve the underlying cause in logs before returning the generic failure.
             NSLog("[PromoKit] Banner ad failed to load (unit %@): %@",
                   adUnitID, error.localizedDescription)
             handler(.fetchRequestFailed)
         }
     }
 
-    /// Returns the appropriate `GADAdSize` based on the current promo view width and the supported sizes.
+    /// Selects a banner size using the available content width and size preferences.
     private func bannerSizeFor(promoSize: CGSize) -> AdSize {
         if supportedBannerSizes.contains(.full), promoSize.width >= 468 {
             return AdSizeFullBanner
@@ -159,7 +139,7 @@ public class PromoBannerAdProvider: NSObject, PromoProvider {
     }
 }
 
-// MARK: - GADBannerViewDelegate
+// MARK: - BannerViewDelegate
 
 extension PromoBannerAdProvider: BannerViewDelegate {
 

@@ -33,7 +33,7 @@ import GoogleMobileAds
 public class PromoNativeAdProvider: NSObject, PromoProvider {
 
     private struct Constants {
-        // The amount of time the ad can be tapped before it times out
+        // Maximum press duration before cancelling the interaction animation.
         static let adTapTimeout = 1.5
         // The distance the finger can be dragged before the ad tap is cancelled
         static let adTapDistanceThreshold: CGFloat = 44
@@ -45,15 +45,11 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     /// The default ceiling on a native ad card's height.
     @objc public static let defaultMaximumContentHeight: CGFloat = 750
 
-    /// The widest the ad's card may be laid out, whatever space the host offers it.
-    ///
-    /// The card's media band is sized from this width, so a host that stretches the
-    /// card wider afterwards gets a band measured for the wrong one — too short for
-    /// its own shape, with the creative pillarboxed inside it. A host that wants a
-    /// wider card should raise this instead of resizing the view after the fact.
+    /// Maximum preferred card width. Raise this before measuring if a wider card
+    /// is needed; stretching a measured card can distort its media layout.
     @objc public var maximumContentWidth: CGFloat = PromoNativeAdProvider.defaultMaximumContentWidth
 
-    /// The tallest the ad's card may be laid out, whatever space the host offers it.
+    /// Maximum preferred card height.
     @objc public var maximumContentHeight: CGFloat = PromoNativeAdProvider.defaultMaximumContentHeight
 
     /// The Google ad identifier for this native ad
@@ -72,25 +68,23 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     // The result handler captured at the start of a fetch and called once the ad loads or fails
     private var resultHandler: PromoProviderContentFetchHandler?
 
-    // Weak reference to the hosting promo view, retained for post-load updates such as content view reloads
+    // Hosting view used for background work and content updates.
     private weak var promoView: PromoView?
 
     // The point where the user first touched down, used to detect drags that should cancel the tap
     private var firstTapLocation: CGPoint?
 
-    // A timer that fires if the user holds their finger down too long, mirroring Google's native tap-cancellation behaviour
+    // Cancels the interaction animation after a long press.
     private var tapDownTimer: Timer?
 
-    /// Create new instance of a Google ad banner provider
-    /// - Parameter adUnitID: The Google ad unit ID for this banner
+    /// Creates a Google native ad provider.
+    /// - Parameter adUnitID: The Google ad unit ID for this native ad.
     @objc public init(adUnitID: String) {
         self.adUnitID = adUnitID
     }
 
     deinit {
-        // The tap-cancellation timer schedules itself on the run loop and stays alive
-        // until it fires, even if the provider is released — invalidate it eagerly so
-        // we don't leave a no-op timer ticking on the main run loop.
+        // The run loop retains the timer until it fires or is invalidated.
         tapDownTimer?.invalidate()
         resultHandler = nil
     }
@@ -100,14 +94,11 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     public var isInternetAccessRequired: Bool { true }
 
     public func didMoveToPromoView(_ promoView: PromoView) {
-        // Capture a weak reference to our parent promo view since we'll be using
-        // it to perform image generation and to force a reload if the Google ad changes
         self.promoView = promoView
     }
 
     public func fetchNewContent(for promoView: PromoView,
                                 with resultHandler: @escaping PromoProviderContentFetchHandler) {
-        // Save a reference to the result handler so we can call it when the Google ad delegate returns
         self.resultHandler = resultHandler
         fetchToken = UUID()
 
@@ -115,14 +106,12 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         adLoader?.delegate = nil
         adLoader = nil
 
-        // Kick off the ad request with a fresh loader
         makeAdLoaderIfNeeded(with: promoView)
         adLoader?.load(Request())
     }
 
     public func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize {
-        // Since this view can be so arbitrarily sized, use a square shape while we're loading.
-        // We'll defer to the actual content view when loaded
+        // Use a loading placeholder until the content view can measure the ad.
         return CGSize(width: 85, height: 85)
     }
 
@@ -136,8 +125,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
     public func contentView(for promoView: PromoView) -> PromoContentView {
         let adContentView = promoView.dequeueContentView(for: PromoNativeAdContentView.self)
-        // Applied before the ad is set: assigning `nativeAd` triggers a layout pass,
-        // which measures the card against these.
+        // Set sizing limits before assigning the ad, which triggers measurement and layout.
         adContentView.maximumContentWidth = maximumContentWidth
         adContentView.maximumContentHeight = maximumContentHeight
         adContentView.nativeAd = nativeAd
@@ -155,21 +143,18 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         let adChoicesViewFrame = adContentView.adChoicesViewFrame
         guard adChoicesViewFrame != .zero else { return true }
 
-        // Since the ad choices view is so tiny, expand its bounds to 44x44
-        // in order to properly test if the user was aiming for it.
+        // Give AdChoices a minimum 44×44-point hit target.
         let adChoicesViewPaddedFrame = adChoicesViewFrame
             .insetBy(
                 dx: -max(0, 44.0 - adChoicesViewFrame.width) * 0.5,
                 dy: -max(0, 44.0 - adChoicesViewFrame.height) * 0.5
-        )
+            )
         return !adChoicesViewPaddedFrame.contains(touch.location(in: adContentView))
     }
 
     public func didTapDownInside(promoView: PromoView, with touch: UITouch) {
-        // Google native ads seem to have an interesting behaviour. It cancels
-        // tap-down events if the user leaves their finger on the glass for more than
-        // a second, or if they drag their finger more than 44 points away from the initial point.
-        // Track these so we can try and intelligently play a 'cancel' animation when this happens
+        // Match native ad tap cancellation by ending our animation after a long
+        // press or a drag beyond adTapDistanceThreshold.
         let touchPoint = touch.location(in: promoView)
         guard let contentView = promoView.contentView, contentView.frame.contains(touchPoint) else { return }
         firstTapLocation = touch.location(in: contentView)
@@ -206,18 +191,16 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
 
     // MARK: - Private
 
-    /// Handles the result of an ad load. If a result handler is waiting, calls it and clears it.
-    /// If no handler is present (i.e. this is a subsequent reload), refreshes the content view instead.
+    /// Clears the pending handler before invoking it, allowing reentrant fetches.
+    /// A success without a pending handler refreshes this provider's displayed content.
     private func didReceiveResult(_ result: Result<Void, Error>) {
-        // Inform the promo view of the results
         if let handler = resultHandler {
             resultHandler = nil
             switch result {
             case .success:
                 handler(.contentAvailable)
             case .failure(let error):
-                // See PromoBannerAdProvider: .fetchRequestFailed erases the reason,
-                // and the reason is the only useful part when ads stop serving.
+                // Preserve the underlying cause before returning the generic failure.
                 NSLog("[PromoKit] Native ad failed to load (unit %@): %@",
                       adUnitID, error.localizedDescription)
                 handler(.fetchRequestFailed)
@@ -229,7 +212,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         }
     }
 
-    /// Creates a new `GADAdLoader` configured for native ads if one doesn't already exist.
+    /// Creates an `AdLoader` configured for native ads if one does not already exist.
     private func makeAdLoaderIfNeeded(with promoView: PromoView) {
         guard adLoader == nil else { return }
 
@@ -244,16 +227,16 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
         viewAdOptions.preferredAdChoicesPosition = .topRightCorner
 
         self.adLoader = AdLoader(adUnitID: adUnitID,
-                                    rootViewController: promoView.rootViewController,
-                                    adTypes: [.native],
-                                    options: [videoOptions, mediaLoaderOptions, viewAdOptions])
+                                 rootViewController: promoView.rootViewController,
+                                 adTypes: [.native],
+                                 options: [videoOptions, mediaLoaderOptions, viewAdOptions])
         self.adLoader?.delegate = self
     }
 
-    /// If the loaded ad has image content, generates a blurred background image on a background queue
-    /// and calls the completion handler on the main thread once done (or immediately if no image is available).
+    /// Blurs the first ad image off the main thread, completing on the main queue
+    /// only if the request is still current. Completes immediately when no image exists.
     private func makeBlurredMediaImageIfAvailable(for nativeAd: NativeAd, token: UUID,
-                                                 completion: @escaping () -> Void) {
+                                                  completion: @escaping () -> Void) {
         guard let image = nativeAd.images?.first?.image else {
             mediaBackgroundImage = nil
             completion()
@@ -272,12 +255,12 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
     }
 }
 
-// MARK: - GADBannerViewDelegate
+// MARK: - NativeAdLoaderDelegate
 
 extension PromoNativeAdProvider: NativeAdLoaderDelegate {
     public func adLoader(_ adLoader: AdLoader, didReceive nativeAd: NativeAd) {
         guard adLoader === self.adLoader else { return }
-        // Skip if the same ad was sent down
+        // Reuse the existing backdrop when the SDK returns the same ad.
         if nativeAd == self.nativeAd {
             didReceiveResult(.success(()))
             return
@@ -285,7 +268,6 @@ extension PromoNativeAdProvider: NativeAdLoaderDelegate {
 
         self.nativeAd = nativeAd
 
-        // Generate a blurred background image to position behind the media view
         let token = fetchToken
         makeBlurredMediaImageIfAvailable(for: nativeAd, token: token) { [weak self] in
             guard let self, self.fetchToken == token, self.nativeAd === nativeAd else { return }

@@ -22,8 +22,7 @@
 
 import Foundation
 
-/// A model object that handles querying for, and choosing
-/// the highest priority provider to be displayed.
+/// Fetches eligible providers in priority order and selects the first with content.
 internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
 
     /// The promo view managing this provider coordinator.
@@ -33,7 +32,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     /// in order of priority.
     public var providers: [PromoProvider]?
 
-    /// The currently displayed provider.
+    /// The selected provider, retained while a size refresh replaces its displayed content.
     public var currentProvider: PromoProvider?
 
     /// A retry interval for failed provider fetches.
@@ -42,10 +41,10 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     /// The maximum amount of time to wait for a provider fetch before treating it as a failure.
     public var fetchTimeout: TimeInterval = 15
 
-    /// A handler that is triggered whenever a new provider is chosen.
+    /// Reports a selected provider, or `nil` when no providers are eligible.
     public var providerUpdatedHandler: ((PromoProvider?) -> Void)?
 
-    /// A handler called if the fetch fails, and no valid provider is found.
+    /// Reports that attempted fetches produced no replacement content.
     public var providerFetchFailedHandler: (() -> Void)?
 
     /// Track fetching state.
@@ -54,7 +53,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     /// Identifies the reload, including work between individual provider requests.
     private(set) var fetchGeneration = UUID()
 
-    // MARK: Private
+    // MARK: - Private
 
     // The network connection observer (injected for tests; defaults to a real path monitor)
     let networkMonitor: PromoPathMonitoring
@@ -65,11 +64,11 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     // The unique token for the currently active provider fetch.
     var queryingProviderToken: UUID?
 
-    // Tracking the last known response of each provider, so we know which retry policy to apply
+    // The last result determines whether the refresh or retry interval applies.
     let providerFetchResults = NSMapTable<AnyObject, NSNumber>(keyOptions: .weakMemory,
                                                                valueOptions: .copyIn)
 
-    // Track the last time each provider returned a result so refresh intervals can be applied per-provider.
+    // Completion dates used to enforce each provider's interval.
     let providerFetchDates = NSMapTable<AnyObject, NSDate>(keyOptions: .weakMemory,
                                                            valueOptions: .copyIn)
 
@@ -82,7 +81,7 @@ internal class PromoProviderCoordinator: PromoPathMonitorDelegate {
     private var hasAttemptedFetch = false
     private var needsConnectivityRecheck = false
 
-    // MARK: Init
+    // MARK: - Init
 
     init(promoView: PromoView, networkMonitor: PromoPathMonitoring = PromoPathMonitor()) {
         self.promoView = promoView
@@ -122,16 +121,15 @@ extension PromoProviderCoordinator {
 
 extension PromoProviderCoordinator {
 
-    /// Start the process of looping through each provider,
-    /// and see which one is most appropriate at the moment.
+    /// Starts a new resolution from the given provider, or the highest-priority provider.
+    /// Calls `beforeFetch` only when a provider passes the refresh and retry interval checks.
     internal func fetchBestProvider(from startingProvider: PromoProvider? = nil,
                                     beforeFetch: (() -> Void)? = nil) {
         cancelFetch()
         hasRequestedFetch = true
         self.beforeFetch = beforeFetch
         guard let provider = nextValidProvider(from: startingProvider) else {
-            // Its content is being removed. A later reconnect must be able to
-            // fetch it again even if its previous success is still within cooldown.
+            // Removing content also clears its cooldown so a reconnect can restore it.
             if let currentProvider {
                 providerFetchResults.removeObject(forKey: currentProvider)
                 providerFetchDates.removeObject(forKey: currentProvider)
@@ -141,15 +139,15 @@ extension PromoProviderCoordinator {
             return
         }
 
-        // Set flag that we're fetching, so we can cancel out of pending blocks
+        // Pending work checks this flag before continuing.
         isFetching = true
 
         // Start fetch request on this provider
         startContentFetch(for: provider)
     }
 
-    /// Cancels an in-progress fetch.
-    /// Any late callbacks from the canceled provider are ignored.
+    /// Cancels coordinator resolution and ignores late callbacks.
+    /// The provider's underlying work may continue.
     internal func cancelFetch() {
         isFetching = false
         hasAttemptedFetch = false
@@ -159,15 +157,11 @@ extension PromoProviderCoordinator {
         invalidateActiveFetch()
     }
 
-    /// When a potentially valid provider is found, instruct it to start loading
-    /// its content (whether that is on disk, or via network) and return whether
-    /// any valid content was found or not.
-    /// - Parameter provider: The provider to be instructed to load its content.
+    /// Starts the provider's fetch unless its refresh or retry interval requires skipping it.
     private func startContentFetch(for provider: PromoProvider) {
         guard isFetching else { return }
         let generation = fetchGeneration
 
-        // Check if we need to skip this one as its time interval hasn't elapsed yet
         if skipToNextProvider(provider) { return }
         guard isFetching, fetchGeneration == generation else { return }
 
@@ -176,24 +170,24 @@ extension PromoProviderCoordinator {
         preparation?()
         guard isFetching, fetchGeneration == generation else { return }
 
-        // Assign the promo view to this provider if it requires it
+        // Let the provider record its host before fetching.
         if let promoView { provider.didMoveToPromoView?(promoView) }
         // Both hooks can synchronously replace providers or cancel this reload.
         guard isFetching, fetchGeneration == generation else { return }
 
-        // Store a class reference to this provider
+        // Track this attempt independently of earlier requests to the same provider.
         hasAttemptedFetch = true
         invalidateFetchTimeout()
         let queryingProviderToken = UUID()
         self.queryingProvider = provider
         self.queryingProviderToken = queryingProviderToken
 
-        // Capture a copy of this provider we can use to compare to the class one in the completion handler
+        // Capture the provider identity for later callback validation.
         let queryingProvider: PromoProvider = provider
 
         scheduleFetchTimeout(for: queryingProvider, token: queryingProviderToken)
 
-        // Define the closure, and use address-comparison to ensure it's still valid at completion
+        // Process only the active request's results, always on the main queue.
         let handler: ((PromoProviderFetchContentResult) -> Void) = { [weak self] result in
             DispatchQueue.main.async { [weak self] in
                 guard self?.isActiveFetch(for: queryingProvider, token: queryingProviderToken) ?? false else { return }
@@ -208,9 +202,7 @@ extension PromoProviderCoordinator {
             promoView?.setIsLoading(true, animated: true)
         }
 
-        // Start the fetch request on the new provider.
-        // Defer to the next run loop, so we don't end up overloading the call stack if all of these providers
-        // execute on the main run loop.
+        // Defer to avoid recursive fetch chains when providers complete synchronously.
         DispatchQueue.main.async { [weak self] in
             guard self?.isActiveFetch(for: queryingProvider, token: queryingProviderToken) ?? false,
                   let promoView = self?.promoView else { return }
@@ -218,19 +210,18 @@ extension PromoProviderCoordinator {
         }
     }
 
-    /// Callback method invoked by a provider after it has finished attempting fetching its content and
-    /// is ready to return the results of its fetch.
+    /// Records a fetch result and either selects the provider or continues resolution.
     /// - Parameters:
     ///   - result: The result of the content fetch reported by the provider
     ///   - provider: The provider performing the request
     private func didReceiveResult(_ result: PromoProviderFetchContentResult, from provider: PromoProvider) {
         invalidateActiveFetch()
 
-        // Save the result to our map table so we can consider it for future fetches
+        // Record completion for future refresh and retry checks.
         providerFetchResults.setObject(result.rawValue as NSNumber, forKey: provider)
         providerFetchDates.setObject(Date() as NSDate, forKey: provider)
 
-        // If this provider reported it has valid content, lets make it the current provider and stop here
+        // Stop at the first provider with content.
         if result == .contentAvailable {
             currentProvider = provider
             finishFetch { providerUpdatedHandler?(provider) }
@@ -258,8 +249,7 @@ extension PromoProviderCoordinator {
         pathMonitor(networkMonitor, didUpdateConnectivity: networkMonitor.hasInternetAccess)
     }
 
-    /// Find the next valid provider, either from the start, from a previously tested provider,
-    /// or from the next one in line.
+    /// Finds the next provider eligible under the current network conditions.
     /// - Parameters:
     ///   - fromProvider: A provider to start testing from. If nil, the first provider is used.
     ///   - afterProvider: Alternatively, skipping this provider, the next valid provider after this one.
@@ -273,13 +263,12 @@ extension PromoProviderCoordinator {
         var startIndex = (provider != nil) ? (providers.firstIndex { $0 === provider } ?? 0) : 0
         if afterProvider != nil { startIndex += 1 }
 
-        // If the network is up, start with whatever first provider we have. If not, find the first not needing internet
+        // Preserve priority order while filtering by network and cache availability.
         for nextProvider in providers.dropFirst(startIndex) {
             // Providers that don't need internet are always valid
             if !(nextProvider.isInternetAccessRequired ?? false) { return nextProvider }
 
-            // If the provider requires internet, we'll use it if the internet is available,
-            // or if the provider declares it can save its content offline.
+            // Internet-dependent providers may still serve cached content offline.
             if networkMonitor.hasInternetAccess || (nextProvider.isOfflineCacheAvailable ?? false) {
                 return nextProvider
             }
@@ -288,9 +277,8 @@ extension PromoProviderCoordinator {
         return nil
     }
 
-    /// Checks if the provider should be skipped because it isn't eligible to be fetched again yet
-    /// - Parameter provider: The provider to check
-    /// - Returns: A boolean on whether this provider should be skipped or not
+    /// Advances past a provider whose refresh or retry interval has not elapsed.
+    /// Returns `true` when the provider is skipped, including when that ends resolution.
     private func skipToNextProvider(_ provider: PromoProvider) -> Bool {
         guard let previousFetchDate = providerFetchDates.object(forKey: provider),
               let value = providerFetchResults.object(forKey: provider) else { return false }
@@ -308,7 +296,7 @@ extension PromoProviderCoordinator {
 
         guard timeInterval > 0 else { return false }
 
-        // If we're not past the time-out interval yet, skip to the next provider
+        // Skip this provider while its refresh or retry interval is active.
         let elapsedTime = Date().timeIntervalSince(previousFetchDate as Date)
         guard elapsedTime < timeInterval else { return false }
 
@@ -374,8 +362,7 @@ extension PromoProviderCoordinator {
 
 extension PromoProviderCoordinator {
 
-    /// Called when network connectivity changes. If we're currently showing an offline provider
-    /// and the internet returns, triggers a fresh fetch to promote an online provider if one is available.
+    /// Rechecks provider eligibility after connectivity changes, deferring until any active fetch finishes.
     func pathMonitor(_ pathMonitor: PromoPathMonitoring, didUpdateConnectivity connected: Bool) {
         guard !isFetching else {
             needsConnectivityRecheck = true
@@ -386,10 +373,10 @@ extension PromoProviderCoordinator {
             return
         }
 
-        // If we're already showing an internet enabled provider, we can skip, assuming it may still render offline.
+        // An already-selected online provider needs no promotion when connectivity returns.
         if connected, (provider.isInternetAccessRequired ?? false) { return }
 
-        // We're apparently showing an offline provider, let's take this as a chance to see if any new internet content has arrived.
+        // Resolve a fallback when offline, or a higher-priority provider when back online.
         fetchBestProvider()
     }
 }

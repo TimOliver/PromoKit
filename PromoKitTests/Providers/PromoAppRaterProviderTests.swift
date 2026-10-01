@@ -85,9 +85,7 @@ final class PromoAppRaterProviderTests: XCTestCase {
         try pngData.write(to: iconURL)
         PromoFileManager.resourceURL = tempDir
 
-        // Note: the file manager's selection algorithm uses strict < / > comparisons,
-        // so we ask for a slightly larger target dimension than the icon on disk to ensure
-        // the 76x76 candidate is selected via the "largest below target" branch.
+        // Exercise the fallback to the largest icon below the requested point size.
         let provider = PromoAppRaterProvider(appIconName: "AppIcon", maxIconDimension: 80)
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 75))
         let completed = expectation(description: "Decoded icon is published back on the main queue")
@@ -113,7 +111,6 @@ final class PromoAppRaterProviderTests: XCTestCase {
         return nil
     }
 }
-
 
 extension PromoAppRaterProviderTests {
     func testAppRaterReleasedAfterCompletedFetch() {

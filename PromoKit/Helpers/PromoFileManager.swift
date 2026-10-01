@@ -32,10 +32,10 @@ public class PromoFileManager {
     /// icon lookup logic against a synthetic file set; restore the original value afterwards.
     public static var resourceURL: URL? = Bundle.main.resourceURL
 
-    /// Locates the largest available version of an app icon, closest to the desired size.
+    /// Finds the smallest app icon that meets the requested point size, or the largest available fallback.
     /// - Parameter named: The name of the app icon to search for (eg "AppIcon" for matching "AppIcon76x76@2x.png")
-    /// - Parameter dimension: The desired size in points. The icon with the closest largest to this value will be used
-    /// - Returns: The absolute URL to the largest icon
+    /// - Parameter dimension: The desired size in points. Equal point sizes prefer the higher display scale.
+    /// - Returns: The selected icon's URL, or nil if no supported filename is found.
     public static func urlForAppIcon(named iconName: String, targetDimension dimension: Int = 128) -> URL? {
         guard let resourcePath = resourceURL?.path,
               let contents = try? fileManager.contentsOfDirectory(atPath: resourcePath),
@@ -49,10 +49,10 @@ public class PromoFileManager {
             // Skip files that don't start with our icon name
             guard fileName.hasPrefix(iconName) else { continue }
 
-            // Assuming we have a file formatted like `AppIcon67x67@2x.png`, drop the 'AppIcon' part first
+            // Remove the icon name from a filename such as `AppIcon76x76@2x.png`.
             let droppedName = String(fileName.dropFirst(iconName.count))
 
-            // We should now have a string like `67x67@2x.png`. Let's extract the first `67`, and the `2x`
+            // Extract the point size and display scale from `76x76@2x.png`.
             guard let sizeString = droppedName.components(separatedBy: "x").first, let size = Int(sizeString),
                   let scaleString = droppedName.components(separatedBy: "@").last?.components(separatedBy: "x").first, let scale = Int(scaleString)
             else { continue }

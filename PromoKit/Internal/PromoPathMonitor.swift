@@ -24,8 +24,7 @@ import Foundation
 import Network
 import os.lock
 
-/// Used to track the current connectivity state of the device and provide
-/// notifications when a valid internet connection appears or drops.
+/// Tracks network path status and reports changes on the main queue.
 internal class PromoPathMonitor: PromoPathMonitoring {
 
     // Whether the monitor is running or not
@@ -34,8 +33,7 @@ internal class PromoPathMonitor: PromoPathMonitoring {
     // The last captured path value from the path monitor
     private(set) public var currentPath: NWPath?
 
-    // The last captured connectivity status. Stored separately so tests can
-    // exercise status transitions without needing to manufacture an NWPath.
+    // Stored separately to allow status transitions without constructing an NWPath.
     private var currentStatus: NWPath.Status?
 
     // Delegate that broadcasts when the status changes
@@ -47,7 +45,7 @@ internal class PromoPathMonitor: PromoPathMonitoring {
     // Tracking when we come online and offline
     let pathMonitor = NWPathMonitor()
 
-    // Thread-safe lock for mutating the internet access flag
+    // Protects the path and status while updates arrive on the network queue.
     let unfairLock: UnsafeMutablePointer<os_unfair_lock> = {
         let pointer = UnsafeMutablePointer<os_unfair_lock>.allocate(capacity: 1)
         pointer.initialize(to: os_unfair_lock())
@@ -80,20 +78,11 @@ internal class PromoPathMonitor: PromoPathMonitoring {
         isRunning = false
     }
 
-    /// Whether the device currently has a satisfied network path (i.e. internet access).
-    /// Thread-safe — may be read from any queue.
-    ///
-    /// Defaults to `true` when the underlying `NWPathMonitor` hasn't yet reported
-    /// a first status. `NWPathMonitor.start(queue:)` is async, so a synchronous
-    /// `reload()` immediately after `start()` would otherwise race with the
-    /// first callback and see `false` even on devices that have full
-    /// connectivity. Treat "unknown" as optimistic: let the provider attempt
-    /// its fetch and surface a real network failure from the SDK if there's
-    /// genuinely no connection.
+    /// Whether the current network path is satisfied. May be read from any queue.
+    /// Defaults to `true` until the first status arrives so initial fetches can proceed.
+    /// A satisfied path does not guarantee that a provider's request will succeed.
     public var hasInternetAccess: Bool {
-        // In case it's being mutated on another thread,
-        // use a lock to fetch the current path status
-        // and check if we're online.
+        // Read the status under the same lock used by network updates.
         var value = true
         os_unfair_lock_lock(unfairLock)
         if let currentStatus {
@@ -106,16 +95,14 @@ internal class PromoPathMonitor: PromoPathMonitoring {
 
 extension PromoPathMonitor {
 
-    /// Handles a raw path update from `NWPathMonitor`. Discards events that don't
-    /// represent an actual status change, then notifies the delegate on the main thread.
+    /// Records a path update. The first establishes the initial status;
+    /// subsequent status changes notify the delegate on the main queue.
     func pathDidUpdate(to path: NWPath) {
         pathDidUpdate(to: path.status, currentPath: path)
     }
 
     func pathDidUpdate(to status: NWPath.Status, currentPath path: NWPath? = nil) {
-        // Since NWPathMonitor constantly sends updates,
-        // we'll use our background thread to detect and discard
-        // events that don't actually change the status.
+        // Only changes after the initial status produce a delegate callback.
         var statusDidChange = false
         os_unfair_lock_lock(unfairLock)
         if let currentStatus {
@@ -128,8 +115,7 @@ extension PromoPathMonitor {
         os_unfair_lock_unlock(unfairLock)
         if !statusDidChange { return }
 
-        // If we were showing offline content, and the internet came back up,
-        // perform a new fetch to see if there's an online provider we should show
+        // Deliver both connection and disconnection changes on the main queue.
         let connected = status == .satisfied
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }

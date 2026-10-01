@@ -27,12 +27,11 @@ import CoreImage
 /// to be displayed in various promo content views.
 public class PromoImageProcessing {
 
-    /// Takes a `UIImage` instance containing un-decoded image data, and forcefully decodes
-    /// that data to a new image copy. Optionally, the image can be downscaled at the same time.
+    /// Decodes an image, optionally resizing it to fit the requested size.
     /// Sourced from http://www.lukeparham.com/blog/2018/3/14/decoding-jpegs-with-the-best
     /// - Parameters:
-    ///   - image: The un-decoded image.
-    ///   - fittingSize: Optionally, a smaller size for the image to be decoded to.
+    ///   - image: The image to decode.
+    ///   - fittingSize: Optional size to fit while preserving the image's aspect ratio.
     ///   - scale: The screen scale that the image will be scaled to.
     /// - Returns: The decoded image
     public static func decodedImage(_ image: UIImage?, fittingSize: CGSize? = nil, scale: CGFloat = 1.0) -> UIImage? {
@@ -59,8 +58,7 @@ public class PromoImageProcessing {
         return legacyDecodedImage(newImage, fittingSize: fittingSize, scale: scale)
     }
 
-    /// The pre-iOS 15 image decoding path. Kept separate so it can be covered on
-    /// newer simulators where `preparingThumbnail(of:)` is always available.
+    /// The pre-iOS 15 decoding path, exposed internally for testing on newer systems.
     static func legacyDecodedImage(_ image: CGImage, fittingSize: CGSize? = nil, scale: CGFloat = 1.0) -> UIImage? {
         let newSize = Self.size(CGSize(width: image.width, height: image.height),
                                 fitting: fittingSize)
@@ -81,17 +79,16 @@ public class PromoImageProcessing {
         return nil
     }
 
-    /// Generate a blurred version of the provided image
+    /// Reuses Core Image resources and render caches across calls.
+    private static let sharedContext = CIContext()
+
+    /// Generates a blurred version of the provided image.
     /// - Parameters:
     ///   - image: The image to blur
     ///   - radius: The Gaussian blur radius (default 50)
     ///   - brightness: A brightness adjustment applied after blurring, in the range -1.0 to 1.0 (default -0.05)
-    ///   - fittingSize: If provided, the image is scaled down to fit within this size before blurring
+    ///   - fittingSize: If provided, the image is resized to fit this size before blurring
     /// - Returns: The blurred image
-    /// Shared across calls: building a CIContext is not free, and it carries the
-    /// caches that make repeat renders cheaper.
-    private static let sharedContext = CIContext()
-
     public static func blurredImage(_ image: UIImage,
                                     radius: CGFloat = 50.0,
                                     brightness: CGFloat = -0.05,
@@ -100,7 +97,6 @@ public class PromoImageProcessing {
         var extent = ciImage.extent
         ciImage = ciImage.clampedToExtent()
 
-        // Scale the image down
         if let fittingSize {
             let scale = min(fittingSize.width / image.size.width,
                             fittingSize.height / image.size.height)
@@ -109,27 +105,17 @@ public class PromoImageProcessing {
             extent.size.width *= scale
             extent.size.height *= scale
         }
-        // Create a blur filter
         guard let blurFilter = CIFilter(name: "CIGaussianBlur") else { return nil }
         blurFilter.setValue(ciImage, forKey: kCIInputImageKey)
         blurFilter.setValue(radius, forKey: kCIInputRadiusKey)
         guard let blurImage = blurFilter.outputImage else { return nil }
 
-        // Create brightness filter
         guard let brightnessFilter = CIFilter(name: "CIColorControls") else { return nil }
         brightnessFilter.setValue(blurImage, forKey: kCIInputImageKey)
         brightnessFilter.setValue(brightness, forKey: kCIInputBrightnessKey)
         guard let brightnessImage = brightnessFilter.outputImage else { return nil }
 
-        // Perform the generated operations.
-        //
-        // GPU-backed and shared. The software renderer was doing this on the CPU
-        // — 60ms of it, measured on an A12X — on a queue running at
-        // .userInitiated, right as a native ad resolves. That competed with the
-        // main thread mid-swipe and read as a dropped frame. CIContext is
-        // thread-safe and a GPU-backed one is fine from a background queue: the
-        // flag chooses CPU or GPU, not which thread the work happens on.
-        // Building one per call also cost ~2.7ms it didn't need to.
+        // CIContext is thread-safe, so background callers can share its render cache.
         let context = Self.sharedContext
         guard let cgImage = context.createCGImage(brightnessImage, from: extent.integral) else { return nil }
         return UIImage(cgImage: cgImage)
@@ -140,8 +126,7 @@ public class PromoImageProcessing {
 
 extension PromoImageProcessing {
 
-    /// Given a size and a fitting size, return what the original size would be
-    /// if it was shrunk down/blown up to the fitting size
+    /// Fits a size to the requested bounds while preserving its aspect ratio.
     /// - Parameters:
     ///   - size: The source size to be adjusted
     ///   - fittingSize: The bounds that size should be adjusted to fit

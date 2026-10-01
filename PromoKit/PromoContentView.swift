@@ -22,30 +22,26 @@
 
 import UIKit
 
-/// A content view is a reusable view that can be used to display a promotion
-/// from data loaded by a provider object in the hosting promo view.
-/// It uses the same recycling mechanism as UITableView to allow
-/// different providers to use the same content view.
+/// A reusable view displaying content loaded by a promo provider.
+/// The hosting promo view pools content views by their concrete class.
 @objc(PMKPromoContentView)
 open class PromoContentView: UIView {
 
-    /// The parent promo view that owns this content view. This can be used to fetch state info
-    /// about the promo view such as its current corner radius and insetting
+    /// The hosting promo view, which supplies properties such as corner radius and padding.
     private(set) public weak var promoView: PromoView?
 
-    /// Creates a new instance of this view with the provided re-use identifier
+    /// Creates a content view for the given host.
+    /// - Parameter promoView: The promo view that owns this content view.
     public required init(promoView: PromoView) {
         self.promoView = promoView
         super.init(frame: .zero)
     }
 
-    /// Called after a content view instance has been reclaimed in 
-    /// order to get it ready for its next use.
+    /// Called when the content view is removed and returned to the host's reuse pool.
     @objc open func prepareForReuse() {}
 
-    /// By default, the provider will always determine appropriate sizing.
-    /// However for complex content views whose size depends on the loaded content,
-    /// return `true` in order to enable `sizeThatFits` for the promo view size.
+    /// Whether the displayed content view supplies its own size through `sizeThatFits`.
+    /// Defaults to `false`. A zero size falls back to the provider's preferred size.
     @objc open var wantsSizingControl: Bool { false }
 
     public required init?(coder: NSCoder) {

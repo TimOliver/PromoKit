@@ -22,12 +22,15 @@
 
 import UIKit
 
-/// When querying for new content, these are the types of results that may be returned
+/// The result of a provider's content fetch.
 @objc(PMKPromoProviderFetchContentResult)
 public enum PromoProviderFetchContentResult: Int {
-    case fetchRequestFailed    = 0 /// An error occurred (eg, no internet, or invalid connection) and another attempt should be made.
-    case noContentAvailable    = 1 /// The fetch succeeded, but no valid content was found, so this provider should be skipped.
-    case contentAvailable      = 2 /// The fetch succeeded and this provider has valid content it can show.
+    /// The fetch failed and may be retried after the retry interval.
+    case fetchRequestFailed = 0
+    /// The fetch succeeded but found no content to display.
+    case noContentAvailable = 1
+    /// The fetch succeeded and found content to display.
+    case contentAvailable = 2
 }
 
 public typealias PromoProviderContentFetchHandler = ((PromoProviderFetchContentResult) -> Void)
@@ -36,70 +39,63 @@ public typealias PromoProviderContentFetchHandler = ((PromoProviderFetchContentR
 /// and configuring a promo content view with that data.
 @objc(PMKPromoProvider)
 public protocol PromoProvider: AnyObject {
-    /// The background color that the hosting promo view should be set to when this provider is visible.
-    /// Default is `nil`, which defaults back to the background color state of the promo view.
+    /// The background color to use while this provider is visible.
+    /// Defaults to `nil`, preserving the host's background color.
     @objc optional var backgroundColor: UIColor? { get }
 
-    /// Indicates that this provider requires an active internet connection (Default is false).
-    /// If this is set to true, and the device doesn't have an internet connection, this provider
-    /// will be deferred and then tried again once a valid connection is detected.
+    /// Whether fetching requires internet access. Defaults to `false`.
+    /// When `true`, offline fetches require `isOfflineCacheAvailable`.
     @objc optional var isInternetAccessRequired: Bool { get }
 
-    /// Providers with `isInternetAccessRequired` set to true, may also have the ability to save the results
-    /// of their last fetch as local cache. In these cases, when this is `true`, even if there is no active
-    /// internet connection, these providers will still be called in order to be given a chance to display their cache instead.
+    /// Allows an internet-dependent provider to be fetched offline so it can display cached content.
+    /// Defaults to `false`.
     @objc optional var isOfflineCacheAvailable: Bool { get }
 
-    /// If true, the promo view will show a loading spinner while this provider is fetching content (Default is false).
-    /// Use this for providers that perform slow asynchronous work where the previous content will be hidden mid-fetch.
+    /// Whether the promo view shows a loading spinner during the fetch. Defaults to `false`.
+    /// This does not remove the previously displayed content.
     @objc optional var showsLoadingIndicatorDuringFetch: Bool { get }
 
-    /// If true, when the frame size of the promo view changes, this provider will be given a chance to reload its content if it needs to.
-    /// This is useful for banner ads who might need to load a larger or smaller variant to fit the new size.
+    /// Whether size changes can trigger a reload, such as loading a different banner size.
+    /// Defaults to `false`.
     @objc optional var needsReloadOnSizeChange: Bool { get }
 
-    /// Optional fine-grained gate for size-driven reloads. When @c needsReloadOnSizeChange
-    /// is true, the promo view consults this method (if implemented) to decide whether
-    /// the specific size transition warrants a fresh fetch. Providers like a banner ad
-    /// that bucket multiple container widths into the same ad size can return false to
-    /// avoid spurious reloads as the host view resizes within the same bucket.
-    /// If the method isn't implemented, the promo view always reloads on size change
-    /// (preserving the legacy behaviour).
+    /// When `needsReloadOnSizeChange` is `true`, decides whether a size transition needs a reload.
+    /// Return `false` when both sizes can use the same content. If omitted, all size changes
+    /// request a reload, subject to the provider's refresh or retry interval.
     @objc optional func shouldReloadForSizeChange(from oldSize: CGSize, to newSize: CGSize) -> Bool
 
-    /// For successful fetches, the amount of time that must pass before another fetch will be made.
-    /// This is for providers who aren't real-time, so it isn't necessary to check them very often.
+    /// The minimum interval between fetches after `.contentAvailable` or `.noContentAvailable`.
+    /// Defaults to zero. An explicit `PromoView.reload()` clears this interval's fetch history.
     @objc optional var fetchRefreshInterval: TimeInterval { get }
 
-    /// Clears all of the local state and resets this provider back to where it was when it was first created.
+    /// Resets this provider's local state when called directly.
+    /// `PromoView.reload()` resets coordinator state but does not call this method.
     @objc optional func reset()
 
-    /// Called when a provider has started being hosted by a promo view.
-    /// This can be used by providers who need to retain a reference to the promo view for future updates.
+    /// Called before each content fetch so the provider can record its hosting promo view.
+    /// Store the view weakly if it is needed for later updates.
     @objc optional func didMoveToPromoView(_ promoView: PromoView)
 
     /// The amount of padding between the content view and the edge of the promo view.
-    /// If null, the promo view's `contentPadding` value will be used instead.
+    /// If omitted, the promo view's `defaultContentPadding` is used.
     @objc optional func contentPadding(for promoView: PromoView) -> UIEdgeInsets
 
     /// The provider's preferred corner radius given the promo view's current content padding.
-    /// This can be used for providers whose view content require their edge content to be a specific value.
-    /// Default value is the promo view's own corner radius
+    /// If omitted, the host's configured corner radius is used.
     @objc optional func cornerRadius(for promoView: PromoView, with contentPadding: UIEdgeInsets) -> CGFloat
 
-    /// The preferred dimensions of the content view managed by this provider.
-    /// If no content for the provider has been loaded yet, a 'best guess' should be provided.
-    /// Once content has loaded, it's possible to access the provider's content view, which can be used to properly
-    /// calculate the size.
+    /// The preferred content dimensions, excluding the promo view's padding.
+    /// Provide an estimate before content loads. A displayed content view with
+    /// `wantsSizingControl` can supply its own size instead.
     @objc optional func preferredContentSize(fittingSize: CGSize, for promoView: PromoView) -> CGSize
 
-    /// Perform an asynchronous fetch (ie make a web request) to see if this provider has any valid content to display
-    /// When the fetch is complete, the result handler closure must be called.
-    /// - Parameter resultHandler: The result handler that must be called once the fetch is complete.
+    /// Fetches content and reports whether it is available to display.
+    /// - Parameters:
+    ///   - promoView: The hosting promo view.
+    ///   - resultHandler: Call once when the fetch completes. The coordinator accepts results from any queue.
     @objc func fetchNewContent(for promoView: PromoView, with resultHandler: @escaping PromoProviderContentFetchHandler)
 
-    /// Requests the provider to fetch, and configure a content view with its current state.
-    /// The promo view may be used to dequeue and recycle previously used content views.
+    /// Creates or dequeues a content view and configures it with the provider's loaded content.
     /// - Parameter promoView: The hosting promo view requesting the content view
     /// - Returns: A fully configured content view
     @objc func contentView(for promoView: PromoView) -> PromoContentView
@@ -109,37 +105,35 @@ public protocol PromoProvider: AnyObject {
     /// - Parameters:
     ///   - promoView: The hosting promo view that received the touch
     ///   - touch: The UITouch object generated in this interaction
-    /// - Returns: If true, the tap animation will play. If false, no visible changes will occur.
+    /// - Returns: Whether to play the tap animation. Returning `false` does not suppress touch callbacks.
     @objc optional func shouldPlayInteractionAnimation(for promoView: PromoView, with touch: UITouch) -> Bool
 
-    /// Callback event for when the user has tapped down inside the promo view. This event occurs once at the
-    /// start of a touch interaction and can be used to capture initial touch state or start a timer. It occurs
-    /// regardless of whether a tap interaction occurs or not.
+    /// Called when a press begins on this provider while the promo view is not loading.
+    /// Use this to capture touch state. The press may later end in activation or cancellation.
     /// - Parameters:
     ///   - promoView: The promo view that received the tap event
-    ///   - touch: The touch event that was generated in the 'touchDownInside' event.
+    ///   - touch: The touch that began the press.
     @objc optional func didTapDownInside(promoView: PromoView, with touch: UITouch)
 
-    /// Callback event that occurs after the user has tapped down inside the promo view and subsequently drags
-    /// their finger around. This event occurs every single frame update that occurs while a drag occurred.
+    /// Called as a press moves, including outside the view's bounds, while this provider still owns it.
+    /// Canceled presses do not receive further drag callbacks.
     /// - Parameters:
     ///   - promoView: The promo view that received the drag event
-    ///   - touch: The touch event that was generated in the 'didDragInside' event.
+    ///   - touch: The touch whose location changed.
     @objc optional func didDragInside(promoView: PromoView, with touch: UITouch)
 
-    /// Callback event for when the user has tapped down and released their finger inside the bounds
-    /// of the promo view. Users can cancel taps by dragging their finger outside of the promo view,
-    /// but this event is guaranteed to fire if the user taps up inside the view. Providers can use this
-    /// to perform full-screen actions such as showing an ad overlay, or opening a page in Safari.
+    /// Called when an uncanceled press ends inside the view while this provider's content is still active
+    /// and the view is not loading. Replacing the provider or its content cancels the press.
+    /// Use this callback for actions such as opening a URL or presenting an ad.
     /// - Parameters:
     ///   - promoView: The promo view that received the tap event
-    ///   - touch: The touch event that was generated in the 'touchUpInside' event.
+    ///   - touch: The touch that ended the press.
     @objc optional func didTapUpInside(promoView: PromoView, with touch: UITouch)
 
-    /// Callback event for when something has cancelled the touch interaction (eg, the promo view was
-    /// in a scroll view that moved). This can be used to reset any internal state.
+    /// Called on the provider that received touch-down when UIKit cancels the touch or the press ends
+    /// without activation. Use this to clear touch state, including after content replacement.
     /// - Parameters:
     ///   - promoView: The promo view that received the tap event
-    ///   - touch: The touch event that was generated in the 'touchUpInside' event.
+    ///   - touch: The touch that ended or was canceled.
     @objc optional func didCancelTap(promoView: PromoView, with touch: UITouch)
 }

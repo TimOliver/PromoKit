@@ -45,10 +45,7 @@ final internal class PromoNativeAdActionButton: UIView {
         label.font = UIFont.boldSystemFont(ofSize: 18.0)
         label.textColor = .white
         label.textAlignment = .center
-        // Google supplies the call to action, and its length varies wildly by
-        // locale — "Install" is 7 characters, "今すぐダウンロード" is 9 full-width
-        // ones, and some locales are far longer than either. Shrink rather than
-        // truncate: a clipped call to action reads as a broken ad.
+        // Allow longer localized calls to action to shrink before truncating.
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.7
         label.lineBreakMode = .byTruncatingTail
@@ -73,10 +70,7 @@ final internal class PromoNativeAdActionButton: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    /// The width this pill needs for its own text at full size, including the
-    /// rounded caps it must not run into. Google's call to action varies wildly by
-    /// locale, so a fixed width fits some and clips others — shrink-to-fit only
-    /// rescues the near misses.
+    /// The width needed for the title at full size, including padding inside the rounded caps.
     func widthThatFits(height: CGFloat) -> CGFloat {
         guard let title, !title.isEmpty else { return height * 2.0 }
         let text = title as NSString
@@ -97,11 +91,7 @@ final internal class PromoNativeAdActionButton: UIView {
         if let glassView {
             glassView.frame = bounds
             glassView.layer.cornerRadius = radius
-            // Deliberately derived from `bounds`, NOT glassView.contentView.bounds:
-            // contentView is resized by UIKit in a later pass, so reading it here —
-            // immediately after assigning glassView.frame — yields the PREVIOUS
-            // size. A label narrower than the button truncates its text, which is
-            // invisible for a short call to action and obvious for a long one.
+            // Use our bounds because UIKit resizes glassView.contentView in a later pass.
             label.frame = labelFrame
         } else {
             solidBackground.frame = bounds

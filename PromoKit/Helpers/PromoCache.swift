@@ -22,8 +22,8 @@
 
 import Foundation
 
-/// A very basic caching mechanism that allows providers to store basic key-value
-/// data in user defaults, and file data to the app's tmp directory.
+/// Stores key-value data in user defaults and files in the app's temporary directory.
+/// Namespaces are shared by objects of the same class; `objectType` can distinguish defaults namespaces.
 public class PromoCache {
 
     public init() {}
@@ -101,7 +101,7 @@ public class PromoCache {
         UserDefaults.standard.set(settings, forKey: userDefaultsKey)
     }
 
-    /// Retrives a data value from user defaults associated with the hosting object
+    /// Retrieves a value from user defaults associated with the hosting object's namespace.
     /// - Parameters:
     ///   - key: A unique value that the hosting object can use to identify this data
     ///   - object: The hosting object (eg a provider) that is responsible for this data
@@ -113,7 +113,7 @@ public class PromoCache {
         return settings[key]
     }
 
-    /// Deletes all cached data for an associated object
+    /// Deletes all user-defaults values in the object's namespace. Cached files are unaffected.
     /// - Parameters:
     ///   - object: The hosting object (eg a provider) that is responsible for this data
     ///   - objectType: An additional optional string to identify unique copies of the hosting object
@@ -124,7 +124,7 @@ public class PromoCache {
 
     // MARK: - Cached Item Management
 
-    /// Generates a unique identifier that will be used as the top level key for a single provider in user defaults
+    /// Generates a defaults namespace from the object's class and optional type suffix.
     /// - Parameters:
     ///   - object: The hosting object (eg a provider) that is responsible for this data
     ///   - objectType: An additional optional string to identify unique copies of the hosting object

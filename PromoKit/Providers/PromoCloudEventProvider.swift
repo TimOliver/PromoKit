@@ -24,27 +24,29 @@ import Foundation
 import CloudKit
 import UIKit
 
-/// A provider that checks for certain records in this app's public CloudKit database,
-/// and displays the first valid entry found in a table list style content view.
-/// This is useful for broadcasting new time-limited announcements about the app to users.
+/// Displays an eligible announcement from the app's public CloudKit database.
+/// Prefers the nearest expiration date, with newer records breaking ties.
 ///
 /// This provider expects a specific record type to be configured inside this app's CloudKit instance.
 /// The record's parameters are:
 ///
 /// Name:
-///         PromoEvent       (String) - The default name of the hosting record type. This value may be changed to allow multiple streams of events.
+///         PromoEvent       (String) - Default record type, configurable for separate event streams.
 /// Schema:
-///         recordName       (Ref)    - (Queryable) The CloudKit metadata name for this record. Can be used to uniquely identify this record.
-///         createdTimestamp (Date)   - (Sortable) The CloudKit metadata creation date for this record. Can be used to sort events.
+///         recordName       (Ref)    - (Queryable) CloudKit metadata identifying the record.
+///         createdTimestamp (Date)   - (Sortable) CloudKit metadata creation date.
 ///         title            (String) - The main title shown at the top in bold text.
-///         subtitle         (String) - Additional auxillary text shown in a smaller font below the heading. (Optional)
+///         subtitle         (String) - Smaller text below the heading. (Optional)
 ///         thumbnail        (Asset)  - An image that may be shown alongside the heading and byline. (Optional)
-///         url              (String) - A url that will open when the user taps the view. (Optional)
-///         type             (String) - (Queryable) A generic field that can categorize types of events so they can be filtered (ie "app-update" vs "ad")
-///         expirationDate   (Date)   - (Sortable, Queryable) A date denoting when this event should stop being shown. (Optional. If omitted, the event is treated as non-expiring and lower priority than expiring events.)
-///         localDuration    (Int)    - Once downloaded, the number of hours this event should be cached and shown to users. (Optional)
-///         maxVersion       (String) - The highest version that this app needs to be at to be shown. (Optional)
-///         minVersion       (String) - Alternatively, the minimum version the app needs to be for this to be shown. (Optional)
+///         url              (String) - Destination opened when the user taps the view. (Optional)
+///         type             (String) - (Queryable) Event category, such as "app-update" or "ad".
+///         expirationDate   (Date)   - Date after which the event is hidden. (Optional)
+///         localDuration    (Int)    - Hours of eligibility from the first local query that considers it. (Optional)
+///         maxVersion       (String) - Highest eligible app version, inclusive. (Optional)
+///         minVersion       (String) - Lowest eligible app version, inclusive. (Optional)
+///
+/// Events without an expiration date remain eligible at lower priority than expiring events.
+/// Expiration and version constraints are checked locally.
 ///
 
 @objc(PMKPromoCloudEventProvider)
@@ -88,7 +90,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     // The result handler captured at the start of a fetch and called when the fetch resolves
     private var resultHandler: PromoProviderContentFetchHandler?
 
-    // Incremented on each new fetch to invalidate callbacks from previous in-flight requests
+    // Replaced on each fetch to invalidate callbacks from previous requests.
     private var fetchToken: UUID?
 
     // The CloudKit record selected for display after a successful query
@@ -117,9 +119,11 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
 
     // MARK: - Init
 
-    /// Create a new instance of this provider with the specified CloudKit container name
-    /// - Parameter containerIdentifier: The container name to use (eg iCloud.dev.tim.promokit). Specify nil for the app's default container
-    /// - Parameter eventType: An optional type to filter for (eg, app-specific announcements vs global announcements)
+    /// Creates a provider for a record type in a public CloudKit database.
+    /// - Parameters:
+    ///   - recordType: The record type to query. Defaults to `PromoEvent`.
+    ///   - containerIdentifier: The container identifier, or nil for the app's default container.
+    ///   - eventType: An optional category to filter within the record type.
     public convenience init(recordType: String = "PromoEvent",
                             containerIdentifier: String? = nil,
                             eventType: String? = nil) {
@@ -228,7 +232,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     private func isRecordEligibleForDisplay(_ record: CKRecord) -> Bool {
         guard isRecordUnexpired(record) else { return false }
 
-        // Host-hidden notices never display again.
+        // Exclude notices currently hidden by the host.
         guard !hiddenRecordNamesStorage.contains(record.recordID.recordName) else { return false }
 
         guard isCurrentAppVersionEligible(for: record) else { return false }
@@ -242,12 +246,12 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
     }
 
     private func isRecordWithinLocalDuration(_ record: CKRecord) -> Bool {
-        // If we don't have any local duration value, this record is always valid
+        // A missing or nonpositive duration imposes no local time limit.
         guard let localDuration = record[Constants.localDuration] as? Int, localDuration > 0 else {
             return true
         }
 
-        // We track each record via its unique UUID
+        // Track first access by the CloudKit record name.
         let recordName = record.recordID.recordName
 
         // Check if we've gone past the local display period for this record
@@ -322,8 +326,7 @@ public class PromoCloudEventProvider: NSObject, PromoProvider {
             result = .fetchRequestFailed
         }
 
-        // If the `recordFetchedBlock` was called and we were able to save a record,
-        // lets do one final validation pass to verify the thumbnail.
+        // Fetch the selected record's full data and revalidate it before display.
         if let record = self.record {
             prepareRecordForDisplay(record, token: token)
             return
