@@ -5,6 +5,30 @@ import UIKit
 @MainActor
 final class PromoViewDisplayTests: XCTestCase {
 
+    func testCloseButtonKeepsItsAccessibleNameAcrossStyleAndVisibilityChanges() throws {
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 90))
+        promo.showCloseButton = true
+        let button = try XCTUnwrap(promo.subviews.compactMap { $0 as? UIButton }.first)
+        XCTAssertFalse(try XCTUnwrap(button.accessibilityLabel).isEmpty)
+        XCTAssertTrue(button.accessibilityTraits.contains(.button))
+
+        promo.closeButtonAccessibilityLabel = "広告を閉じる"
+        for size in [PromoViewCloseButtonSize.small, .large] {
+            promo.closeButtonSize = size
+            promo.showCloseButton = false
+            promo.showCloseButton = true
+            XCTAssertEqual(button.accessibilityLabel, "広告を閉じる")
+        }
+    }
+
+    func testCloseButtonUsesLabelConfiguredBeforeItIsCreated() throws {
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 90))
+        promo.closeButtonAccessibilityLabel = "Dismiss announcement"
+        promo.showCloseButton = true
+        let button = try XCTUnwrap(promo.subviews.compactMap { $0 as? UIButton }.first)
+        XCTAssertEqual(button.accessibilityLabel, "Dismiss announcement")
+    }
+
     func testCloseButtonTapFiresDelegateCallback() {
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
         let delegate = PromoViewDelegateSpy()

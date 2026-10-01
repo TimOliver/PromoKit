@@ -99,6 +99,11 @@ public class PromoView: UIControl {
         }
     }
 
+    /// The close button's spoken label. Hosts can supply their localized wording.
+    @objc public var closeButtonAccessibilityLabel: String = NSLocalizedString("Close", comment: "Dismiss a promotional card") {
+        didSet { closeButton?.accessibilityLabel = closeButtonAccessibilityLabel }
+    }
+
     /// The size of the close button (Default is small)
     public var closeButtonSize: PromoViewCloseButtonSize = .small {
         didSet {
@@ -747,6 +752,8 @@ extension PromoView {
     @available(iOS 13.0, *)
     private func createCloseButton() {
         let button = UIButton(type: .system)
+        button.accessibilityLabel = closeButtonAccessibilityLabel
+        button.accessibilityTraits.insert(.button)
         button.addTarget(self, action: #selector(closeButtonTapped), for: .touchUpInside)
         addSubview(button)
         closeButton = button
