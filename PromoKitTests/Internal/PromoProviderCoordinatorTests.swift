@@ -994,3 +994,48 @@ private final class AttachmentCoordinatorProvider: MinimalPromoProvider {
         action?(promoView)
     }
 }
+
+extension PromoProviderCoordinatorTests {
+    func testTeardownReleasesProviderWithUnfinishedRequest() {
+        assertUnfinishedProviderIsReleased(fetchTimeout: 0)
+    }
+
+    func testTeardownReleasesProviderBeforeScheduledTimeout() {
+        assertUnfinishedProviderIsReleased(fetchTimeout: 60)
+    }
+
+    private func assertUnfinishedProviderIsReleased(fetchTimeout: TimeInterval,
+                                                    file: StaticString = #filePath, line: UInt = #line) {
+        weak var releasedView: PromoView?
+        weak var releasedCoordinator: PromoProviderCoordinator?
+        weak var releasedProvider: HeldCoordinatorProvider?
+        let started = expectation(description: "Provider holds its unfinished completion")
+
+        autoreleasepool {
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+            let provider = HeldCoordinatorProvider()
+            let coordinator = PromoProviderCoordinator(promoView: view,
+                                                        networkMonitor: StubPathMonitor(connected: true))
+            releasedView = view
+            releasedCoordinator = coordinator
+            releasedProvider = provider
+            coordinator.fetchTimeout = fetchTimeout
+            coordinator.providers = [provider]
+            coordinator.providerUpdatedHandler = { _ in XCTFail("A torn-down host must not receive content") }
+            coordinator.providerFetchFailedHandler = { XCTFail("A torn-down host must not receive failure") }
+            provider.onFetch = { started.fulfill() }
+            coordinator.fetchBestProvider()
+            wait(for: [started], timeout: 1)
+            drainCoordinatorCallbacks()
+        }
+
+        XCTAssertNil(releasedView, file: file, line: line)
+        XCTAssertNil(releasedCoordinator, file: file, line: line)
+        XCTAssertNil(releasedProvider, "An unfinished completion or canceled timeout must not retain its provider",
+                     file: file, line: line)
+
+        // If this regression fails, release the held callback so it cannot leak into later tests.
+        try? releasedProvider?.complete(with: .contentAvailable)
+        drainCoordinatorCallbacks()
+    }
+}

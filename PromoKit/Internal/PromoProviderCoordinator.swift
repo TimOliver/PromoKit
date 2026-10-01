@@ -188,10 +188,11 @@ extension PromoProviderCoordinator {
         scheduleFetchTimeout(for: queryingProvider, token: queryingProviderToken)
 
         // Process only the active request's results, always on the main queue.
-        let handler: ((PromoProviderFetchContentResult) -> Void) = { [weak self] result in
-            DispatchQueue.main.async { [weak self] in
-                guard self?.isActiveFetch(for: queryingProvider, token: queryingProviderToken) ?? false else { return }
-                self?.didReceiveResult(result, from: queryingProvider)
+        let handler: ((PromoProviderFetchContentResult) -> Void) = { [weak self, weak queryingProvider] result in
+            DispatchQueue.main.async { [weak self, weak queryingProvider] in
+                guard let self, let queryingProvider,
+                      self.isActiveFetch(for: queryingProvider, token: queryingProviderToken) else { return }
+                self.didReceiveResult(result, from: queryingProvider)
             }
         }
 
@@ -349,9 +350,10 @@ extension PromoProviderCoordinator {
     private func scheduleFetchTimeout(for provider: PromoProvider, token: UUID) {
         guard fetchTimeout > 0 else { return }
 
-        let timeoutWorkItem = DispatchWorkItem { [weak self] in
-            guard self?.isActiveFetch(for: provider, token: token) ?? false else { return }
-            self?.didReceiveResult(.fetchRequestFailed, from: provider)
+        let timeoutWorkItem = DispatchWorkItem { [weak self, weak provider] in
+            guard let self, let provider,
+                  self.isActiveFetch(for: provider, token: token) else { return }
+            self.didReceiveResult(.fetchRequestFailed, from: provider)
         }
         fetchTimeoutWorkItem = timeoutWorkItem
         DispatchQueue.main.asyncAfter(deadline: .now() + fetchTimeout, execute: timeoutWorkItem)
