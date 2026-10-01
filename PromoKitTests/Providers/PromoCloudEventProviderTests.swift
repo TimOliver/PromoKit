@@ -3,6 +3,97 @@ import UIKit
 import CloudKit
 @testable import PromoKit
 
+private final class HeldLifecycleCloudDataSource: PromoCloudEventDataSource {
+    let containerIdentifier: String? = "iCloud.dev.tim.promokit.lifecycle-tests"
+    var onFetch: (() -> Void)?
+    private var queryRecordHandler: ((CKRecord) -> Void)?
+    private var queryCompletion: ((Error?) -> Void)?
+    private var fetchCompletion: ((CKRecord?, Error?) -> Void)?
+
+    func performQuery(_ query: CKQuery, desiredKeys: [String],
+                      recordHandler: @escaping (CKRecord) -> Void,
+                      completion: @escaping (Error?) -> Void) {
+        queryRecordHandler = recordHandler
+        queryCompletion = completion
+    }
+
+    func fetchRecord(withID recordID: CKRecord.ID,
+                     completion: @escaping (CKRecord?, Error?) -> Void) {
+        fetchCompletion = completion
+        onFetch?()
+    }
+
+    func completeQuery(with record: CKRecord) {
+        queryRecordHandler?(record)
+        queryCompletion?(nil)
+        queryRecordHandler = nil
+        queryCompletion = nil
+    }
+
+    func completeFetch(with record: CKRecord) {
+        fetchCompletion?(record, nil)
+        fetchCompletion = nil
+    }
+}
+
+extension PromoCloudEventProviderTests {
+    func testPendingCloudQueryDoesNotRetainProviderOrHost() {
+        let source = HeldLifecycleCloudDataSource()
+        weak var releasedProvider: PromoCloudEventProvider?
+        weak var releasedView: PromoView?
+        let record = CKRecord(recordType: "PromoEvent")
+        record["title"] = "Abandoned query"
+        var fetchStarted = false
+        source.onFetch = { fetchStarted = true }
+
+        autoreleasepool {
+            let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: source)
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+            releasedProvider = provider
+            releasedView = view
+            provider.fetchNewContent(for: view) { _ in XCTFail("A released provider must not deliver query results") }
+        }
+
+        XCTAssertNil(releasedProvider)
+        XCTAssertNil(releasedView)
+        source.completeQuery(with: record)
+        drainLifecycleCloudCallbacks()
+        XCTAssertFalse(fetchStarted, "A late query must not start a full-record fetch after teardown")
+    }
+
+    func testPendingCloudRecordFetchDoesNotRetainProviderOrHost() {
+        let source = HeldLifecycleCloudDataSource()
+        weak var releasedProvider: PromoCloudEventProvider?
+        weak var releasedView: PromoView?
+        let record = CKRecord(recordType: "PromoEvent")
+        record["title"] = "Abandoned fetch"
+        let started = expectation(description: "Full-record fetch is held")
+        source.onFetch = { started.fulfill() }
+
+        autoreleasepool {
+            let provider = PromoCloudEventProvider(recordType: "PromoEvent", eventType: nil, dataSource: source)
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
+            releasedProvider = provider
+            releasedView = view
+            provider.fetchNewContent(for: view) { _ in XCTFail("A released provider must not deliver record results") }
+            source.completeQuery(with: record)
+            wait(for: [started], timeout: 1)
+            _ = provider.currentRecordName // Wait for the state queue to leave the fetch hook before teardown.
+        }
+
+        XCTAssertNil(releasedProvider)
+        XCTAssertNil(releasedView)
+        source.completeFetch(with: record)
+        drainLifecycleCloudCallbacks()
+    }
+
+    private func drainLifecycleCloudCallbacks() {
+        let drained = expectation(description: "Late CloudKit callbacks drain")
+        DispatchQueue.main.async { drained.fulfill() }
+        wait(for: [drained], timeout: 1)
+    }
+}
+
 @MainActor
 final class PromoCloudEventProviderTests: XCTestCase {
 

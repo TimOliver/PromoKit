@@ -172,3 +172,30 @@ extension PromoBannerAdProviderTests {
         XCTAssertNil(view.contentView)
     }
 }
+
+extension PromoBannerAdProviderTests {
+    func testUnfinishedBannerRequestDoesNotRetainProviderOrHost() throws {
+        weak var releasedProvider: PromoBannerAdProvider?
+        weak var releasedView: PromoView?
+        var retainedBanner: BannerView?
+
+        try autoreleasepool {
+            let provider = PromoBannerAdProvider(adUnitID: "test-banner")
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 50))
+            releasedProvider = provider
+            releasedView = view
+            provider.fetchNewContent(for: view) { _ in
+                XCTFail("An unfinished request must not deliver a result after teardown")
+            }
+            retainedBanner = try XCTUnwrap(Mirror(reflecting: provider).children.first {
+                $0.label == "adView"
+            }?.value as? BannerView)
+            XCTAssertTrue(retainedBanner?.delegate === provider)
+        }
+
+        XCTAssertNil(releasedProvider)
+        XCTAssertNil(releasedView)
+        XCTAssertNil(retainedBanner?.delegate, "The SDK view may outlive its provider")
+        retainedBanner?.delegate = nil
+    }
+}
