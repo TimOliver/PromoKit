@@ -235,6 +235,91 @@ private final class FakeTouch: UITouch {
     }
 }
 
+extension PromoNativeAdContentViewTests {
+    func testUnfinishedNativeRequestDoesNotRetainProviderOrHost() throws {
+        weak var releasedProvider: PromoNativeAdProvider?
+        weak var releasedView: PromoView?
+        var retainedLoader: AdLoader?
+
+        try autoreleasepool {
+            let provider = PromoNativeAdProvider(adUnitID: "test-native")
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 300, height: 300))
+            releasedProvider = provider
+            releasedView = view
+            provider.didMoveToPromoView(view)
+            provider.fetchNewContent(for: view) { _ in
+                XCTFail("An unfinished request must not deliver a result after teardown")
+            }
+            let field = try XCTUnwrap(Mirror(reflecting: provider).children.first { $0.label == "adLoader" })
+            retainedLoader = try XCTUnwrap(Mirror(reflecting: field.value).children.first?.value as? AdLoader)
+            XCTAssertTrue(retainedLoader?.delegate === provider)
+        }
+
+        XCTAssertNil(releasedProvider)
+        XCTAssertNil(releasedView)
+        XCTAssertNil(retainedLoader?.delegate, "The SDK loader may outlive its provider")
+        retainedLoader?.delegate = nil
+    }
+
+    func testPendingBlurDoesNotRetainProviderOrPublishAfterTeardown() {
+        weak var releasedProvider: PromoNativeAdProvider?
+        weak var releasedView: PromoView?
+        let queue = PromoView(frame: .zero).backgroundQueue
+        queue.isSuspended = true
+        defer { queue.isSuspended = false }
+
+        autoreleasepool {
+            let provider = PromoNativeAdProvider(adUnitID: "test-native")
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 300, height: 300))
+            releasedProvider = provider
+            releasedView = view
+            provider.didMoveToPromoView(view)
+            provider.fetchNewContent(for: view) { _ in
+                XCTFail("Abandoned image processing must not publish content")
+            }
+            let image = makePromoTestImage(size: CGSize(width: 40, height: 40), color: .purple)
+            let ad = FakeNativeAd(aspectRatio: 1, headline: "Pending image",
+                                  images: [NativeAdImage(image: image)])
+            provider.adLoader(activeLoader(for: provider), didReceive: ad)
+            XCTAssertGreaterThan(queue.operationCount, 0)
+        }
+
+        XCTAssertNil(releasedProvider, "Suspended background work must not extend the provider's lifetime")
+        XCTAssertNil(releasedView)
+        queue.isSuspended = false
+        queue.waitUntilAllOperationsAreFinished()
+        let drained = expectation(description: "Abandoned blur's main-queue callback drains")
+        OperationQueue.main.addOperation { drained.fulfill() }
+        wait(for: [drained], timeout: 1)
+    }
+
+    func testActiveTapTimerIsInvalidatedWhenProviderIsReleased() throws {
+        weak var releasedProvider: PromoNativeAdProvider?
+        weak var releasedView: PromoView?
+        var retainedTimer: Timer?
+
+        try autoreleasepool {
+            let provider = PromoNativeAdProvider(adUnitID: "test-native")
+            let view = PromoView(frame: CGRect(x: 0, y: 0, width: 300, height: 300))
+            let content = PromoNativeAdContentView(promoView: view)
+            content.frame = view.bounds
+            view.contentView = content
+            provider.didMoveToPromoView(view)
+            releasedProvider = provider
+            releasedView = view
+            provider.didTapDownInside(promoView: view, with: FakeTouch(location: CGPoint(x: 50, y: 50)))
+            let field = try XCTUnwrap(Mirror(reflecting: provider).children.first { $0.label == "tapDownTimer" })
+            retainedTimer = try XCTUnwrap(Mirror(reflecting: field.value).children.first?.value as? Timer)
+            XCTAssertTrue(retainedTimer?.isValid == true)
+        }
+
+        XCTAssertNil(releasedProvider)
+        XCTAssertNil(releasedView)
+        XCTAssertFalse(retainedTimer?.isValid == true, "Teardown must invalidate the run-loop's pending timer")
+        retainedTimer?.invalidate()
+    }
+}
+
 private final class FakeMediaContent: MediaContent {
     var fakeAspectRatio: CGFloat
     let fakeVideoController = FakeVideoController()

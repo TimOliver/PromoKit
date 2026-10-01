@@ -242,7 +242,7 @@ public class PromoNativeAdProvider: NSObject, PromoProvider {
             completion()
             return
         }
-        promoView?.backgroundQueue.addOperation {
+        promoView?.backgroundQueue.addOperation { [weak self] in
             let fittingSize = CGSize(width: 500, height: 700)
             let blurredImage = PromoImageProcessing
                 .blurredImage(image, radius: 50, brightness: -0.05, fittingSize: fittingSize)
