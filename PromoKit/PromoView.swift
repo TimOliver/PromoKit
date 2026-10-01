@@ -776,7 +776,7 @@ extension PromoView {
         }
 
         closeButton.setImage(image, for: .normal)
-        closeButton.tintColor = .tertiaryLabel
+        closeButton.tintColor = .secondaryLabel
         closeButton.sizeToFit()
     }
 

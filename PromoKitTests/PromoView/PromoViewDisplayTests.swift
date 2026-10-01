@@ -29,6 +29,40 @@ final class PromoViewDisplayTests: XCTestCase {
         XCTAssertEqual(button.accessibilityLabel, "Dismiss announcement")
     }
 
+    func testCloseButtonHasVisibleContrastInLightAndDarkAppearances() throws {
+        let promo = PromoView(frame: CGRect(x: 0, y: 0, width: 320, height: 90))
+        promo.showCloseButton = true
+        let button = try XCTUnwrap(promo.subviews.compactMap { $0 as? UIButton }.first)
+
+        for appearance in [UIUserInterfaceStyle.light, .dark] {
+            let traits = UITraitCollection(userInterfaceStyle: appearance)
+            let background = try colorComponents(UIColor.systemBackground.resolvedColor(with: traits))
+            let foreground = try colorComponents(button.tintColor.resolvedColor(with: traits))
+            // Dynamic label colors contain alpha; measure the symbol after compositing.
+            let symbol = zip(foreground.prefix(3), background.prefix(3)).map {
+                $0 * foreground[3] + $1 * (1 - foreground[3])
+            }
+            let symbolLuminance = relativeLuminance(symbol)
+            let backgroundLuminance = relativeLuminance(Array(background.prefix(3)))
+            let contrast = (max(symbolLuminance, backgroundLuminance) + 0.05)
+                / (min(symbolLuminance, backgroundLuminance) + 0.05)
+            XCTAssertGreaterThanOrEqual(contrast, 3, "Close symbol contrast in \(appearance)")
+        }
+    }
+
+    private func colorComponents(_ color: UIColor) throws -> [CGFloat] {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            throw NSError(domain: "PromoKitContrastTest", code: 1)
+        }
+        return [red, green, blue, alpha]
+    }
+
+    private func relativeLuminance(_ components: [CGFloat]) -> CGFloat {
+        let linear = components.map { $0 <= 0.04045 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
+        return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722
+    }
+
     func testCloseButtonTapFiresDelegateCallback() {
         let promoView = PromoView(frame: CGRect(x: 0, y: 0, width: 240, height: 80))
         let delegate = PromoViewDelegateSpy()
